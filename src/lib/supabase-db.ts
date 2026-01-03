@@ -103,26 +103,57 @@ export async function deleteDeck(id: string): Promise<void> {
 }
 
 export async function getDeckAndAllChildren(deckId: string): Promise<string[]> {
-  // Sub-decks feature disabled until parent_deck_id column is added to Supabase
-  // For now, just return the deck itself
-  return [deckId];
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+
+  // Recursively get all descendant deck IDs
+  const result: string[] = [deckId];
+  const toProcess = [deckId];
+
+  while (toProcess.length > 0) {
+    const currentDeckId = toProcess.pop()!;
+
+    // Find all direct children of this deck
+    const { data: children, error } = await supabase
+      .from("decks")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("parent_deck_id", currentDeckId);
+
+    if (error) throw error;
+
+    for (const child of children || []) {
+      result.push(child.id);
+      toProcess.push(child.id);
+    }
+  }
+
+  return result;
 }
 
 export async function getDeckPath(deckId: string): Promise<string> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
 
-  // Sub-decks feature disabled until parent_deck_id column is added to Supabase
-  // Just return the deck name for now
-  const { data, error } = await supabase
-    .from("decks")
-    .select("name")
-    .eq("id", deckId)
-    .eq("user_id", userId)
-    .single();
+  // Build the full path by traversing up the hierarchy
+  const pathSegments: string[] = [];
+  let currentDeckId: string | null = deckId;
 
-  if (error || !data) return "";
-  return data.name;
+  while (currentDeckId) {
+    const { data, error } = await supabase
+      .from("decks")
+      .select("name, parent_deck_id")
+      .eq("id", currentDeckId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) break;
+
+    pathSegments.unshift(data.name); // Add to beginning
+    currentDeckId = data.parent_deck_id;
+  }
+
+  return pathSegments.join("::");
 }
 
 export async function listDecksWithPaths(): Promise<Array<{ deck: Deck; path: string }>> {

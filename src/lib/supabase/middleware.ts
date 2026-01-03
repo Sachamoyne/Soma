@@ -16,9 +16,6 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           // request.cookies is read-only - can only set on response
-          supabaseResponse = NextResponse.next({
-            request,
-          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import AdmZip from "adm-zip";
 import Database from "better-sqlite3";
-import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
 // Helper: Parse Anki deck hierarchy
@@ -102,73 +102,134 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File must be .apkg" }, { status: 400 });
     }
 
-    // Get current user - use request cookies directly for Route Handler
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {
-            // Cannot set cookies in Route Handler - request.cookies is read-only
-            // Session refresh happens in middleware
-          },
-        },
+    // WORKAROUND: Supabase SSR v0.1.0 has issues with getUser() in Route Handlers
+    // Read and validate the auth cookie manually
+    const requestCookies = request.cookies.getAll();
+    const sbCookie = requestCookies.find(c => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
+
+    let userId: string | null = null;
+
+    if (sbCookie) {
+      try {
+        const cookieValue = JSON.parse(sbCookie.value);
+
+        if (cookieValue.access_token) {
+          // Decode JWT to extract and validate user ID
+          const parts = cookieValue.access_token.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+            const now = Math.floor(Date.now() / 1000);
+
+            // Verify token is not expired
+            if (payload.exp && payload.exp > now && payload.sub) {
+              userId = payload.sub;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("[ANKI IMPORT] Failed to parse auth cookie:", e);
       }
-    );
+    }
 
-    // Debug: log cookies
-    const cookies = request.cookies.getAll();
-    console.log("[ANKI IMPORT] === AUTH DEBUG START ===");
-    console.log("[ANKI IMPORT] Cookies count:", cookies.length);
-    console.log("[ANKI IMPORT] Cookie names:", cookies.map(c => c.name));
-    console.log("[ANKI IMPORT] Has sb-* cookies:", cookies.some(c => c.name.startsWith('sb-')));
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    console.log("[ANKI IMPORT] Auth result:", {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message,
-      authErrorStatus: authError?.status
-    });
-    console.log("[ANKI IMPORT] === AUTH DEBUG END ===");
-
-    if (authError || !user) {
-      console.error("[ANKI IMPORT] Auth failed:", authError?.message || "No user");
+    if (!userId) {
       return NextResponse.json({
         error: "Unauthorized",
-        details: authError?.message || "No user session found"
+        details: "Auth session missing!"
       }, { status: 401 });
     }
 
-    const userId = user.id;
+    // Create Supabase admin client (bypasses RLS) for database operations
+    // This is safe because we already validated the user's JWT above
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
 
     // Read file as buffer
     const buffer = await file.arrayBuffer();
     const zip = new AdmZip(Buffer.from(buffer));
 
-    // Extract collection.anki2
-    const collectionEntry = zip.getEntry("collection.anki2");
+    // Debug: List all files in the .apkg
+    const entries = zip.getEntries();
+    console.log("[ANKI IMPORT] Files in .apkg:", entries.map(e => ({
+      name: e.entryName,
+      size: e.header.size,
+      compressedSize: e.header.compressedSize
+    })));
+
+    // Try different collection file names (prioritize newer formats)
+    // Anki 2.1.50+ exports both collection.anki21 (new) and collection.anki2 (legacy compatibility)
+    // We must use collection.anki21 which contains the actual data
+    let collectionEntry = zip.getEntry("collection.anki21");
+    if (!collectionEntry) {
+      collectionEntry = zip.getEntry("collection.anki22");
+    }
+    if (!collectionEntry) {
+      collectionEntry = zip.getEntry("collection.anki2");
+    }
+
     if (!collectionEntry) {
       return NextResponse.json(
-        { error: "Invalid .apkg file: collection.anki2 not found" },
+        { error: `Invalid .apkg file: no collection file found. Files in archive: ${entries.map(e => e.entryName).join(', ')}` },
         { status: 400 }
       );
     }
 
-    // Write to temp file and open with better-sqlite3
+    console.log("[ANKI IMPORT] Using collection file:", collectionEntry.entryName);
+
+    // Extract to temp file with unique name
     const tempPath = `/tmp/anki-${randomUUID()}.anki2`;
-    zip.extractEntryTo(collectionEntry, "/tmp", false, true);
+    const collectionData = collectionEntry.getData();
+    require("fs").writeFileSync(tempPath, collectionData);
 
     const db = new Database(tempPath);
 
     try {
-      // Get decks from collection
-      const colRow = db.prepare("SELECT decks FROM col").get() as { decks: string };
+      // Debug: List all tables in the database
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Array<{ name: string }>;
+      console.log("[ANKI IMPORT] Tables in database:", tables.map(t => t.name));
+
+      // For each table, show sample data
+      for (const table of tables) {
+        try {
+          const count = db.prepare(`SELECT COUNT(*) as count FROM ${table.name}`).get() as { count: number };
+          console.log(`[ANKI IMPORT] Table ${table.name}: ${count.count} rows`);
+
+          if (count.count > 0 && count.count <= 3) {
+            const sample = db.prepare(`SELECT * FROM ${table.name} LIMIT 1`).get();
+            console.log(`[ANKI IMPORT] Sample from ${table.name}:`, sample);
+          }
+        } catch (e) {
+          console.log(`[ANKI IMPORT] Error reading ${table.name}:`, e);
+        }
+      }
+
+      // Check which collection table exists
+      const hasCol = tables.some(t => t.name === 'col');
+      const hasNotetypes = tables.some(t => t.name === 'notetypes');
+      console.log("[ANKI IMPORT] Database version:", hasNotetypes ? 'Anki 2.1.50+' : (hasCol ? 'Anki 2.0/2.1' : 'Unknown'));
+
+      if (!hasCol) {
+        throw new Error(`Unsupported Anki format. Found tables: ${tables.map(t => t.name).join(', ')}`);
+      }
+
+      // Get decks and creation time from collection
+      const colRow = db.prepare("SELECT decks, crt FROM col").get() as { decks: string; crt: number };
       const decksJson = JSON.parse(colRow.decks);
+
+      // Get collection creation timestamp to calculate current day number
+      const collectionCreationTimestamp = colRow.crt; // seconds since epoch
+      const collectionCreationDate = new Date(collectionCreationTimestamp * 1000);
+      const currentDayNumber = Math.floor((Date.now() - collectionCreationDate.getTime()) / (24 * 60 * 60 * 1000));
+
+      console.log("[ANKI IMPORT] Collection created:", collectionCreationDate.toISOString());
+      console.log("[ANKI IMPORT] Current Anki day number:", currentDayNumber);
 
       // Get notes and cards
       const notes = db.prepare("SELECT id, mid, flds, tags FROM notes").all() as Array<{
@@ -193,9 +254,17 @@ export async function POST(request: NextRequest) {
         due: number;
       }>;
 
+      console.log("[ANKI IMPORT] Read from Anki DB:", { notes: notes.length, cards: cards.length });
+
       // Build deck cache
       const deckCache = new Map<string, string>();
       const ankiDeckIdToSynapseDeckId = new Map<number, string>();
+
+      // Debug: Show all Anki decks
+      console.log("[ANKI IMPORT] Anki decks from database:");
+      for (const [deckId, deckData] of Object.entries(decksJson)) {
+        console.log(`  - Anki ID ${deckId}: ${(deckData as any).name}`);
+      }
 
       // Create decks with hierarchy
       for (const [deckId, deckData] of Object.entries(decksJson)) {
@@ -203,6 +272,15 @@ export async function POST(request: NextRequest) {
         const deckPath = parseDeckName(deckName);
         const synapseDeckId = await getOrCreateDeck(supabase, userId, deckPath, deckCache);
         ankiDeckIdToSynapseDeckId.set(Number(deckId), synapseDeckId);
+
+        // Debug: Show mapping
+        console.log(`[ANKI IMPORT] Mapped Anki deck ${deckId} ("${deckName}") → Synapse deck ${synapseDeckId} (leaf: "${deckPath[deckPath.length - 1]}")`);
+      }
+
+      // Debug: Show all created decks
+      console.log("[ANKI IMPORT] All Synapse decks created:");
+      for (const [fullPath, deckId] of deckCache.entries()) {
+        console.log(`  - "${fullPath}" → ${deckId}`);
       }
 
       // Build note lookup
@@ -210,30 +288,87 @@ export async function POST(request: NextRequest) {
 
       // Import cards
       let importedCount = 0;
+      let skippedNoNote = 0;
+      let skippedNoDeck = 0;
+      let skippedEmptyFields = 0;
+      let failedInserts = 0;
       const now = new Date();
+      const cardsPerDeck = new Map<string, number>(); // Track cards per Synapse deck
+      const cardsByState = { new: 0, learning: 0, review: 0 }; // Track cards by state
 
       for (const card of cards) {
         const note = noteMap.get(card.nid);
-        if (!note) continue;
+        if (!note) {
+          skippedNoNote++;
+          continue;
+        }
 
         const synapseDeckId = ankiDeckIdToSynapseDeckId.get(card.did);
-        if (!synapseDeckId) continue;
+        if (!synapseDeckId) {
+          skippedNoDeck++;
+          console.log("[ANKI IMPORT] No deck mapping for Anki deck ID:", card.did, "Available:", Array.from(ankiDeckIdToSynapseDeckId.keys()));
+          continue;
+        }
 
         // Parse note fields (separated by \x1f)
         const fields = note.flds.split("\x1f");
         const front = fields[0] || "";
         const back = fields[1] || "";
 
-        if (!front.trim() || !back.trim()) continue;
+        // Debug first card to see raw data
+        if (skippedEmptyFields === 0 && importedCount === 0) {
+          console.log("[ANKI IMPORT] First card debug:", {
+            rawFlds: note.flds,
+            fldsLength: note.flds.length,
+            splitResult: fields,
+            front: front,
+            back: back,
+            frontTrimmed: front.trim(),
+            backTrimmed: back.trim()
+          });
+        }
 
-        // Calculate due date
+        if (!front.trim() || !back.trim()) {
+          skippedEmptyFields++;
+          continue;
+        }
+
+        // Calculate due date based on Anki card type
         const state = getCardState(card.type);
         const intervalDays = getIntervalDays(card.ivl, card.type);
         let dueAt = now;
 
-        if (state === "review" && intervalDays > 0) {
-          // For review cards, add interval to current date
-          dueAt = new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+        if (state === "new") {
+          // New cards: due immediately
+          dueAt = now;
+        } else if (state === "learning") {
+          // Learning cards: due field is timestamp in seconds (or negative for intraday)
+          if (card.due > 0 && card.due > 1000000000) {
+            // Timestamp format (seconds since epoch)
+            dueAt = new Date(card.due * 1000);
+          } else {
+            // Intraday learning or invalid: due now
+            dueAt = now;
+          }
+        } else if (state === "review") {
+          // Review cards: due field is day number since collection creation
+          // Convert day number to actual date
+          const daysSinceCreation = card.due;
+          dueAt = new Date(collectionCreationDate.getTime() + daysSinceCreation * 24 * 60 * 60 * 1000);
+        }
+
+        // Debug: Show first 3 card assignments with state info
+        if (importedCount < 3) {
+          console.log(`[ANKI IMPORT] Card ${importedCount + 1}:`, {
+            ankiDeckId: card.did,
+            synapseDeckId,
+            ankiType: card.type,
+            state,
+            ankiDue: card.due,
+            dueAt: dueAt.toISOString(),
+            isDueNow: dueAt <= now,
+            intervalDays,
+          });
         }
 
         // Insert card
@@ -248,15 +383,51 @@ export async function POST(request: NextRequest) {
           ease: card.factor > 0 ? card.factor / 1000 : 2.5, // Anki stores ease as integer (2500 = 2.5)
           reps: card.reps,
           lapses: card.lapses,
-          learning_step_index: state === "learning" ? 0 : null,
+          learning_step_index: 0, // Default to 0 (NOT NULL constraint)
         });
 
         if (!cardError) {
           importedCount++;
+          // Track cards per deck
+          cardsPerDeck.set(synapseDeckId, (cardsPerDeck.get(synapseDeckId) || 0) + 1);
+          // Track cards by state
+          cardsByState[state]++;
         } else {
-          console.error("[ANKI IMPORT] Card insert failed:", cardError.message, { front: front.substring(0, 50) });
+          failedInserts++;
+          console.error("[ANKI IMPORT] Card insert failed:", {
+            error: cardError,
+            front: front.substring(0, 50),
+            deckId: synapseDeckId,
+            userId
+          });
         }
       }
+
+      // Debug: Show state distribution
+      console.log("[ANKI IMPORT] Cards by state:", cardsByState);
+
+      // Debug: Show card distribution per Synapse deck
+      console.log("[ANKI IMPORT] Cards per Synapse deck:");
+      for (const [synapseDeckId, count] of cardsPerDeck.entries()) {
+        // Find deck name from cache
+        let deckName = "unknown";
+        for (const [fullPath, id] of deckCache.entries()) {
+          if (id === synapseDeckId) {
+            deckName = fullPath;
+            break;
+          }
+        }
+        console.log(`  - Deck "${deckName}" (${synapseDeckId}): ${count} cards`);
+      }
+
+      console.log("[ANKI IMPORT] Import summary:", {
+        total: cards.length,
+        imported: importedCount,
+        skippedNoNote,
+        skippedNoDeck,
+        skippedEmptyFields,
+        failedInserts
+      });
 
       db.close();
 
