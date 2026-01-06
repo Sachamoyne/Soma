@@ -23,6 +23,8 @@ export {
   getCardsStudiedToday,
   getCurrentStreak,
   getTotalReviews,
+  getSettings,
+  updateSettings,
   // Scheduler functions
   previewIntervals,
   formatInterval,
@@ -36,6 +38,7 @@ export {
   type GeneratedCard,
   type IntervalPreview,
   type SchedulerSettings,
+  type Settings,
 } from "@/lib/supabase-db";
 
 // Note: Import-related functions are not yet migrated to Supabase

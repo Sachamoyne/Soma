@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { RichCardInput } from "@/components/RichCardInput";
 import { Trash2, Plus, BookOpen, Upload, List, Edit, Pause, Play } from "lucide-react";
 import {
   createCard,
@@ -906,27 +907,18 @@ export default function DeckDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Front</label>
-              <Input
-                placeholder="Question or front text"
-                value={front}
-                onChange={(e) => setFront(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">Back</label>
-              <Input
-                placeholder="Answer or back text"
-                value={back}
-                onChange={(e) => setBack(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && front.trim() && back.trim()) {
-                    handleCreateCard();
-                  }
-                }}
-              />
-            </div>
+            <RichCardInput
+              label="Front"
+              value={front}
+              onChange={setFront}
+              placeholder="Question or front text"
+            />
+            <RichCardInput
+              label="Back"
+              value={back}
+              onChange={setBack}
+              placeholder="Answer or back text"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -947,24 +939,18 @@ export default function DeckDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Front</label>
-              <Textarea
-                placeholder="Question or front text"
-                value={editFront}
-                onChange={(e) => setEditFront(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">Back</label>
-              <Textarea
-                placeholder="Answer or back text"
-                value={editBack}
-                onChange={(e) => setEditBack(e.target.value)}
-                rows={3}
-              />
-            </div>
+            <RichCardInput
+              label="Front"
+              value={editFront}
+              onChange={setEditFront}
+              placeholder="Question or front text"
+            />
+            <RichCardInput
+              label="Back"
+              value={editBack}
+              onChange={setEditBack}
+              placeholder="Answer or back text"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditCardId(null)}>

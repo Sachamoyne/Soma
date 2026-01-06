@@ -11,8 +11,18 @@ import { getSettings, updateSettings, type Settings } from "@/store/settings";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut } from "lucide-react";
 
+// DEFAULT VALUES - ensure all inputs are controlled from first render
+const DEFAULT_SETTINGS: Partial<Settings> = {
+  newCardsPerDay: 20,
+  maxReviewsPerDay: 9999,
+  learningMode: "normal",
+  againDelayMinutes: 10,
+  reviewOrder: "mixed",
+};
+
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings | null>(null);
+  // Initialize with defaults to prevent uncontrolled→controlled transitions
+  const [settings, setSettings] = useState<Partial<Settings>>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -23,7 +33,11 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         const loaded = await getSettings();
-        setSettings(loaded);
+        // Merge loaded settings with defaults to ensure no undefined values
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...loaded,
+        });
       } catch (error) {
         console.error("Error loading settings:", error);
       } finally {
@@ -38,9 +52,18 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await updateSettings(settings);
+      console.log("✅ Settings saved successfully");
       // Show success feedback (could add toast here)
     } catch (error) {
-      console.error("Error saving settings:", error);
+      // DETAILED error logging to identify the real issue
+      console.error("❌ Error saving settings:", {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        settingsPayload: settings,
+      });
     } finally {
       setSaving(false);
     }
@@ -58,7 +81,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading || !settings) {
+  if (loading) {
     return (
       <>
         <Topbar title="Settings" />
@@ -91,7 +114,7 @@ export default function SettingsPage() {
                   type="number"
                   min="1"
                   max="9999"
-                  value={settings.newCardsPerDay}
+                  value={settings.newCardsPerDay ?? 20}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
@@ -109,7 +132,7 @@ export default function SettingsPage() {
                   type="number"
                   min="1"
                   max="9999"
-                  value={settings.maxReviewsPerDay}
+                  value={settings.maxReviewsPerDay ?? 9999}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
@@ -135,7 +158,7 @@ export default function SettingsPage() {
                       type="radio"
                       name="learningMode"
                       value="fast"
-                      checked={settings.learningMode === "fast"}
+                      checked={(settings.learningMode ?? "normal") === "fast"}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
@@ -156,7 +179,7 @@ export default function SettingsPage() {
                       type="radio"
                       name="learningMode"
                       value="normal"
-                      checked={settings.learningMode === "normal"}
+                      checked={(settings.learningMode ?? "normal") === "normal"}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
@@ -177,7 +200,7 @@ export default function SettingsPage() {
                       type="radio"
                       name="learningMode"
                       value="deep"
-                      checked={settings.learningMode === "deep"}
+                      checked={(settings.learningMode ?? "normal") === "deep"}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
@@ -215,7 +238,7 @@ export default function SettingsPage() {
               </label>
               <p className="text-sm text-muted-foreground ml-6">
                 Les cartes marquées Again réapparaissent après{" "}
-                {settings.againDelayMinutes} minutes
+                {settings.againDelayMinutes ?? 10} minutes
               </p>
               <div className="space-y-2 ml-6">
                 <Label htmlFor="againDelayMinutes">
@@ -226,7 +249,7 @@ export default function SettingsPage() {
                   type="number"
                   min="1"
                   max="1440"
-                  value={settings.againDelayMinutes}
+                  value={settings.againDelayMinutes ?? 10}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
@@ -249,7 +272,7 @@ export default function SettingsPage() {
                 <Label htmlFor="reviewOrder">Ordre des révisions</Label>
                 <select
                   id="reviewOrder"
-                  value={settings.reviewOrder}
+                  value={settings.reviewOrder ?? "mixed"}
                   onChange={(e) =>
                     setSettings({
                       ...settings,

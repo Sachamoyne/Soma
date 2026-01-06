@@ -154,6 +154,39 @@ function decodeHtmlEntities(text: string): string {
   return decoded;
 }
 
+// Helper: Rewrite HTML to replace local media references with public URLs
+// Anki cards reference media like: <img src="image-123.png">
+// We need to replace with: <img src="https://storage-url/image-123.png">
+function rewriteMediaUrls(html: string, mediaUrlMap: Map<string, string>): string {
+  if (!html || mediaUrlMap.size === 0) return html;
+
+  // Replace <img src="filename"> with <img src="public-url">
+  // Match both single and double quotes, and handle various formats
+  let rewritten = html;
+
+  // Pattern matches:
+  // - <img src="filename.png">
+  // - <img src='filename.png'>
+  // - <img src=filename.png> (no quotes)
+  // Also handles attributes before/after src
+  rewritten = rewritten.replace(
+    /<img([^>]*?)src=["']?([^"'>\s]+)["']?([^>]*?)>/gi,
+    (match, before, src, after) => {
+      // Check if this filename exists in our media map
+      const publicUrl = mediaUrlMap.get(src);
+      if (publicUrl) {
+        console.log(`[ANKI IMPORT] Rewriting image reference: ${src} → ${publicUrl}`);
+        return `<img${before}src="${publicUrl}"${after}>`;
+      }
+      // No match found - return original (will show ❓)
+      console.warn(`[ANKI IMPORT] No media file found for: ${src}`);
+      return match;
+    }
+  );
+
+  return rewritten;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -220,6 +253,38 @@ export async function POST(request: NextRequest) {
     const buffer = await file.arrayBuffer();
     const zip = new AdmZip(Buffer.from(buffer));
 
+    // Verify that the storage bucket exists before attempting upload
+    console.log("[ANKI IMPORT] Verifying storage bucket...");
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+
+    if (bucketsError) {
+      console.error("[ANKI IMPORT] ❌ Failed to list storage buckets:", bucketsError);
+    } else {
+      const cardMediaBucket = buckets?.find(b => b.name === 'card-media');
+      if (!cardMediaBucket) {
+        console.error("[ANKI IMPORT] 🚨 CRITICAL: Storage bucket 'card-media' NOT FOUND!");
+        console.error("[ANKI IMPORT] 🚨 Images will NOT work without this bucket!");
+        console.error("[ANKI IMPORT] 🚨 CREATE IT NOW:");
+        console.error("[ANKI IMPORT] 🚨   1. Go to Supabase Dashboard → Storage");
+        console.error("[ANKI IMPORT] 🚨   2. Click 'New bucket'");
+        console.error("[ANKI IMPORT] 🚨   3. Name: 'card-media'");
+        console.error("[ANKI IMPORT] 🚨   4. Public: ON");
+        console.error("[ANKI IMPORT] 🚨   5. Click 'Create bucket'");
+      } else {
+        console.log("[ANKI IMPORT] ✅ Storage bucket 'card-media' found", {
+          id: cardMediaBucket.id,
+          public: cardMediaBucket.public,
+          createdAt: cardMediaBucket.created_at
+        });
+
+        if (!cardMediaBucket.public) {
+          console.warn("[ANKI IMPORT] ⚠️ WARNING: Bucket 'card-media' is NOT PUBLIC!");
+          console.warn("[ANKI IMPORT] ⚠️ Images may not be accessible!");
+          console.warn("[ANKI IMPORT] ⚠️ Make it public in Supabase Dashboard → Storage → card-media → Settings");
+        }
+      }
+    }
+
     // Debug: List all files in the .apkg
     const entries = zip.getEntries();
     console.log("[ANKI IMPORT] Files in .apkg:", entries.map(e => ({
@@ -227,6 +292,82 @@ export async function POST(request: NextRequest) {
       size: e.header.size,
       compressedSize: e.header.compressedSize
     })));
+
+    // Extract and upload media files (images)
+    const mediaExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'];
+    const mediaFiles = entries.filter(entry => {
+      const name = entry.entryName.toLowerCase();
+      return !entry.isDirectory && mediaExtensions.some(ext => name.endsWith(ext));
+    });
+
+    console.log("[ANKI IMPORT] Found", mediaFiles.length, "media files");
+
+    // Map of original filename → public URL
+    const mediaUrlMap = new Map<string, string>();
+
+    for (const mediaFile of mediaFiles) {
+      try {
+        const fileName = mediaFile.entryName;
+        const fileData = mediaFile.getData();
+
+        // Determine content type from extension
+        const ext = fileName.toLowerCase().match(/\.(\w+)$/)?.[1] || 'png';
+        const contentTypeMap: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'svg': 'image/svg+xml',
+          'webp': 'image/webp',
+          'bmp': 'image/bmp',
+          'ico': 'image/x-icon'
+        };
+        const contentType = contentTypeMap[ext] || 'image/png';
+
+        // Upload to Supabase Storage
+        // Path: {userId}/anki-media/{fileName}
+        const storagePath = `${userId}/anki-media/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('card-media')
+          .upload(storagePath, fileData, {
+            contentType,
+            upsert: true, // Replace if exists
+          });
+
+        if (uploadError) {
+          console.error(`[ANKI IMPORT] ❌ Failed to upload ${fileName}:`, {
+            error: uploadError,
+            message: uploadError.message,
+            statusCode: uploadError.statusCode,
+            bucket: 'card-media',
+            path: storagePath
+          });
+
+          // CRITICAL: If bucket doesn't exist, this will fail with 404
+          if (uploadError.statusCode === '404' || uploadError.message?.includes('Bucket not found')) {
+            console.error(`[ANKI IMPORT] 🚨 BUCKET 'card-media' DOES NOT EXIST!`);
+            console.error(`[ANKI IMPORT] 🚨 CREATE IT: Supabase Dashboard → Storage → Create bucket 'card-media' (public)`);
+          }
+
+          continue;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('card-media')
+          .getPublicUrl(storagePath);
+
+        if (urlData?.publicUrl) {
+          mediaUrlMap.set(fileName, urlData.publicUrl);
+          console.log(`[ANKI IMPORT] Uploaded ${fileName} → ${urlData.publicUrl}`);
+        }
+      } catch (error) {
+        console.error(`[ANKI IMPORT] Error processing media file ${mediaFile.entryName}:`, error);
+      }
+    }
+
+    console.log(`[ANKI IMPORT] Successfully uploaded ${mediaUrlMap.size} / ${mediaFiles.length} media files`);
 
     // Try different collection file names (prioritize newer formats)
     // Anki 2.1.50+ exports both collection.anki21 (new) and collection.anki2 (legacy compatibility)
@@ -417,8 +558,12 @@ export async function POST(request: NextRequest) {
 
         // Decode HTML entities from Anki (e.g., &nbsp; → space, &lt; → <)
         // This ensures content displays exactly as in Anki
-        const front = decodeHtmlEntities(fields[0] || "");
-        const back = decodeHtmlEntities(fields[1] || "");
+        let front = decodeHtmlEntities(fields[0] || "");
+        let back = decodeHtmlEntities(fields[1] || "");
+
+        // Rewrite media URLs to point to Supabase Storage
+        front = rewriteMediaUrls(front, mediaUrlMap);
+        back = rewriteMediaUrls(back, mediaUrlMap);
 
         // Debug first card to see raw data
         if (skippedEmptyFields === 0 && importedCount === 0) {

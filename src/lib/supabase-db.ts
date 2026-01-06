@@ -360,6 +360,9 @@ export async function moveCardsToDeck(
  * 3. New cards (up to new_cards_per_day limit)
  *
  * This ensures Anki behavior where learning cards appear first.
+ *
+ * IMPORTANT: Uses EFFECTIVE settings (deck overrides → global fallback)
+ * to respect per-deck limits when configured.
  */
 export async function getDueCards(
   deckId: string,
@@ -372,13 +375,23 @@ export async function getDueCards(
   // Get all descendant deck IDs
   const deckIds = await getDeckAndAllChildren(deckId);
 
-  // Get settings to check new cards per day limit
-  const settings = await getSettings();
+  // ✅ CRITICAL FIX: Get EFFECTIVE settings for this deck
+  // This resolves: deck overrides → global settings (if null)
+  // Import is at the bottom to avoid circular dependency
+  const { getEffectiveDeckSettings } = await import("../store/deck-settings");
+  const settings = await getEffectiveDeckSettings(deckId);
 
-  // Count how many new cards were studied today
+  console.log("🎯 getDueCards - Using Effective Settings:", {
+    deckId,
+    newCardsPerDay: settings.newCardsPerDay,
+    maxReviewsPerDay: settings.maxReviewsPerDay,
+  });
+
+  // Count how many cards were studied today
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
+  // Count new cards studied today
   const { count: newCardsToday } = await supabase
     .from("reviews")
     .select("*", { count: "exact", head: true })
@@ -387,7 +400,25 @@ export async function getDueCards(
     .eq("previous_state", "new")
     .gte("reviewed_at", todayStart.toISOString());
 
-  const newCardsAllowed = Math.max(0, (settings.new_cards_per_day || 20) - (newCardsToday || 0));
+  // Count review cards studied today (not counting learning/relearning)
+  const { count: reviewCardsToday } = await supabase
+    .from("reviews")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("deck_id", deckIds)
+    .eq("previous_state", "review")
+    .gte("reviewed_at", todayStart.toISOString());
+
+  // Calculate remaining quota for today
+  const newCardsAllowed = Math.max(0, (settings.newCardsPerDay || 20) - (newCardsToday || 0));
+  const reviewCardsAllowed = Math.max(0, (settings.maxReviewsPerDay || 9999) - (reviewCardsToday || 0));
+
+  console.log("🎯 getDueCards - Daily Quotas:", {
+    newCardsStudiedToday: newCardsToday,
+    reviewCardsStudiedToday: reviewCardsToday,
+    newCardsAllowed,
+    reviewCardsAllowed,
+  });
 
   // 1. Get learning/relearning cards (priority 1)
   const { data: learningCards, error: learningError } = await supabase
@@ -404,21 +435,26 @@ export async function getDueCards(
   if (learningError) throw learningError;
   const learning = learningCards || [];
 
-  // 2. Get review cards (priority 2)
+  // 2. Get review cards (priority 2, respecting daily quota)
   const remainingLimit = Math.max(0, limit - learning.length);
-  const { data: reviewCards, error: reviewError } = await supabase
-    .from("cards")
-    .select("*")
-    .in("deck_id", deckIds)
-    .eq("user_id", userId)
-    .eq("suspended", false)
-    .eq("state", "review")
-    .lte("due_at", now)
-    .order("due_at", { ascending: true })
-    .limit(remainingLimit);
+  const reviewLimit = Math.min(remainingLimit, reviewCardsAllowed);
 
-  if (reviewError) throw reviewError;
-  const reviews = reviewCards || [];
+  let reviews: Card[] = [];
+  if (reviewLimit > 0) {
+    const { data: reviewCards, error: reviewError } = await supabase
+      .from("cards")
+      .select("*")
+      .in("deck_id", deckIds)
+      .eq("user_id", userId)
+      .eq("suspended", false)
+      .eq("state", "review")
+      .lte("due_at", now)
+      .order("due_at", { ascending: true })
+      .limit(reviewLimit);
+
+    if (reviewError) throw reviewError;
+    reviews = reviewCards || [];
+  }
 
   // 3. Get new cards (priority 3, respecting quota)
   const newCardsLimit = Math.min(
@@ -822,25 +858,81 @@ export async function getSettings(): Promise<Settings> {
       .single();
 
     if (createError) throw createError;
-    return newSettings;
+
+    // Convert snake_case to camelCase for frontend
+    return convertSettingsToCamelCase(newSettings);
   }
 
-  return data;
+  // Convert snake_case to camelCase for frontend
+  return convertSettingsToCamelCase(data);
+}
+
+// Helper function to convert database snake_case to frontend camelCase
+function convertSettingsToCamelCase(dbSettings: any): Settings {
+  return {
+    id: dbSettings.id,
+    user_id: dbSettings.user_id,
+    newCardsPerDay: dbSettings.new_cards_per_day,
+    maxReviewsPerDay: dbSettings.max_reviews_per_day,
+    learningMode: dbSettings.learning_mode,
+    againDelayMinutes: dbSettings.again_delay_minutes,
+    reviewOrder: dbSettings.review_order,
+    created_at: dbSettings.created_at,
+    updated_at: dbSettings.updated_at,
+  } as Settings;
 }
 
 export async function updateSettings(settings: Partial<Omit<Settings, "user_id" | "created_at" | "updated_at">>): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
 
-  const { error } = await supabase
-    .from("settings")
-    .update({
-      ...settings,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
+  // Convert camelCase to snake_case for Supabase
+  // Frontend uses camelCase, database uses snake_case
+  const updatePayload: any = {
+    updated_at: new Date().toISOString(),
+  };
 
-  if (error) throw error;
+  // Map camelCase properties to snake_case column names
+  if (settings.newCardsPerDay !== undefined) {
+    updatePayload.new_cards_per_day = settings.newCardsPerDay;
+  }
+  if (settings.maxReviewsPerDay !== undefined) {
+    updatePayload.max_reviews_per_day = settings.maxReviewsPerDay;
+  }
+  if (settings.learningMode !== undefined) {
+    updatePayload.learning_mode = settings.learningMode;
+  }
+  if (settings.againDelayMinutes !== undefined) {
+    updatePayload.again_delay_minutes = settings.againDelayMinutes;
+  }
+  if (settings.reviewOrder !== undefined) {
+    updatePayload.review_order = settings.reviewOrder;
+  }
+
+  console.log("📤 Updating settings with payload:", updatePayload);
+
+  const { data, error } = await supabase
+    .from("settings")
+    .update(updatePayload)
+    .eq("user_id", userId)
+    .select();
+
+  if (error) {
+    console.error("❌ Supabase error:", {
+      error,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    console.warn("⚠️ Update affected 0 rows - settings may not exist for this user");
+  } else {
+    console.log("✅ Supabase update successful:", data);
+  }
 }
 
 // Stats functions
