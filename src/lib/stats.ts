@@ -27,6 +27,18 @@ export interface CardDistribution {
   learned: number;
 }
 
+export interface ReviewStats {
+  totalReviews: number;
+  totalMinutes: number;
+  retentionRate: number;
+  ratings: {
+    again: number;
+    hard: number;
+    good: number;
+    easy: number;
+  };
+}
+
 /**
  * Get current user ID
  */
@@ -258,6 +270,55 @@ export async function getCardDistribution(
   return { new: newCount, learning: learningCount, learned: learnedCount };
 }
 
+export async function getReviewStatsBetween(
+  startIso: string,
+  endIso: string
+): Promise<ReviewStats> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+
+  const { data: reviews, error } = await supabase
+    .from("reviews")
+    .select("rating, elapsed_ms, reviewed_at")
+    .eq("user_id", userId)
+    .gte("reviewed_at", startIso)
+    .lte("reviewed_at", endIso);
+
+  if (error) {
+    console.error("Error fetching review stats:", error);
+    return {
+      totalReviews: 0,
+      totalMinutes: 0,
+      retentionRate: 0,
+      ratings: { again: 0, hard: 0, good: 0, easy: 0 },
+    };
+  }
+
+  const ratings = { again: 0, hard: 0, good: 0, easy: 0 };
+  let totalMs = 0;
+
+  for (const review of reviews || []) {
+    const rating = review.rating as keyof typeof ratings;
+    if (ratings[rating] !== undefined) {
+      ratings[rating] += 1;
+    }
+    if (review.elapsed_ms) {
+      totalMs += review.elapsed_ms;
+    }
+  }
+
+  const totalReviews = (reviews || []).length;
+  const retentionRate =
+    totalReviews > 0 ? (totalReviews - ratings.again) / totalReviews : 0;
+
+  return {
+    totalReviews,
+    totalMinutes: Math.round((totalMs / 1000 / 60) * 10) / 10,
+    retentionRate,
+    ratings,
+  };
+}
+
 /**
  * Hook for reviews by day
  */
@@ -405,4 +466,3 @@ export function useCardDistribution(deckId?: string) {
 
   return loading ? undefined : data;
 }
-
