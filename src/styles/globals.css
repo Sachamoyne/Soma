@@ -4,52 +4,41 @@
 
 @layer base {
   :root {
-    /* Modern AI-first color palette */
-    --background: 240 20% 99%;
-    --foreground: 240 10% 10%;
+    --background: 210 40% 98%;
+    --foreground: 216 33% 14%;
 
-    /* Cards with subtle gradients */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
+    --card-foreground: 216 33% 14%;
 
-    /* Popovers */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
+    --popover-foreground: 216 33% 14%;
 
-    /* Primary: Indigo/Violet gradient */
-    --primary: 238 75% 65%;
+    --primary: 231 70% 58%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft purple */
-    --secondary: 250 60% 96%;
-    --secondary-foreground: 240 10% 10%;
+    --secondary: 210 36% 96%;
+    --secondary-foreground: 216 33% 14%;
 
-    /* Muted: Warm gray */
-    --muted: 240 10% 96%;
-    --muted-foreground: 240 5% 50%;
+    --muted: 210 30% 96%;
+    --muted-foreground: 215 18% 46%;
 
-    /* Accent: Cyan AI feel */
-    --accent: 188 85% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 231 70% 96%;
+    --accent-foreground: 216 33% 14%;
 
-    /* Destructive */
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 240 10% 92%;
-    --input: 240 10% 92%;
-    --ring: 238 75% 65%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 231 72% 58%;
 
-    /* Border radius - more rounded for modern feel */
-    --radius: 0.75rem;
+    --radius: 1.25rem;
 
-    /* Charts with vibrant colors */
-    --chart-1: 238 75% 65%;
-    --chart-2: 188 85% 60%;
-    --chart-3: 280 65% 65%;
-    --chart-4: 45 93% 58%;
-    --chart-5: 160 60% 50%;
+    --chart-1: 231 72% 58%;
+    --chart-2: 215 60% 52%;
+    --chart-3: 188 70% 45%;
+    --chart-4: 45 90% 55%;
+    --chart-5: 160 55% 45%;
   }
 }
 
@@ -59,6 +48,10 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(900px 600px at 10% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
+      radial-gradient(700px 500px at 90% -20%, rgba(15, 23, 42, 0.06), transparent 55%);
+    background-attachment: fixed;
   }
 }
 
@@ -125,10 +118,70 @@
 
   @keyframes pulseGlow {
     0%, 100% {
-      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+      box-shadow: 0 0 18px hsl(var(--primary) / 0.25);
     }
     50% {
-      box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+      box-shadow: 0 0 36px hsl(var(--primary) / 0.45);
+    }
+  }
+
+  @keyframes neuronPulse {
+    0%, 100% {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.95;
+      transform: scale(1.18);
+    }
+  }
+
+  @keyframes neuronDrift {
+    0% {
+      stroke-dashoffset: 160;
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.7;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 0.5;
+    }
+  }
+
+  .neuron-path {
+    stroke-dasharray: 10 18;
+    animation: neuronDrift 10s linear infinite;
+  }
+
+  .neuron-node {
+    transform-origin: center;
+    animation: neuronPulse 7s ease-in-out infinite;
+  }
+
+  .neuron-field.is-active .neuron-node {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(148, 163, 184, 0.7));
+  }
+
+  .neuron-field.is-active .neuron-path {
+    opacity: 0.85;
+  }
+
+  .neuron-layer {
+    filter: drop-shadow(0 0 40px rgba(129, 140, 248, 0.25));
+  }
+
+  .neuron-glow {
+    filter: blur(40px);
+    opacity: 0.35;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .neuron-path,
+    .neuron-node {
+      animation: none;
     }
   }
 
@@ -162,4 +215,3 @@
     animation: pulseGlow 2s ease-in-out infinite;
   }
 }
-

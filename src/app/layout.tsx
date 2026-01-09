@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from "@/lib/brand";
 
-const inter = Inter({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - ${APP_TAGLINE}`,
@@ -17,8 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={inter.className}>{children}</body>
+      <body className={geist.className}>{children}</body>
     </html>
   );
 }
-

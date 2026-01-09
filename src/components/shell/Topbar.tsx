@@ -24,7 +24,7 @@ export function Topbar({
   const { toggle } = useSidebar();
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-background px-6">
+    <div className="flex h-20 items-center justify-between border-b bg-background px-10">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -55,4 +55,3 @@ export function Topbar({
     </div>
   );
 }
-

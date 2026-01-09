@@ -1,276 +1,368 @@
-import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import {
-  Brain,
-  BookOpen,
-  Sparkles,
-  Zap,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
-import { AICardGenerationDemo } from "@/components/AICardGenerationDemo";
-import { BrandLogo } from "@/components/BrandLogo";
+"use client";
 
-export default async function LandingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { ArrowRight, Brain, Layers, Sparkles, Wand2 } from "lucide-react";
+import { Playfair_Display } from "next/font/google";
+
+const playfair = Playfair_Display({ subsets: ["latin"] });
+
+const defaultPrompt = "Victor Hugo est mort en 1885";
+
+const stripPunctuation = (value: string) =>
+  value.replace(/[.!?]$/, "").trim();
+
+const buildFlashcard = (prompt: string) => {
+  const cleaned = prompt.trim();
+  if (cleaned.length < 8) {
+    return {
+      front: "En quelle annee est mort Victor Hugo ?",
+      back: "1885",
+    };
+  }
+
+  const sentence = stripPunctuation(cleaned.split(".")[0] || cleaned);
+
+  const deathMatch = sentence.match(/^(.+?) est mort en (\d{3,4})/i);
+  if (deathMatch) {
+    return {
+      front: `En quelle annee est mort ${deathMatch[1].trim()} ?`,
+      back: deathMatch[2],
+    };
+  }
+
+  const capitalMatch = sentence.match(/^La capitale de (.+?) est (.+)$/i);
+  if (capitalMatch) {
+    return {
+      front: `Quelle est la capitale de ${capitalMatch[1].trim()} ?`,
+      back: stripPunctuation(capitalMatch[2]),
+    };
+  }
+
+  const equationMatch = sentence.match(/^(.+?)\s*=\s*(.+)$/);
+  if (equationMatch) {
+    return {
+      front: `Combien font ${equationMatch[1].trim()} ?`,
+      back: stripPunctuation(equationMatch[2]),
+    };
+  }
+
+  const motiveMatch = sentence.match(/^(.+?) a (.+?) pour (.+)$/i);
+  if (motiveMatch) {
+    return {
+      front: `Pourquoi ${motiveMatch[1].trim()} a-t-il ${motiveMatch[2].trim()} ?`,
+      back: `Pour ${stripPunctuation(motiveMatch[3])}`,
+    };
+  }
+
+  const becauseMatch = sentence.match(/^(.+?) parce que (.+)$/i);
+  if (becauseMatch) {
+    return {
+      front: `Pourquoi ${becauseMatch[1].trim()} ?`,
+      back: `Parce que ${stripPunctuation(becauseMatch[2])}`,
+    };
+  }
+
+  const eventMatch = sentence.match(/^(.+?) a eu lieu en (\d{3,4})/i);
+  if (eventMatch) {
+    return {
+      front: `En quelle annee a eu lieu ${eventMatch[1].trim()} ?`,
+      back: eventMatch[2],
+    };
+  }
+
+  const principleMatch = sentence.match(/^Le principe d'?(.+?) est (.+)$/i);
+  if (principleMatch) {
+    return {
+      front: `Quel est le principe d'${principleMatch[1].trim()} ?`,
+      back: stripPunctuation(principleMatch[2]),
+    };
+  }
+
+  const genericMatch = sentence.match(/^(.+?) est (.+)$/i);
+  if (genericMatch) {
+    return {
+      front: `Qu'est-ce que ${genericMatch[1].trim()} ?`,
+      back: stripPunctuation(genericMatch[2]),
+    };
+  }
+
+  const pluralMatch = sentence.match(/^(.+?) sont (.+)$/i);
+  if (pluralMatch) {
+    return {
+      front: `Que sont ${pluralMatch[1].trim()} ?`,
+      back: stripPunctuation(pluralMatch[2]),
+    };
+  }
+
+  return {
+    front: "De quoi parle cette phrase ?",
+    back: sentence,
+  };
+};
+
+const generateSmartFlashcard = async (prompt: string) => {
+  const apiUrl = process.env.NEXT_PUBLIC_FLASHCARD_API_URL;
+  if (apiUrl) {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt:
+          "Transforme cette phrase en une flashcard Anki. Renvoie uniquement un objet JSON avec 'front' et 'back'.",
+        input: prompt,
+      }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.front && data?.back) {
+        return { front: String(data.front), back: String(data.back) };
+      }
+    }
+  }
+
+  return buildFlashcard(prompt);
+};
+
+export default function LandingPage() {
+  const [userPresent, setUserPresent] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [inputPlaceholder, setInputPlaceholder] = useState(
+    "Que souhaitez-vous memoriser aujourd'hui ?"
+  );
+  const [flashcard, setFlashcard] = useState(() => buildFlashcard(defaultPrompt));
+  const [typedFront, setTypedFront] = useState(flashcard.front);
+  const [typedBack, setTypedBack] = useState(flashcard.back);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (active) {
+        setUserPresent(Boolean(user));
+      }
+    };
+    fetchUser();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAnimating) {
+      return;
+    }
+
+    setTypedFront("");
+    setTypedBack("");
+
+    let frontIndex = 0;
+    let backIndex = 0;
+    const frontText = flashcard.front;
+    const backText = flashcard.back;
+
+    const timer = window.setInterval(() => {
+      if (frontIndex < frontText.length) {
+        frontIndex += 1;
+        setTypedFront(frontText.slice(0, frontIndex));
+        return;
+      }
+      if (backIndex < backText.length) {
+        backIndex += 1;
+        setTypedBack(backText.slice(0, backIndex));
+        return;
+      }
+      window.clearInterval(timer);
+      setIsAnimating(false);
+    }, 18);
+
+    return () => window.clearInterval(timer);
+  }, [flashcard, isAnimating]);
+
+  const handleGenerate = () => {
+    if (isProcessing || isAnimating) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed) {
+      setInputPlaceholder("Veuillez saisir une information a memoriser...");
+      return;
+    }
+    setInputPlaceholder("Que souhaitez-vous memoriser aujourd'hui ?");
+    setTypedFront("IA en cours de reflexion...");
+    setTypedBack("IA en cours de reflexion...");
+    setIsProcessing(true);
+    window.setTimeout(async () => {
+      const nextCard = await generateSmartFlashcard(trimmed);
+      setFlashcard(nextCard);
+      setInputValue("");
+      setIsProcessing(false);
+      setIsAnimating(true);
+    }, 1200);
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-background via-background to-primary/5">
-      {/* Hero Section */}
-      <section className="relative overflow-x-hidden px-4 py-20 sm:py-32">
-        {/* Gradient orbs */}
-        <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute -right-40 top-60 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="relative isolate overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 1000'><defs><linearGradient id='bg' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23030812'/><stop offset='100%' stop-color='%230a1224'/></linearGradient><radialGradient id='vignette' cx='50%' cy='50%' r='70%'><stop offset='0%' stop-color='%23030812' stop-opacity='0'/><stop offset='70%' stop-color='%23030812' stop-opacity='0.3'/><stop offset='100%' stop-color='%23030812' stop-opacity='0.6'/></radialGradient><radialGradient id='somaCore' cx='48%' cy='52%' r='30%'><stop offset='0%' stop-color='%23f8fafc' stop-opacity='0.95'/><stop offset='45%' stop-color='%23c7d2fe' stop-opacity='0.75'/><stop offset='100%' stop-color='%2393c5fd' stop-opacity='0.2'/></radialGradient><radialGradient id='somaGlow' cx='48%' cy='52%' r='55%'><stop offset='0%' stop-color='%23438bff' stop-opacity='0.45'/><stop offset='70%' stop-color='%230a1224' stop-opacity='0.08'/><stop offset='100%' stop-color='%230a1224' stop-opacity='0'/></radialGradient><filter id='blurSoft' x='-60%' y='-60%' width='220%' height='220%'><feGaussianBlur stdDeviation='12'/></filter><filter id='blurDeep' x='-80%' y='-80%' width='260%' height='260%'><feGaussianBlur stdDeviation='22'/></filter><filter id='glow' x='-60%' y='-60%' width='220%' height='220%'><feGaussianBlur stdDeviation='16' result='b'/><feMerge><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs><rect width='1600' height='1000' fill='url(%23bg)'/><rect width='1600' height='1000' fill='url(%23somaGlow)'/><g filter='url(%23blurDeep)' stroke='%2383b2ff' stroke-opacity='0.35' stroke-width='2.4' fill='none'><path d='M700 520 C560 420, 420 340, 240 300'/><path d='M760 520 C840 360, 840 220, 780 120'/><path d='M840 520 C980 420, 1160 380, 1360 340'/><path d='M760 600 C840 720, 980 820, 1180 900'/></g><g stroke='%2393c5fd' stroke-opacity='0.8' stroke-width='2.6' fill='none'><path d='M730 520 C620 420, 520 340, 380 300'/><path d='M780 500 C720 380, 720 260, 780 160'/><path d='M830 520 C960 440, 1080 400, 1220 360'/><path d='M780 560 C860 680, 980 760, 1120 820'/><path d='M720 560 C580 660, 440 740, 300 820'/></g><g stroke='%23e0f2fe' stroke-opacity='0.6' stroke-width='1.6' fill='none'><path d='M740 520 C580 470, 430 430, 260 420'/><path d='M790 500 C870 420, 980 320, 1140 260'/><path d='M770 560 C840 640, 900 720, 1000 820'/></g><path d='M850 520 C1010 520, 1160 520, 1320 500 C1420 490, 1500 520, 1580 560' stroke='%236ee7ff' stroke-opacity='0.8' stroke-width='3' fill='none'/><g fill='%23f8fafc' fill-opacity='0.9'><circle cx='760' cy='520' r='84' fill='url(%23somaCore)' filter='url(%23glow)'><animate attributeName='opacity' values='0.75;0.95;0.75' dur='7s' repeatCount='indefinite'/></circle><circle cx='380' cy='300' r='12'/><circle cx='780' cy='160' r='11'/><circle cx='1220' cy='360' r='12'/><circle cx='1120' cy='820' r='11'/><circle cx='300' cy='820' r='11'/><circle cx='260' cy='420' r='9'/><circle cx='1140' cy='260' r='10'/><circle cx='1000' cy='820' r='9'/><circle cx='1320' cy='500' r='9'/><circle cx='1400' cy='520' r='8'/><circle cx='1480' cy='540' r='8'/><circle cx='1560' cy='560' r='8'/></g><rect width='1600' height='1000' fill='url(%23vignette)'/></svg>\")",
+          }}
+        />
+        <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/10 via-slate-950/40 to-slate-950/90" />
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
-            {/* Left: Content */}
-            <div className="text-center lg:text-left">
-              {/* Logo + Nom Synapse */}
-              <div className="mb-8 flex items-center justify-center gap-4 lg:justify-start animate-fade-in-up overflow-visible">
-                <BrandLogo size={60} iconSize={36} />
-                <h1 className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl leading-none pb-2">
-                  {APP_NAME}
-                </h1>
-              </div>
-
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-primary/10 px-4 py-2 text-sm font-medium text-primary animate-fade-in-up">
-                <Sparkles className="h-4 w-4" />
-                AI-Powered Learning
-              </div>
-
-              <h2 className="mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl lg:text-6xl animate-fade-in-up">
-                Master anything,
-                <br />
-                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  remember everything
-                </span>
-              </h2>
-
-              <p className="mb-8 text-lg text-muted-foreground sm:text-xl lg:text-2xl animate-fade-in-up leading-relaxed">
-                {APP_TAGLINE}. Powered by AI and backed by science.
-              </p>
-
-              <div className="mb-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start animate-fade-in-up">
-                {user ? (
-                  <Link href="/decks">
-                    <Button size="lg" className="group w-full gap-2 shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/40 sm:w-auto">
-                      Go to My Decks
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    <Link href="/login">
-                      <Button size="lg" className="group w-full gap-2 shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/40 sm:w-auto">
-                        Start Learning Free
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </Button>
-                    </Link>
-                    <Link href="#features">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full border-2 transition-all hover:border-primary/50 hover:bg-primary/5 sm:w-auto"
-                      >
-                        See how it works
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground lg:justify-start">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>AI-powered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Science-backed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Anki compatible</span>
-                </div>
-              </div>
+        <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
+          <div className="flex w-full items-center justify-between rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-md">
+            <div className="text-xs font-semibold tracking-[0.35em] text-white/85">
+              {APP_NAME}
             </div>
-
-            {/* Right: AI Animation */}
-            <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-              <AICardGenerationDemo />
-            </div>
+            <nav className="hidden items-center gap-8 text-xs font-light tracking-[0.2em] text-white/75 sm:flex">
+              <Link className="transition hover:text-white" href="/pricing">
+                Pricing
+              </Link>
+              <Link className="transition hover:text-white" href="#about">
+                About
+              </Link>
+              <Link className="transition hover:text-white" href="/login">
+                Login
+              </Link>
+            </nav>
           </div>
-        </div>
-      </section>
+        </header>
 
-      {/* Features Section */}
-      <section id="features" className="border-t border-border/50 bg-gradient-to-b from-background to-muted/30 px-4 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl">
-              Everything you need to excel
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Combine proven learning science with cutting-edge AI to
-              supercharge your memory
+        <section className="relative z-10 flex min-h-screen items-center justify-center px-6 pb-16 pt-10 sm:px-10">
+          <div className="flex w-full max-w-3xl flex-col items-center justify-center text-center">
+            <div className="mb-6 inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/80">
+              <Sparkles className="h-3.5 w-3.5" />
+              Clarte mentale augmentee
+            </div>
+            <h1
+              className={`${playfair.className} text-4xl font-semibold leading-tight text-white/95 sm:text-6xl lg:text-7xl`}
+            >
+              Master anything,
+              <br />
+              remember everything.
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-base text-white/70 sm:text-lg">
+              {APP_TAGLINE}. Une experience premium pour memoriser plus vite, avec elegance et precision.
             </p>
+
+            {!userPresent && (
+              <div className="mt-10 flex items-center justify-center">
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-white/20 transition hover:shadow-xl hover:shadow-white/30"
+                >
+                  Login
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+            )}
+
+            <div className="mx-auto mt-10 w-full max-w-2xl rounded-3xl border border-white/20 bg-white/10 p-4 shadow-xl shadow-white/10 backdrop-blur">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  className="h-12 w-full flex-1 rounded-full border border-white/10 bg-white/10 px-5 text-sm text-white/80 placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  placeholder={inputPlaceholder}
+                  value={inputValue}
+                  onChange={(event) => setInputValue(event.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={isProcessing || isAnimating}
+                  className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-5 text-xs font-semibold uppercase tracking-[0.25em] text-slate-900 shadow-lg shadow-white/20 transition hover:shadow-xl hover:shadow-white/30 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isProcessing || isAnimating ? "Generation..." : "Generer Flashcard"}
+                  <Wand2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mx-auto mt-10 max-w-xl rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+              {(isProcessing || isAnimating) && (
+                <div className="absolute right-5 top-5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/70">
+                  AI Generating...
+                </div>
+              )}
+              <div className="text-xs uppercase tracking-[0.3em] text-white/50">Preview</div>
+              <div className="mt-5 space-y-4 text-left">
+                <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 text-sm text-white/85">
+                  <p className={isProcessing || isAnimating ? "animate-shimmer" : ""}>
+                    {typedFront}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 text-sm text-white/70">
+                  <p className={isProcessing || isAnimating ? "animate-shimmer" : ""}>
+                    {typedBack}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="group relative overflow-hidden rounded-2xl border-2 bg-card p-8 shadow-lg transition-all hover:shadow-2xl hover:border-primary/50 hover:-translate-y-1">
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/25">
-                <Brain className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold">
-                Spaced Repetition
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Study smarter with our scientifically-proven algorithm. See
-                cards exactly when you need to, maximizing retention with
-                minimal effort.
-              </p>
-              <div className="absolute -bottom-2 -right-2 h-24 w-24 rounded-full bg-primary/5 blur-2xl transition-all group-hover:bg-primary/10" />
+        <section className="relative z-10 border-t border-white/10 bg-slate-950/70">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-8 px-6 py-10 text-xs uppercase tracking-[0.35em] text-white/60">
+            <div className="flex items-center gap-3">
+              <Brain className="h-4 w-4 stroke-[1.2]" />
+              AI-powered
             </div>
-
-            {/* Feature 2 */}
-            <div className="group relative overflow-hidden rounded-2xl border-2 bg-card p-8 shadow-lg transition-all hover:shadow-2xl hover:border-accent/50 hover:-translate-y-1">
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent/80 shadow-lg shadow-accent/25">
-                <Sparkles className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold">AI-Powered Import</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Turn any content into flashcards instantly. Upload PDFs, images,
-                or text and let AI generate high-quality cards in seconds.
-              </p>
-              <div className="absolute -bottom-2 -right-2 h-24 w-24 rounded-full bg-accent/5 blur-2xl transition-all group-hover:bg-accent/10" />
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-4 w-4 stroke-[1.2]" />
+              Science-backed
             </div>
-
-            {/* Feature 3 */}
-            <div className="group relative overflow-hidden rounded-2xl border-2 bg-card p-8 shadow-lg transition-all hover:shadow-2xl hover:border-primary/50 hover:-translate-y-1">
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-accent to-primary shadow-lg shadow-primary/25">
-                <Zap className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold">Beautiful & Fast</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Modern interface that stays out of your way. Smooth animations,
-                keyboard shortcuts, and offline support for learning anywhere.
-              </p>
-              <div className="absolute -bottom-2 -right-2 h-24 w-24 rounded-full bg-primary/5 blur-2xl transition-all group-hover:bg-primary/10" />
+            <div className="flex items-center gap-3">
+              <Layers className="h-4 w-4 stroke-[1.2]" />
+              Anki compatible
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How It Works Section */}
-      <section className="relative px-4 py-24 sm:py-32">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl">
-              Simple, yet powerful
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Get started in minutes and master any subject
+        <section className="relative z-10 border-t border-white/10 bg-slate-950/80">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 py-16 text-center">
+            <p className="text-xs uppercase tracking-[0.35em] text-white/60">
+              Used by students from top institutions
             </p>
-          </div>
-
-          <div className="space-y-16">
-            {/* Step 1 */}
-            <div className="group flex flex-col items-start gap-8 sm:flex-row">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-2xl font-bold text-white shadow-lg shadow-primary/25 transition-all group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/40">
-                1
-              </div>
-              <div className="flex-1">
-                <div className="mb-3 flex items-center gap-3">
-                  <BookOpen className="h-6 w-6 text-primary" />
-                  <h3 className="text-2xl font-bold">
-                    Create or Import Decks
-                  </h3>
-                </div>
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  Start by creating a new deck or importing content from PDFs,
-                  images, or Anki files. Add flashcards manually or let AI
-                  generate them for you in seconds.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="group flex flex-col items-start gap-8 sm:flex-row">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent/80 text-2xl font-bold text-white shadow-lg shadow-accent/25 transition-all group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-accent/40">
-                2
-              </div>
-              <div className="flex-1">
-                <div className="mb-3 flex items-center gap-3">
-                  <Brain className="h-6 w-6 text-accent" />
-                  <h3 className="text-2xl font-bold">Study Daily</h3>
-                </div>
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  Review cards as they come due. Our spaced repetition algorithm
-                  adapts to your performance, scheduling reviews at exactly the
-                  right time for maximum retention.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="group flex flex-col items-start gap-8 sm:flex-row">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-accent to-primary text-2xl font-bold text-white shadow-lg shadow-primary/25 transition-all group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/40">
-                3
-              </div>
-              <div className="flex-1">
-                <div className="mb-3 flex items-center gap-3">
-                  <Sparkles className="h-6 w-6 text-primary" />
-                  <h3 className="text-2xl font-bold">Track & Improve</h3>
-                </div>
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  Monitor your learning journey with beautiful analytics. See
-                  your streak, cards mastered, and review history. Stay
-                  motivated and watch your knowledge grow.
-                </p>
-              </div>
+            <div className="flex flex-wrap items-center justify-center gap-8 text-sm font-semibold tracking-[0.2em] text-white/40">
+              <span>HEC</span>
+              <span>ENS</span>
+              <span>Polytechnique</span>
+              <span>Sorbonne</span>
+              <span>EPFL</span>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="relative overflow-hidden border-y border-border/50 bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 px-4 py-20">
-        <div className="absolute inset-0 bg-grid-white/5" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <h2 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl">
-            Ready to transform your learning?
-          </h2>
-          <p className="mb-10 text-xl text-muted-foreground">
-            Join thousands of learners mastering new skills with Synapse
-          </p>
-          <Link href="/login">
-            <Button size="lg" className="group gap-2 px-8 py-6 text-lg shadow-2xl shadow-primary/30 transition-all hover:shadow-3xl hover:shadow-primary/50">
-              Start Learning Free
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+        <section id="about" className="relative z-10 border-t border-white/10 bg-slate-950/85">
+          <div className="mx-auto grid max-w-5xl gap-10 px-6 py-20 text-left sm:grid-cols-[1fr_1.2fr]">
+            <h2 className={`${playfair.className} text-3xl text-white/90`}>
+              About Synapse
+            </h2>
+            <div className="space-y-4 text-white/70">
+              <p>
+                Synapse is built to help you learn better, not more. We focus on
+                clarity, cognitive science, and spaced repetition to make every
+                review session count.
+              </p>
+              <p>
+                The product is designed as a quiet companion for serious
+                learners. Every surface stays minimal so your attention stays on
+                what matters.
+              </p>
+            </div>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-muted/30 px-4 py-12">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm font-medium text-muted-foreground">
-            {APP_NAME} - Powered by AI, backed by science
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground/75">
-            Built for learners who want to remember everything
-          </p>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }
-

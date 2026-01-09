@@ -84,7 +84,7 @@ export default function DeckStudyPage() {
   if (loading || !deck) {
     return (
       <>
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-10">
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </>

@@ -83,7 +83,7 @@ export default function SettingsPage() {
     return (
       <>
         <Topbar title="Settings" />
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-10">
           <div className="mx-auto max-w-4xl">
             <p className="text-muted-foreground">Chargement...</p>
           </div>
@@ -95,8 +95,8 @@ export default function SettingsPage() {
   return (
     <>
       <Topbar title="Settings" />
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex-1 overflow-y-auto p-10">
+        <div className="mx-auto max-w-4xl space-y-8">
           {/* Limites journalières */}
           <Card>
             <CardHeader>

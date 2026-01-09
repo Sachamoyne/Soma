@@ -329,10 +329,10 @@ export default function BrowseAllCardsPage() {
     <>
       <Topbar title="Browse" />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-10 py-8">
           {loading ? (
-            <div className="rounded-xl border bg-white px-6 py-12 text-center">
-              <p className="text-gray-500">Loading cards...</p>
+            <div className="rounded-2xl bg-white px-8 py-14 text-center shadow-sm">
+              <p className="text-slate-500">Loading cards...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12">

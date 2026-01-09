@@ -98,7 +98,7 @@ function AdvancedStatsSection() {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-2 hover:border-primary/30 transition-all">
+        <Card className="shadow-sm hover:shadow-md transition-all">
           <CardHeader>
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 p-2">
@@ -118,7 +118,7 @@ function AdvancedStatsSection() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 hover:border-accent/30 transition-all">
+        <Card className="shadow-sm hover:shadow-md transition-all">
           <CardHeader>
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-gradient-to-br from-accent/20 to-accent/10 p-2">
@@ -175,7 +175,7 @@ function AdvancedStatsSection() {
         </Card>
       </div>
 
-      <Card className="border-2 hover:border-primary/30 transition-all">
+      <Card className="shadow-sm hover:shadow-md transition-all">
         <CardHeader>
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 p-2">
@@ -337,7 +337,7 @@ export default function DashboardPage() {
   return (
     <>
       <Topbar title="Statistiques" />
-      <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-background to-muted/20">
+      <div className="flex-1 overflow-y-auto p-10 bg-gradient-to-b from-background to-muted/25">
         <div className="mx-auto max-w-6xl space-y-8">
           <div className="flex items-center justify-between">
             <div>
@@ -349,7 +349,7 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          <Card className="border-2">
+          <Card className="shadow-sm">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-primary/10 p-2">
@@ -360,15 +360,15 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-xl border bg-background p-4">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cartes revues</p>
                   <p className="text-3xl font-extrabold text-primary">{loading ? "…" : studiedToday}</p>
                 </div>
-                <div className="rounded-xl border bg-background p-4">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Temps étudié</p>
                   <p className="text-3xl font-extrabold text-primary">{loading ? "…" : formatMinutes(timeToday)}</p>
                 </div>
-                <div className="rounded-xl border bg-background p-4">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Objectif du jour</p>
                   <p className="text-2xl font-semibold text-foreground">
                     {loading ? "…" : objectiveReached ? "Objectif atteint" : "Objectif en cours"}
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                     {loading ? "" : `${studiedToday}/${dailyTarget} cartes`}
                   </p>
                 </div>
-                <div className="rounded-xl border bg-background p-4">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Série</p>
                     <Flame className="h-4 w-4 text-orange-500" />
@@ -391,7 +391,7 @@ export default function DashboardPage() {
           </Card>
 
           <div className="grid gap-6 md:grid-cols-3">
-            <Card className="border-2">
+            <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base font-bold">Progression globale</CardTitle>
               </CardHeader>
@@ -411,7 +411,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2">
+            <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base font-bold">Rétention (7 jours)</CardTitle>
               </CardHeader>
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2">
+            <Card className="shadow-sm">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Gauge className="h-4 w-4 text-primary" />
@@ -447,27 +447,27 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card className="border-2">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Cette semaine en un coup d'œil</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg border bg-background p-4">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cartes revues</p>
                 <p className="text-2xl font-bold text-primary">{loading ? "…" : weekStats?.totalReviews ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Semaine en cours</p>
               </div>
-              <div className="rounded-lg border bg-background p-4">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Temps étudié</p>
                 <p className="text-2xl font-bold text-primary">{loading ? "…" : formatMinutes(weekStats?.totalMinutes ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Semaine en cours</p>
               </div>
-              <div className="rounded-lg border bg-background p-4">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Série actuelle</p>
                 <p className="text-2xl font-bold text-primary">{loading ? "…" : streak} jours</p>
                 <p className="text-xs text-muted-foreground">Consécutifs</p>
               </div>
-              <div className="rounded-lg border bg-background p-4">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rétention (7 jours)</p>
                 <p className="text-2xl font-bold text-primary">{formatPercent(weekRetention)}</p>
                 <p className="text-xs text-muted-foreground">Taux moyen</p>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-2">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Moment motivation</CardTitle>
             </CardHeader>
