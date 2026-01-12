@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { WAITLIST_ONLY } from "@/lib/features";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,16 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (WAITLIST_ONLY) {
+      router.replace("/");
+    }
+  }, [router]);
+
+  if (WAITLIST_ONLY) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

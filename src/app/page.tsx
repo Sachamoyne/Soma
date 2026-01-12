@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { WAITLIST_ONLY } from "@/lib/features";
 import { ArrowRight, Brain, Layers, Sparkles } from "lucide-react";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
@@ -92,15 +93,19 @@ export default function LandingPage() {
               {APP_NAME}
             </div>
             <nav className="hidden items-center gap-8 text-xs font-light tracking-[0.2em] text-white/75 sm:flex">
-              <Link className="transition hover:text-white" href="/pricing">
-                {t("nav.pricing")}
-              </Link>
+              {!WAITLIST_ONLY && (
+                <Link className="transition hover:text-white" href="/pricing">
+                  {t("nav.pricing")}
+                </Link>
+              )}
               <Link className="transition hover:text-white" href="#about">
                 {t("nav.about")}
               </Link>
-              <Link className="transition hover:text-white" href="/login">
-                {t("nav.login")}
-              </Link>
+              {!WAITLIST_ONLY && (
+                <Link className="transition hover:text-white" href="/login">
+                  {t("nav.login")}
+                </Link>
+              )}
               <LanguageToggle variant="landing" />
             </nav>
           </div>
@@ -126,7 +131,7 @@ export default function LandingPage() {
               {APP_TAGLINE}. {t("landing.subheadline")}
             </p>
 
-            {!userPresent && (
+            {!userPresent && !WAITLIST_ONLY && (
               <div className="mt-10 flex items-center justify-center">
                 <Link
                   href="/login"
@@ -212,20 +217,22 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="relative z-10 border-t border-white/10 bg-slate-950/80">
-          <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 py-16 text-center">
-            <p className="text-xs uppercase tracking-[0.35em] text-white/60">
-              {t("landing.usedBy")}
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-8 text-sm font-semibold tracking-[0.2em] text-white/40">
-              <span>HEC</span>
-              <span>ENS</span>
-              <span>Polytechnique</span>
-              <span>Sorbonne</span>
-              <span>EPFL</span>
+        {!WAITLIST_ONLY && (
+          <section className="relative z-10 border-t border-white/10 bg-slate-950/80">
+            <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 py-16 text-center">
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60">
+                {t("landing.usedBy")}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-8 text-sm font-semibold tracking-[0.2em] text-white/40">
+                <span>HEC</span>
+                <span>ENS</span>
+                <span>Polytechnique</span>
+                <span>Sorbonne</span>
+                <span>EPFL</span>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section id="about" className="relative z-10 border-t border-white/10 bg-slate-950/85">
           <div className="mx-auto grid max-w-5xl gap-10 px-6 py-20 text-left sm:grid-cols-[1fr_1.2fr]">
