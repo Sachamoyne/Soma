@@ -86,6 +86,10 @@ export function ImportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importIdRef = useRef<string | null>(null);
 
+  // Check user plan to disable AI generation for free users
+  const userPlan = useUserPlan();
+  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
+
   const loadDecks = async () => {
     if (initialDeckId) return;
     const loaded = await listDecks();
