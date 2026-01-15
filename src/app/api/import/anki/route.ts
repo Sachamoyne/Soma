@@ -299,7 +299,7 @@ function getIntervalDays(ivl: number, type: number): number {
   return ivl; // Review cards
 }
 
-// Helper: Map Anki card queue to Synapse state
+// Helper: Map Anki card queue to Soma state
 // CRITICAL: Use queue (current state), NOT type (historical state)
 // Exception: For buried cards, use type to determine underlying state
 // Anki queue values:
@@ -345,7 +345,7 @@ function getCardState(type: number): "new" | "learning" | "review" {
 
 // Helper: Decode HTML entities from Anki content
 // Anki stores content with HTML entities (&nbsp;, &lt;, &gt;, etc.)
-// We need to decode them to display correctly in Synapse
+// We need to decode them to display correctly in Soma
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
 
@@ -737,7 +737,7 @@ export async function POST(request: NextRequest) {
 
       // Build deck cache
       const deckCache = new Map<string, string>();
-      const ankiDeckIdToSynapseDeckId = new Map<number, string>();
+      const ankiDeckIdToSomaDeckId = new Map<number, string>();
 
       // Debug: Show all Anki decks
       console.log("[ANKI IMPORT] Anki decks from database:");
@@ -759,24 +759,24 @@ export async function POST(request: NextRequest) {
         }
 
         const deckPath = parseDeckName(deckName);
-        const synapseDeckId = await getOrCreateDeck(supabase, userId, deckPath, deckCache);
-        ankiDeckIdToSynapseDeckId.set(ankiDeckId, synapseDeckId);
+        const somaDeckId = await getOrCreateDeck(supabase, userId, deckPath, deckCache);
+        ankiDeckIdToSomaDeckId.set(ankiDeckId, somaDeckId);
 
         // Debug: Show mapping
-        console.log(`[ANKI IMPORT] Mapped Anki deck ${deckId} ("${deckName}") → Synapse deck ${synapseDeckId} (leaf: "${deckPath[deckPath.length - 1]}")`);
+        console.log(`[ANKI IMPORT] Mapped Anki deck ${deckId} ("${deckName}") → Soma deck ${somaDeckId} (leaf: "${deckPath[deckPath.length - 1]}")`);
       }
 
       // Debug: Show all created decks with Anki deck ID mapping
-      console.log("[ANKI IMPORT] All Synapse decks created (with Anki ID mapping):");
-      for (const [fullPath, synapseDeckId] of deckCache.entries()) {
-        // Find corresponding Anki deck ID(s) for this Synapse deck
+      console.log("[ANKI IMPORT] All Soma decks created (with Anki ID mapping):");
+      for (const [fullPath, somaDeckId] of deckCache.entries()) {
+        // Find corresponding Anki deck ID(s) for this Soma deck
         const ankiDeckIds: number[] = [];
-        for (const [ankiId, synapseId] of ankiDeckIdToSynapseDeckId.entries()) {
-          if (synapseId === synapseDeckId) {
+        for (const [ankiId, somaId] of ankiDeckIdToSomaDeckId.entries()) {
+          if (somaId === somaDeckId) {
             ankiDeckIds.push(ankiId);
           }
         }
-        console.log(`  - "${fullPath}" (Synapse: ${synapseDeckId}, Anki: ${ankiDeckIds.join(', ') || 'none'})`);
+        console.log(`  - "${fullPath}" (Soma: ${somaDeckId}, Anki: ${ankiDeckIds.join(', ') || 'none'})`);
       }
 
       // Build note lookup
@@ -790,7 +790,7 @@ export async function POST(request: NextRequest) {
       let skippedDefaultDeck = 0; // Track cards skipped from Anki's default deck
       let failedInserts = 0;
       const now = new Date();
-      const cardsPerDeck = new Map<string, number>(); // Track cards per Synapse deck
+      const cardsPerDeck = new Map<string, number>(); // Track cards per Soma deck
       const cardsByState = { new: 0, learning: 0, review: 0 }; // Track cards by state
       let suspendedCount = 0; // Track suspended cards (-1)
       let buriedCount = 0; // Track buried cards (-2, -3) imported as non-suspended
@@ -808,10 +808,10 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const synapseDeckId = ankiDeckIdToSynapseDeckId.get(card.did);
-        if (!synapseDeckId) {
+        const somaDeckId = ankiDeckIdToSomaDeckId.get(card.did);
+        if (!somaDeckId) {
           skippedNoDeck++;
-          console.log("[ANKI IMPORT] No deck mapping for Anki deck ID:", card.did, "Available:", Array.from(ankiDeckIdToSynapseDeckId.keys()));
+          console.log("[ANKI IMPORT] No deck mapping for Anki deck ID:", card.did, "Available:", Array.from(ankiDeckIdToSomaDeckId.keys()));
           continue;
         }
 
@@ -859,7 +859,7 @@ export async function POST(request: NextRequest) {
         if (importedCount < 3) {
           console.log(`[ANKI IMPORT] Card ${importedCount + 1}:`, {
             ankiDeckId: card.did,
-            synapseDeckId,
+            somaDeckId,
             ankiQueue: card.queue,
             ankiType: card.type,
             mappedState: state,
@@ -879,7 +879,7 @@ export async function POST(request: NextRequest) {
         // - queue = -2, -3: BURIED (temporarily hidden for today only in Anki)
         //   → Import as: suspended=false, state=normal (buried is temporary, irrelevant after import)
         //   → Rationale: Buried state is context-specific to the day of export in Anki.
-        //     After import into Synapse, cards start fresh and should not carry over
+        //     After import into Soma, cards start fresh and should not carry over
         //     temporary burial status.
         const isSuspended = card.queue === -1; // ONLY truly suspended cards
 
@@ -927,7 +927,7 @@ export async function POST(request: NextRequest) {
         // Insert card
         const { error: cardError } = await supabase.from("cards").insert({
           user_id: userId,
-          deck_id: synapseDeckId,
+          deck_id: somaDeckId,
           front,
           back,
           state,
@@ -943,7 +943,7 @@ export async function POST(request: NextRequest) {
         if (!cardError) {
           importedCount++;
           // Track cards per deck
-          cardsPerDeck.set(synapseDeckId, (cardsPerDeck.get(synapseDeckId) || 0) + 1);
+          cardsPerDeck.set(somaDeckId, (cardsPerDeck.get(somaDeckId) || 0) + 1);
 
           // Track cards by state and suspension status
           if (isSuspended && state === "suspended") {
@@ -965,31 +965,31 @@ export async function POST(request: NextRequest) {
           console.error("[ANKI IMPORT] Card insert failed:", {
             error: cardError,
             front: front.substring(0, 50),
-            deckId: synapseDeckId,
+            deckId: somaDeckId,
             userId
           });
         }
       }
 
       // Debug: Show state distribution (after queue→state mapping)
-      console.log("[ANKI IMPORT] Synapse cards by state (active cards):", cardsByState);
+      console.log("[ANKI IMPORT] Soma cards by state (active cards):", cardsByState);
       console.log("[ANKI IMPORT] Suspended cards (-1):", suspendedCount);
       console.log("[ANKI IMPORT] Buried cards (-2, -3) imported as active:", buriedCount);
       console.log("[ANKI IMPORT] Total imported:", importedCount, "= active", (cardsByState.new + cardsByState.learning + cardsByState.review + buriedCount), "+ suspended", suspendedCount);
       console.log("[ANKI IMPORT] NOTE: Buried cards are imported as non-suspended (burial is temporary in Anki)");
 
-      // Debug: Show card distribution per Synapse deck
-      console.log("[ANKI IMPORT] Cards per Synapse deck:");
-      for (const [synapseDeckId, count] of cardsPerDeck.entries()) {
+      // Debug: Show card distribution per Soma deck
+      console.log("[ANKI IMPORT] Cards per Soma deck:");
+      for (const [somaDeckId, count] of cardsPerDeck.entries()) {
         // Find deck name from cache
         let deckName = "unknown";
         for (const [fullPath, id] of deckCache.entries()) {
-          if (id === synapseDeckId) {
+          if (id === somaDeckId) {
             deckName = fullPath;
             break;
           }
         }
-        console.log(`  - Deck "${deckName}" (${synapseDeckId}): ${count} cards`);
+        console.log(`  - Deck "${deckName}" (${somaDeckId}): ${count} cards`);
       }
 
       // Debug: Show card distribution by Anki deck (for comparison with Anki UI)
@@ -1003,8 +1003,8 @@ export async function POST(request: NextRequest) {
       for (const [ankiDeckId, count] of cardsByAnkiDeck.entries()) {
         const deckData = decksJson[ankiDeckId];
         const deckName = deckData ? (deckData as any).name : 'unknown';
-        const synapseDeckId = ankiDeckIdToSynapseDeckId.get(ankiDeckId);
-        console.log(`  - Anki deck #${ankiDeckId} "${deckName}": ${count} cards → Synapse deck ${synapseDeckId || 'UNMAPPED'}`);
+        const somaDeckId = ankiDeckIdToSomaDeckId.get(ankiDeckId);
+        console.log(`  - Anki deck #${ankiDeckId} "${deckName}": ${count} cards → Soma deck ${somaDeckId || 'UNMAPPED'}`);
       }
 
       console.log("[ANKI IMPORT] Import summary:", {

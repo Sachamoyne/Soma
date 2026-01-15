@@ -236,7 +236,7 @@ if (deck.created_at < someDate) {
 ### 4. Anki-Like UX
 ```
 Anki:        Deck List → Deck Overview → Study
-Synapse:     Deck List → Deck Overview → Study  ✅ Match
+Soma:     Deck List → Deck Overview → Study  ✅ Match
 ```
 
 ---

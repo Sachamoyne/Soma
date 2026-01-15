@@ -119,7 +119,7 @@ export function StudyCard({
         const updatedCard = await reviewCard(cardId, rating);
         console.log("✅ reviewCard completed successfully");
         if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("synapse-counts-updated"));
+          window.dispatchEvent(new Event("soma-counts-updated"));
         }
 
         // THEN update UI

@@ -2,7 +2,7 @@
  * Brand configuration - Single source of truth for app identity
  */
 
-export const APP_NAME = "Synapse";
+export const APP_NAME = "Soma";
 
 export const APP_TAGLINE = "Learn faster with spaced repetition";
 

@@ -295,7 +295,7 @@ Gap:              gap-4                   /* 16px between panels */
 
 ## 🚀 Anki Feature Parity
 
-| Anki Feature | Synapse Implementation | Status |
+| Anki Feature | Soma Implementation | Status |
 |--------------|------------------------|--------|
 | Split view layout | Left table + right preview | ✅ Done |
 | Dense card list | Truncated front text | ✅ Done |

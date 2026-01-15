@@ -19,7 +19,7 @@ interface BrandLogoProps {
 }
 
 /**
- * Logo Synapse - Icône cerveau dans un conteneur gradient
+ * Logo Soma - Icône cerveau dans un conteneur gradient
  * Source de vérité unique pour le logo de l'application
  * Utilisé sur login, landing, navbar, etc.
  */

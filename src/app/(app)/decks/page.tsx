@@ -71,9 +71,9 @@ export default function DecksPage() {
     const handleCountsUpdated = () => {
       loadDecks();
     };
-    window.addEventListener("synapse-counts-updated", handleCountsUpdated);
+    window.addEventListener("soma-counts-updated", handleCountsUpdated);
     return () => {
-      window.removeEventListener("synapse-counts-updated", handleCountsUpdated);
+      window.removeEventListener("soma-counts-updated", handleCountsUpdated);
     };
   }, []);
 

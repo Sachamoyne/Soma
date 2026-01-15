@@ -22,7 +22,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const STORAGE_KEY = "synapse-language";
+const STORAGE_KEY = "soma-language";
 
 function getNestedValue(obj: Translations, path: string): string | undefined {
   const keys = path.split(".");

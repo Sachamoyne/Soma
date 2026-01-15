@@ -59,7 +59,7 @@ export default function WelcomePage() {
                 </p>
                 <p className="mt-4 text-base text-white/70 sm:text-lg">
                   Votre inscription est confirmée. Vous faites désormais partie
-                  de la waiting list de Synapse.
+                  de la waiting list de Soma.
                 </p>
                 <p className="mt-4 text-sm text-white/60">
                   Vous recevrez un accès privilégié à la beta privée très

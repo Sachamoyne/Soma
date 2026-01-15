@@ -34,7 +34,7 @@ function getCardStateFromQueue(queue: number): "new" | "learning" | "review" | "
 }
 ```
 
-**Mapping Anki → Synapse** :
+**Mapping Anki → Soma** :
 - `queue = -1, -2, -3` → `state = "suspended"`, `suspended = true`
 - `queue = 0` → `state = "new"`, `suspended = false`
 - `queue = 1, 3` → `state = "learning"`, `suspended = false`
@@ -61,7 +61,7 @@ function getCardStateFromQueue(queue: number): "new" | "learning" | "review" | "
 
 1. **Ouvrir le dashboard Supabase** :
    - Aller sur [app.supabase.com](https://app.supabase.com)
-   - Sélectionner votre projet Synapse
+   - Sélectionner votre projet Soma
 
 2. **Appliquer la migration** :
    - Aller dans "SQL Editor"
@@ -104,7 +104,7 @@ function getCardStateFromQueue(queue: number): "new" | "learning" | "review" | "
    - Suspendre quelques cartes (clic droit → Suspend Card ou `Ctrl+J`)
    - Exporter en `.apkg`
 
-2. **Importer dans Synapse** :
+2. **Importer dans Soma** :
    ```bash
    npm run dev
    ```
@@ -121,13 +121,13 @@ function getCardStateFromQueue(queue: number): "new" | "learning" | "review" | "
      queue 0 (new): Y cards
      queue 2 (review): Z cards
 
-   [ANKI IMPORT] Synapse cards by state (non-suspended only):
+   [ANKI IMPORT] Soma cards by state (non-suspended only):
      { new: Y, learning: 0, review: Z }
 
    [ANKI IMPORT] Suspended/buried cards: X
    ```
 
-   **Dans l'UI Synapse** :
+   **Dans l'UI Soma** :
    - New = Y (exactement le même nombre qu'Anki)
    - Review = Z (exactement le même nombre qu'Anki)
    - Les cartes suspendues ne sont PAS comptées
@@ -171,7 +171,7 @@ Pour votre deck personnel, après import :
 - Review : 60 cartes
 - Suspended : 20 cartes
 
-**Après import dans Synapse** :
+**Après import dans Soma** :
 - Total en base : 100 cartes
 - New affiché : 20 ✅
 - Review affiché : 60 ✅
@@ -194,7 +194,7 @@ Si les chiffres ne correspondent pas :
    ```
    Regarder la console pour :
    - `[ANKI IMPORT] Anki queue distribution`
-   - `[ANKI IMPORT] Synapse cards by state`
+   - `[ANKI IMPORT] Soma cards by state`
 
 2. **Vérifier en base de données** :
    ```sql
@@ -227,7 +227,7 @@ Si les chiffres ne correspondent pas :
 
 ## 🎯 Résultat Final
 
-👉 **Une carte suspendue dans Anki = une carte suspendue dans Synapse**
+👉 **Une carte suspendue dans Anki = une carte suspendue dans Soma**
 
 ✅ Comportement 100% identique à Anki
 ✅ Zéro différence dans les statistiques

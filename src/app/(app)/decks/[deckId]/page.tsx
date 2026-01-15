@@ -75,9 +75,9 @@ export default function DeckOverviewPage() {
           setLoading(false);
         });
     };
-    window.addEventListener("synapse-counts-updated", handleCountsUpdated);
+    window.addEventListener("soma-counts-updated", handleCountsUpdated);
     return () => {
-      window.removeEventListener("synapse-counts-updated", handleCountsUpdated);
+      window.removeEventListener("soma-counts-updated", handleCountsUpdated);
     };
   }, [deckId]);
 
@@ -133,7 +133,7 @@ export default function DeckOverviewPage() {
       setAiText("");
 
       // Trigger a refresh of deck counts elsewhere in the app
-      window.dispatchEvent(new Event("synapse-counts-updated"));
+      window.dispatchEvent(new Event("soma-counts-updated"));
     } catch (error) {
       console.error("Error generating AI cards:", error);
       setAiError(

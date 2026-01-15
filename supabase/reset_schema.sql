@@ -1,5 +1,5 @@
 -- ============================================================================
--- RESET SCHEMA - Synapse Flashcard App
+-- RESET SCHEMA - Soma Flashcard App
 -- Execute this in Supabase SQL Editor to start fresh
 -- ============================================================================
 
