@@ -29,25 +29,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect app routes
-  if (
-    !user &&
-    request.nextUrl.pathname !== "/" &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/_next") &&
-    !request.nextUrl.pathname.startsWith("/api")
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect to dashboard if already logged in and trying to access login
-  if (user && request.nextUrl.pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+  // NOTE:
+  // We only use this middleware to keep the Supabase session in sync.
+  // Route protection and auth redirects are now handled in:
+  // - src/app/(app)/layout.tsx (authenticated app guard)
+  // - src/app/login/page.tsx (redirect authenticated users away from /login)
 
   return supabaseResponse;
 }

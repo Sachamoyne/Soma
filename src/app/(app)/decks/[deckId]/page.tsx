@@ -3,9 +3,23 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { BookOpen, Trash2, Sparkles } from "lucide-react";
 import { getAnkiCountsForDecks, deleteDeck } from "@/store/decks";
 import { useTranslation } from "@/i18n";
+
+interface CardPreview {
+  front: string;
+  back: string;
+  tags?: string[];
+  difficulty?: number;
+}
+
+interface GenerateResponse {
+  deck_id: string;
+  imported: number;
+  cards: CardPreview[];
+}
 
 export default function DeckOverviewPage() {
   const { t } = useTranslation();
@@ -19,6 +33,12 @@ export default function DeckOverviewPage() {
     review: number;
   }>({ new: 0, learning: 0, review: 0 });
   const [totalCards, setTotalCards] = useState(0);
+
+  // Local state for AI card generation, scoped to this deck
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<GenerateResponse | null>(null);
 
   useEffect(() => {
     async function loadCounts() {
@@ -78,6 +98,51 @@ export default function DeckOverviewPage() {
   };
 
   const hasDueCards = (cardCounts.new + cardCounts.learning + cardCounts.review) > 0;
+
+  const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading;
+
+  const handleGenerateWithAI = async () => {
+    if (!canGenerateWithAI) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+
+    try {
+      const response = await fetch("/api/generate-cards", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deck_id: String(deckId),
+          language: "fr",
+          text: aiText.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setAiError(data.error || "Failed to generate cards");
+        return;
+      }
+
+      setAiResult(data);
+      setAiText("");
+
+      // Trigger a refresh of deck counts elsewhere in the app
+      window.dispatchEvent(new Event("synapse-counts-updated"));
+    } catch (error) {
+      console.error("Error generating AI cards:", error);
+      setAiError(
+        error instanceof Error ? error.message : "Failed to generate cards"
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -149,6 +214,102 @@ export default function DeckOverviewPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* AI card generation – scoped to this deck only */}
+      <div className="pt-12 border-t max-w-3xl mx-auto">
+        <div className="rounded-xl border bg-muted/30 p-6 space-y-5">
+          {/* Header */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">
+                Générer des cartes avec l&apos;IA
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Colle un extrait de cours, un article ou des notes.
+              L&apos;IA va créer automatiquement des flashcards pertinentes pour ce paquet.
+            </p>
+          </div>
+
+          {/* Input */}
+          <div className="space-y-4">
+            <Textarea
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              rows={6}
+              className="bg-background"
+              placeholder={`Exemple :
+– un cours
+– un chapitre de livre
+– des notes prises en classe
+– un article
+
+Plus le texte est clair, meilleures seront les cartes.`}
+            />
+            <Button
+              onClick={handleGenerateWithAI}
+              disabled={!canGenerateWithAI}
+              className="w-full"
+              size="lg"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {aiLoading ? "Génération en cours…" : "Générer des cartes pour ce paquet"}
+            </Button>
+          </div>
+
+          {/* Error state */}
+          {aiError && (
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+              {aiError}
+            </div>
+          )}
+
+          {/* Success state */}
+          {aiResult && (
+            <div className="space-y-4">
+              {/* Success message */}
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                  ✓ {aiResult.imported} cartes ont été ajoutées à ce paquet
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tu peux les modifier, les supprimer ou commencer à les réviser immédiatement.
+                </p>
+              </div>
+
+              {/* Card previews - max 5 with scroll */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Aperçu des cartes générées
+                </p>
+                <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                  {aiResult.cards.slice(0, 5).map((card, index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg border bg-card p-4 space-y-3"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-primary mb-1">Question</p>
+                        <p className="text-sm">{card.front}</p>
+                      </div>
+                      <div className="border-t pt-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Réponse</p>
+                        <p className="text-sm text-muted-foreground">{card.back}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {aiResult.cards.length > 5 && (
+                    <p className="text-xs text-center text-muted-foreground py-2">
+                      + {aiResult.cards.length - 5} autres cartes
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="pt-12 border-t flex justify-center">

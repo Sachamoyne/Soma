@@ -1,57 +1,106 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 const requestSchema = z.object({
   text: z.string().min(1),
-  deckName: z.string().optional(),
-  mode: z.enum(["qa", "cloze", "vocab"]).optional().default("qa"),
-  maxCards: z.number().int().positive().max(50).optional().default(20),
+  deck_id: z.string().uuid(),
+  language: z.enum(["fr", "en"]),
 });
+
+// Strict output schema - NO extra fields allowed
+const strictOutputSchema = z
+  .object({
+    language: z.enum(["fr", "en"]),
+    title: z.string().min(1),
+    cards: z
+      .array(
+        z
+          .object({
+            front: z.string().min(1),
+            back: z.string().min(1),
+            tags: z.array(z.string()).optional(),
+            difficulty: z.union([
+              z.literal(1),
+              z.literal(2),
+              z.literal(3),
+              z.literal(4),
+              z.literal(5),
+            ]).optional(),
+          })
+          .strict()
+      )
+      .min(6)
+      .max(10),
+  })
+  .strict();
 
 const MAX_TEXT_LENGTH = 20000;
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { text, deckName, mode, maxCards } = requestSchema.parse(body);
+// Helper to check for distinct concepts (simple similarity check)
+function hasDistinctConcepts(cards: Array<{ front: string }>): boolean {
+  const fronts = cards.map((c) => c.front.toLowerCase().trim());
+  const uniqueFronts = new Set(fronts);
+  // Allow some tolerance for minor variations, but reject obvious duplicates
+  if (uniqueFronts.size < fronts.length * 0.8) {
+    return false;
+  }
+  return true;
+}
 
-    if (!process.env.LLM_API_KEY) {
-      return NextResponse.json(
-        { error: "LLM_API_KEY missing" },
-        { status: 500 }
-      );
-    }
-
-    const truncatedText =
-      text.length > MAX_TEXT_LENGTH
-        ? text.substring(0, MAX_TEXT_LENGTH) + "\n\n[Texte tronqué...]"
-        : text;
-
+async function callLLM(
+  text: string,
+  isRetry: boolean
+): Promise<{ language: string; title: string; cards: any[] }> {
     const model = process.env.LLM_MODEL || "gpt-4o-mini";
     const baseURL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
 
-    const systemPrompt = `Tu es un expert en création de flashcards pour la mémorisation efficace.
-Génère des flashcards précises, courtes et adaptées à la mémorisation.
-Chaque flashcard doit avoir un front (question/concept) et un back (réponse/définition).
-Le front doit être concis et mémorisable. Le back doit être clair et complet mais pas trop long.
-Génère exactement ${maxCards} flashcards maximum.
-Réponds UNIQUEMENT avec un JSON valide, sans texte avant ou après, au format suivant :
+  const systemPrompt = `Tu es un expert en création de flashcards pour la mémorisation efficace et l'apprentissage conceptuel.
+
+RÈGLES STRICTES DE SORTIE JSON :
+- Réponds UNIQUEMENT avec un JSON valide, sans texte avant ou après, sans markdown, sans commentaires.
+- Le JSON DOIT respecter EXACTEMENT ce schéma, sans aucun champ supplémentaire :
 {
+  "language": "fr" | "en",
+  "title": "titre du deck",
   "cards": [
-    {"front": "question", "back": "réponse", "confidence": 0.9, "tags": ["tag1"]}
+    {
+      "front": "question ou concept",
+      "back": "réponse ou définition",
+      "tags": ["tag1", "tag2"] (optionnel),
+      "difficulty": 1 | 2 | 3 | 4 | 5 (optionnel)
+    }
   ]
-}`;
+}
 
-    const userPrompt = `Extrait le texte suivant et génère ${maxCards} flashcards au format ${mode}:
-${truncatedText}
+INTERDICTIONS ABSOLUES :
+- AUCUN champ "confidence", "metadata", "explanation", "commentary" ou autre champ non listé ci-dessus.
+- AUCUN markdown, aucune explication en dehors du JSON.
+- Le tableau "cards" DOIT contenir entre 6 et 10 éléments exactement.
 
-${deckName ? `Contexte: deck "${deckName}"` : ""}`;
+QUALITÉ DES FLASHCARDS :
+- Chaque carte doit tester un concept DISTINCT et significatif.
+- Évite les questions triviales, répétitives ou à faible valeur pédagogique.
+- Privilégie la compréhension conceptuelle plutôt que la mémorisation mécanique.
+- Le front doit être concis et mémorisable. Le back doit être clair et complet mais pas trop long.
+- Les concepts doivent couvrir différents aspects du texte pour maximiser l'efficacité d'apprentissage.
+
+${isRetry ? "ATTENTION : Ceci est une deuxième tentative. Respecte STRICTEMENT le schéma JSON ci-dessus, sans aucun champ supplémentaire." : ""}`;
+
+  const userPrompt = `Extrait le texte suivant et génère entre 6 et 10 flashcards de haute qualité.
+Chaque flashcard doit tester un concept distinct et significatif.
+
+Texte :
+${text}
+
+Réponds UNIQUEMENT avec le JSON strict conforme au schéma, sans aucun texte supplémentaire.`;
 
     const response = await fetch(`${baseURL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LLM_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model,
@@ -66,46 +115,224 @@ ${deckName ? `Contexte: deck "${deckName}"` : ""}`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      return NextResponse.json(
-        { error: `LLM API error: ${response.status} - ${errorText}` },
-        { status: 500 }
-      );
+    throw new Error(`LLM API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
 
     if (!content) {
-      return NextResponse.json(
-        { error: "No content in LLM response" },
-        { status: 500 }
-      );
+    throw new Error("No content in LLM response");
     }
 
     let parsed;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
+    throw new Error(`Failed to parse LLM JSON: ${e}`);
+  }
+
+  // Strict validation - rejects any extra fields
+  const validated = strictOutputSchema.parse(parsed);
+
+  // Additional validation: check for distinct concepts
+  if (!hasDistinctConcepts(validated.cards)) {
+    throw new Error(
+      "Cards do not test distinct concepts - too many duplicates detected"
+    );
+  }
+
+  return validated;
+}
+
+export async function POST(request: NextRequest) {
+  console.log("[generate-cards] Request received");
+
+  try {
+    const body = await request.json();
+    console.log("[generate-cards] Body parsed, deck_id:", body.deck_id);
+
+    const { text, deck_id, language } = requestSchema.parse(body);
+    console.log("[generate-cards] Schema validated");
+
+    // Authenticate user (normal anon client with RLS)
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    console.log("[generate-cards] Auth result - user:", user?.id ?? "null", "authError:", authError?.message ?? "none");
+
+    if (authError || !user) {
+      console.log("[generate-cards] Returning 401 Unauthorized");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify deck exists and belongs to user (still via RLS-aware client)
+    const { data: deck, error: deckError } = await supabase
+      .from("decks")
+      .select("id, user_id")
+      .eq("id", deck_id)
+      .single();
+
+    console.log("[generate-cards] Deck lookup - found:", !!deck, "error:", deckError?.message ?? "none");
+
+    if (deckError || !deck) {
+      console.log("[generate-cards] Returning 404 Deck not found");
       return NextResponse.json(
-        { error: `Failed to parse LLM JSON: ${e}` },
+        { error: "Deck not found" },
+        { status: 404 }
+      );
+    }
+
+    if (deck.user_id !== user.id) {
+      console.log("[generate-cards] Returning 403 Forbidden - deck.user_id:", deck.user_id, "user.id:", user.id);
+      return NextResponse.json(
+        { error: "Forbidden: deck does not belong to user" },
+        { status: 403 }
+      );
+    }
+
+    console.log("[generate-cards] Deck ownership verified");
+
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY missing" },
         { status: 500 }
       );
     }
 
-    const cardsSchema = z.object({
-      cards: z.array(
-        z.object({
-          front: z.string(),
-          back: z.string(),
-          confidence: z.number().optional(),
-          tags: z.array(z.string()).optional(),
-        })
-      ),
+    const truncatedText =
+      text.length > MAX_TEXT_LENGTH
+        ? text.substring(0, MAX_TEXT_LENGTH) + "\n\n[Texte tronqué...]"
+        : text;
+
+    let result;
+    let isRetry = false;
+
+    try {
+      result = await callLLM(truncatedText, false);
+    } catch (error) {
+      // First attempt failed - retry once with stricter prompt
+      isRetry = true;
+      try {
+        result = await callLLM(truncatedText, true);
+      } catch (retryError) {
+        // Second attempt also failed
+        return NextResponse.json(
+          {
+            error:
+              "Failed to generate valid output after retry. The LLM response did not match the required schema exactly.",
+            details:
+              error instanceof Error
+                ? error.message
+                : "Unknown validation error",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Validate cards array is not empty
+    if (!result.cards || result.cards.length === 0) {
+      return NextResponse.json(
+        { error: "Generated cards array is empty" },
+        { status: 500 }
+      );
+    }
+
+    console.log("[generate-cards] LLM call successful, cards count:", result.cards.length);
+    console.log("[generate-cards] SERVICE ROLE KEY EXISTS:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+
+    // Prepare cards for bulk insert
+    const cardsToInsert = result.cards.map((card) => {
+      const extra: Record<string, unknown> = {
+        source: "ai",
+      };
+      if (card.tags && card.tags.length > 0) {
+        extra.tags = card.tags;
+      }
+      if (card.difficulty !== undefined) {
+        extra.difficulty = card.difficulty;
+      }
+
+      return {
+        user_id: user.id,
+        deck_id,
+        front: card.front,
+        back: card.back,
+        type: "basic" as const,
+        state: "new" as const,
+      };
     });
 
-    const validated = cardsSchema.parse(parsed);
+    // Bulk insert cards
+    // Use service role client here to avoid RLS issues while still
+    // enforcing user ownership via the explicit user_id we set above.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    return NextResponse.json({ cards: validated.cards });
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json(
+        { error: "Supabase service key configuration is missing" },
+        { status: 500 }
+      );
+    }
+
+    const adminSupabase = createServiceClient(supabaseUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    console.log("[generate-cards] Inserting", cardsToInsert.length, "cards into database");
+
+    const { data: insertedCards, error: insertError } = await adminSupabase
+      .from("cards")
+      .insert(cardsToInsert)
+      .select("id, front, back");
+
+    if (insertError) {
+      console.log("[generate-cards] Insert failed:", insertError.message, "code:", insertError.code);
+      return NextResponse.json(
+        {
+          error: "Failed to insert cards into database",
+          details: insertError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log("[generate-cards] Insert successful, inserted:", insertedCards?.length ?? 0, "cards");
+
+    // Prepare response with card previews
+    const cardPreviews = result.cards.map((card) => {
+      const preview: {
+        front: string;
+        back: string;
+        tags?: string[];
+        difficulty?: number;
+      } = {
+        front: card.front,
+        back: card.back,
+      };
+      if (card.tags && card.tags.length > 0) {
+        preview.tags = card.tags;
+      }
+      if (card.difficulty !== undefined) {
+        preview.difficulty = card.difficulty;
+      }
+      return preview;
+    });
+
+    return NextResponse.json({
+      deck_id,
+      imported: insertedCards?.length || 0,
+      cards: cardPreviews,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

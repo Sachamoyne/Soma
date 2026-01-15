@@ -5,4 +5,6 @@
  * - Hides Login CTA button on landing page
  * - Redirects /login and /pricing routes to /
  */
-export const WAITLIST_ONLY = true;
+export const WAITLIST_ONLY =
+  process.env.NEXT_PUBLIC_WAITLIST_ONLY === "true";
+

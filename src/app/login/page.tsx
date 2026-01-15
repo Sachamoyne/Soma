@@ -27,10 +27,41 @@ export default function LoginPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    // Preserve waitlist behavior: login is disabled in waitlist-only mode
     if (WAITLIST_ONLY) {
       router.replace("/");
     }
   }, [router]);
+
+  useEffect(() => {
+    // If a valid session already exists, redirect away from /login
+    // to the main authenticated dashboard.
+    let cancelled = false;
+
+    async function checkSession() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!cancelled && user) {
+          // After login, main entry point is the deck list
+          router.replace("/decks");
+          router.refresh();
+        }
+      } catch (error) {
+        console.error("[LoginPage] Failed to check existing session", error);
+      }
+    }
+
+    if (!WAITLIST_ONLY) {
+      void checkSession();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, supabase]);
 
   if (WAITLIST_ONLY) {
     return null;

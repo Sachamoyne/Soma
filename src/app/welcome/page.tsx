@@ -1,91 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
 import { WAITLIST_ONLY } from "@/lib/features";
-import { ArrowRight, Brain, Layers, Sparkles } from "lucide-react";
+import { Brain, Layers, Sparkles } from "lucide-react";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
-export default function LandingPage() {
+export default function WelcomePage() {
   const { t } = useTranslation();
-  const [userPresent, setUserPresent] = useState(false);
-  const [betaEmail, setBetaEmail] = useState("");
-  const [betaLoading, setBetaLoading] = useState(false);
-  const [betaSuccess, setBetaSuccess] = useState(false);
-  const [betaError, setBetaError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const fetchUser = async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (active) {
-        setUserPresent(Boolean(user));
-      }
-    };
-    fetchUser();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const handleBetaSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (betaLoading) return;
-
-    const trimmed = betaEmail.trim();
-    if (!trimmed || !trimmed.includes("@")) {
-      setBetaError(t("landing.invalidEmail"));
-      setBetaSuccess(false);
-      return;
-    }
-
-    setBetaLoading(true);
-    setBetaError(null);
-
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signUp({
-        email: trimmed,
-        password: crypto.randomUUID(),
-      });
-
-      if (error) {
-        console.error("waitlist signup error", error);
-        const message = error.message.toLowerCase();
-        if (error.status === 422 || message.includes("already registered")) {
-          setBetaError(t("landing.alreadyOnList"));
-        } else {
-          setBetaError(t("landing.genericError"));
-        }
-        setBetaSuccess(false);
-        return;
-      }
-
-      if (data.user && data.user.identities?.length === 0) {
-        setBetaError(t("landing.alreadyOnList"));
-        setBetaSuccess(false);
-        return;
-      }
-
-      setBetaSuccess(true);
-      setBetaEmail("");
-    } catch (error) {
-      console.error("waitlist signup error", error);
-      setBetaError(t("landing.genericError"));
-      setBetaSuccess(false);
-    } finally {
-      setBetaLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -126,89 +52,20 @@ export default function LandingPage() {
 
         <section className="relative z-10 flex min-h-screen items-center justify-center px-6 pb-16 pt-10 sm:px-10">
           <div className="flex w-full max-w-3xl flex-col items-center justify-center text-center">
-            <div className="mb-6 inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/80">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("landing.taglineBadge")}
-            </div>
-            <h1
-              className={`${playfair.className} text-4xl font-semibold leading-tight text-white/95 sm:text-6xl lg:text-7xl`}
-            >
-              {t("landing.headline").split("\n").map((line, i) => (
-                <span key={i}>
-                  {line}
-                  {i === 0 && <br />}
-                </span>
-              ))}
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base text-white/70 sm:text-lg">
-              {APP_TAGLINE}. {t("landing.subheadline")}
-            </p>
-
-            {!userPresent && !WAITLIST_ONLY && (
-              <div className="mt-10 flex items-center justify-center">
-                <Link
-                  href="/login"
-                  className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-white/20 transition hover:shadow-xl hover:shadow-white/30"
-                >
-                  {t("landing.loginButton")}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            )}
-
             <div className="mx-auto mt-10 w-full max-w-2xl">
-              <div
-                className={`rounded-3xl border border-white/20 bg-white/10 p-4 shadow-xl shadow-white/10 backdrop-blur transition-all duration-200 ${
-                  betaSuccess
-                    ? "pointer-events-none opacity-0 translate-y-2"
-                    : "opacity-100 translate-y-0"
-                } motion-reduce:transition-none`}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <input
-                    type="email"
-                    className="h-12 w-full flex-1 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40"
-                    placeholder={t("landing.emailPlaceholder")}
-                    value={betaEmail}
-                    onChange={(event) => {
-                      setBetaEmail(event.target.value);
-                      if (betaError) setBetaError(null);
-                      if (betaSuccess) setBetaSuccess(false);
-                    }}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={handleBetaSubmit}
-                    disabled={betaLoading}
-                    className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-slate-900 shadow-lg shadow-white/20 transition hover:shadow-xl hover:shadow-white/30 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {betaLoading ? t("landing.joining") : t("landing.joinBeta")}
-                  </button>
-                </div>
-                <div className="mt-3 flex flex-col items-center gap-2 text-xs uppercase tracking-[0.35em] text-white/60">
-                  <span>{t("landing.privateBeta")}</span>
-                  {betaError ? (
-                    <span className="text-sm normal-case text-amber-200">
-                      {betaError}
-                    </span>
-                  ) : null}
-                </div>
+              <div className="rounded-3xl border border-white/10 bg-white/5 px-8 py-8 text-center shadow-xl shadow-white/10 backdrop-blur">
+                <p className={`${playfair.className} text-3xl text-white/95`}>
+                  Félicitations !
+                </p>
+                <p className="mt-4 text-base text-white/70 sm:text-lg">
+                  Votre inscription est confirmée. Vous faites désormais partie
+                  de la waiting list de Synapse.
+                </p>
+                <p className="mt-4 text-sm text-white/60">
+                  Vous recevrez un accès privilégié à la beta privée très
+                  prochainement par e-mail.
+                </p>
               </div>
-
-              {betaSuccess && (
-                <div className="mt-4 rounded-3xl border border-white/15 bg-white/10 px-6 py-5 text-center shadow-xl shadow-white/10 backdrop-blur transition-all duration-200 motion-reduce:transition-none">
-                  <p className={`${playfair.className} text-2xl text-white/90`}>
-                    {t("landing.betaSuccess")}
-                  </p>
-                  <p className="mt-2 text-sm text-white/60">
-                    {t("landing.betaSuccessSubtext")}
-                  </p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.35em] text-white/40">
-                    {t("landing.betaNoSpam")}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </section>

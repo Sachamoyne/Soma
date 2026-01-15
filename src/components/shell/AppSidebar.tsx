@@ -15,9 +15,11 @@ export function AppSidebar() {
   const { isOpen } = useSidebar();
 
   const navItems = [
+    // Main entry: deck list
     { href: "/decks", label: t("nav.decks"), icon: BookOpen },
     { href: "/browse", label: t("nav.browse"), icon: List },
-    { href: "/dashboard", label: t("nav.statistics"), icon: LayoutDashboard },
+    // Statistics view (formerly dashboard)
+    { href: "/statistics", label: t("nav.statistics"), icon: LayoutDashboard },
     { href: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
