@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create profile if it doesn't exist
+    // Create profile if it doesn't exist (defaults to free plan)
     let userProfile = profile;
     if (!userProfile) {
       const { data: newProfile, error: createError } = await adminSupabase
@@ -252,9 +252,14 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         console.error("[generate-cards] Failed to create profile:", createError);
+        // If profile creation fails, block access (assume free plan)
         return NextResponse.json(
-          { error: "Failed to initialize user profile" },
-          { status: 500 }
+          {
+            error: "QUOTA_FREE_PLAN",
+            message: "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
+            plan: "free",
+          },
+          { status: 403 }
         );
       }
       userProfile = newProfile;
@@ -290,10 +295,14 @@ export async function POST(request: NextRequest) {
 
     // Check quota (estimate max 10 cards)
     const estimatedCardCount = 10;
-    const plan = userProfile.plan || "free";
+    // CRITICAL: Default to "free" if plan is missing or invalid
+    const plan = (userProfile.plan === "starter" || userProfile.plan === "pro") 
+      ? userProfile.plan 
+      : "free";
     const used = userProfile.ai_cards_used_current_month || 0;
     const limit = userProfile.ai_cards_monthly_limit || 0;
 
+    // STRICT CHECK: Free users cannot generate AI cards at all
     let canGenerate = false;
     if (plan === "free") {
       canGenerate = false;
@@ -305,14 +314,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[generate-cards] Quota check:", { plan, used, limit, canGenerate });
 
-    // Check if user can generate cards
+    // STRICT ENFORCEMENT: Block free users BEFORE any LLM call
     if (!canGenerate) {
       if (plan === "free") {
         return NextResponse.json(
           {
             error: "QUOTA_FREE_PLAN",
             message: "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
-            plan: plan,
+            plan: "free",
           },
           { status: 403 }
         );

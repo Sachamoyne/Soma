@@ -18,6 +18,7 @@ import { Upload, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
 import { listDecks, type Deck } from "@/store/decks";
 import { createImport, generateCards, persistGeneratedCards, type GenerateCardsResult, type CardProposal } from "@/store/imports";
 import { GeneratedCardRow } from "@/components/GeneratedCardRow";
+import { useUserPlan } from "@/hooks/useUserPlan";
 
 // Import dynamique pour éviter les erreurs SSR
 let pdfjsLib: any = null;
@@ -466,6 +467,11 @@ export function ImportDialog({
 
         {step === "review-text" && (
           <div className="space-y-4 py-4">
+            {isFreeUser && (
+              <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
+                Fonctionnalité réservée aux abonnés. La génération de cartes via IA nécessite un abonnement Starter ou Pro.
+              </div>
+            )}
             <div>
               <Label>Extracted Text ({extractedText.length} characters)</Label>
               <Textarea
@@ -540,16 +546,22 @@ export function ImportDialog({
               <Button variant="outline" onClick={() => setStep("file")}>
                 Back
               </Button>
-              <Button onClick={handleGenerateCards} disabled={isGenerating || !selectedDeckId}>
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Generate Cards"
-                )}
-              </Button>
+              {isFreeUser ? (
+                <Button disabled className="opacity-50 cursor-not-allowed">
+                  Fonctionnalité réservée aux abonnés
+                </Button>
+              ) : (
+                <Button onClick={handleGenerateCards} disabled={isGenerating || !selectedDeckId}>
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Cards"
+                  )}
+                </Button>
+              )}
             </>
           )}
           {step === "review-cards" && (

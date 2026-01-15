@@ -9,6 +9,7 @@ import { getAnkiCountsForDecks, deleteDeck } from "@/store/decks";
 import { useTranslation } from "@/i18n";
 import { PaywallModal } from "@/components/PaywallModal";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { useUserPlan } from "@/hooks/useUserPlan";
 
 interface CardPreview {
   front: string;
@@ -105,7 +106,11 @@ export default function DeckOverviewPage() {
   const [paywallReason, setPaywallReason] = useState<"free_plan" | "quota_exceeded">("free_plan");
   const [paywallPlan, setPaywallPlan] = useState<"starter" | "pro" | undefined>(undefined);
 
-  const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading;
+  // Get user plan to disable AI for free users
+  const userPlan = useUserPlan();
+  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
+
+  const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && !isFreeUser;
 
   const handleGenerateWithAI = async () => {
     if (!canGenerateWithAI) return;
@@ -256,23 +261,34 @@ export default function DeckOverviewPage() {
               onChange={(e) => setAiText(e.target.value)}
               rows={6}
               className="bg-background"
-              placeholder={`Exemple :
+              placeholder={
+                isFreeUser
+                  ? "Fonctionnalité réservée aux abonnés. Passez à Starter ou Pro pour utiliser l'IA."
+                  : `Exemple :
 – un cours
 – un chapitre de livre
 – des notes prises en classe
 – un article
 
-Plus le texte est clair, meilleures seront les cartes.`}
+Plus le texte est clair, meilleures seront les cartes.`
+              }
+              disabled={isFreeUser}
             />
-            <Button
-              onClick={handleGenerateWithAI}
-              disabled={!canGenerateWithAI}
-              className="w-full"
-              size="lg"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {aiLoading ? "Génération en cours…" : "Générer des cartes pour ce paquet"}
-            </Button>
+            {isFreeUser ? (
+              <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
+                Fonctionnalité réservée aux abonnés
+              </div>
+            ) : (
+              <Button
+                onClick={handleGenerateWithAI}
+                disabled={!canGenerateWithAI}
+                className="w-full"
+                size="lg"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {aiLoading ? "Génération en cours…" : "Générer des cartes pour ce paquet"}
+              </Button>
+            )}
           </div>
 
           {/* Error state */}

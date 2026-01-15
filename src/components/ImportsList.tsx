@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { listImports, generateCards, type GenerateCardsResult, type CardProposal, type ImportDoc } from "@/store/imports";
+import { useUserPlan } from "@/hooks/useUserPlan";
 
 interface ImportsListProps {
   deckId: string;
@@ -21,6 +22,10 @@ export function ImportsList({
   const [imports, setImports] = useState<ImportDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
+
+  // Check user plan to disable AI generation for free users
+  const userPlan = useUserPlan();
+  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
 
   useEffect(() => {
     async function loadImports() {
@@ -79,7 +84,8 @@ export function ImportsList({
                     variant="outline"
                     size="sm"
                     onClick={() => handleGenerateAgain(importDoc.id)}
-                    disabled={generating === importDoc.id}
+                    disabled={generating === importDoc.id || isFreeUser}
+                    title={isFreeUser ? "Fonctionnalité réservée aux abonnés" : undefined}
                   >
                     {generating === importDoc.id ? (
                       <>

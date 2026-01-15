@@ -251,13 +251,25 @@ export async function generateCards(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text: importDoc.text,
-        deckName,
-        maxCards,
+        deck_id: deckId,
+        language: "fr",
       }),
     });
 
     if (!response.ok) {
       const status = response.status;
+      // For free plan users, don't fallback to heuristic cards
+      if (status === 403) {
+        try {
+          const errorData = await response.json();
+          if (errorData.error === "QUOTA_FREE_PLAN") {
+            throw new Error(errorData.message || "AI generation is not available on the free plan");
+          }
+        } catch {
+          throw new Error("AI generation is not available on the free plan");
+        }
+      }
+      // For other errors, fallback to heuristic cards
       if (status === 401 || status === 429 || status >= 500) {
         const fallbackCards = generateFallbackCards(importDoc.text, maxCards);
         return { cards: fallbackCards, usedFallback: true };
@@ -265,7 +277,7 @@ export async function generateCards(
 
       try {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate cards");
+        throw new Error(errorData.error || errorData.message || "Failed to generate cards");
       } catch {
         throw new Error(`HTTP ${status}: Failed to generate cards`);
       }
@@ -274,6 +286,11 @@ export async function generateCards(
     const data = await response.json();
     return { cards: data.cards || [], usedFallback: false };
   } catch (err) {
+    // Re-throw if it's a free plan error (already handled above)
+    if (err instanceof Error && err.message.includes("free plan")) {
+      throw err;
+    }
+    // For network errors, fallback to heuristic cards
     if (err instanceof TypeError || err instanceof Error) {
       const fallbackCards = generateFallbackCards(importDoc.text, maxCards);
       return { cards: fallbackCards, usedFallback: true };
