@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { getStripe } from "@/lib/stripe";
 
 const PLAN_PRICES: Record<string, string> = {
   starter: process.env.STRIPE_STARTER_PRICE_ID!,
@@ -39,6 +37,9 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Initialize Stripe (lazy, inside request handler)
+    const stripe = getStripe();
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
