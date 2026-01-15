@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Playfair_Display } from "next/font/google";
 import { APP_NAME } from "@/lib/brand";
+import { WAITLIST_ONLY } from "@/lib/features";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 

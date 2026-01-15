@@ -260,6 +260,13 @@ export async function POST(request: NextRequest) {
       userProfile = newProfile;
     }
 
+    if (!userProfile) {
+      return NextResponse.json(
+        { error: "Failed to initialize user profile" },
+        { status: 500 }
+      );
+    }
+
     // Check if quota needs reset (new month started)
     const resetAt = new Date(userProfile.ai_quota_reset_at);
     const now = new Date();
