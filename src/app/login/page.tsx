@@ -11,6 +11,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { mapAuthError } from "@/lib/auth-errors";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -52,6 +53,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const router = useRouter();
   const supabase = createClient();
@@ -84,56 +86,120 @@ export default function LoginPage() {
     };
   }, [router, supabase]);
 
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      console.log("[LoginPage] Starting Google OAuth sign in...");
+      
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (oauthError) {
+        console.error("[LoginPage] Google OAuth error:", oauthError);
+        const authError = mapAuthError(oauthError, "signin");
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+
+      console.log("[LoginPage] Google OAuth initiated successfully:", data);
+      // Note: signInWithOAuth will redirect the user, so we don't need to handle success here
+      // The redirect will happen automatically
+    } catch (err: any) {
+      console.error("[LoginPage] Unexpected error during Google sign in:", err);
+      const authError = mapAuthError(err, "signin");
+      setError(authError.message || "Erreur lors de la connexion avec Google. Veuillez réessayer.");
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (mode === "signin") {
-        const { data: signInData, error } = await supabase.auth.signInWithPassword({
+        // SIGN IN: Attempt to sign in
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
-
-        // Ensure profile exists (idempotent - won't fail if already exists)
-        const user = signInData.user;
-        if (user) {
-          await ensureProfile(supabase, user.id, user.email);
+        if (signInError) {
+          // Map Supabase error to user-friendly message
+          const authError = mapAuthError(signInError, "signin");
+          setError(authError.message);
+          return;
         }
 
+        // Check if user is confirmed
+        const user = signInData.user;
+        if (!user) {
+          setError("Aucun compte trouvé avec cet email. Veuillez créer un compte.");
+          return;
+        }
+
+        // If email not confirmed, show specific message
+        if (!user.email_confirmed_at) {
+          setError("Veuillez confirmer votre email avant de vous connecter. Vérifiez votre boîte de réception.");
+          return;
+        }
+
+        // User is authenticated and confirmed - ensure profile exists
+        await ensureProfile(supabase, user.id, user.email);
+
+        // Redirect to decks
         router.push("/decks");
         router.refresh();
       } else {
-        const { data: signUpData, error } = await supabase.auth.signUp({
+        // SIGN UP: Create new account
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
-        
-        if (error) throw error;
-        
-        // Login immédiatement
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-        
-        if (signInError) throw signInError;
-        
-        const user = signInData.user;
-        if (!user) throw new Error("User not found after signup");
-        
-        // Ensure profile exists (idempotent - won't fail if already exists)
+
+        if (signUpError) {
+          // Map Supabase error to user-friendly message
+          const authError = mapAuthError(signUpError, "signup");
+          setError(authError.message);
+          return;
+        }
+
+        // Check if user was created
+        const user = signUpData.user;
+        if (!user) {
+          setError("Impossible de créer le compte. Veuillez réessayer.");
+          return;
+        }
+
+        // Create profile (even if email not confirmed yet)
         await ensureProfile(supabase, user.id, user.email);
-        
+
+        // Check if email confirmation is required
+        if (!user.email_confirmed_at) {
+          // Show success message asking to confirm email
+          setSuccess("Compte créé avec succès. Veuillez confirmer votre email pour continuer. Vérifiez votre boîte de réception.");
+          // Don't redirect - user must confirm email first
+          return;
+        }
+
+        // Email already confirmed (shouldn't happen normally, but handle it)
         router.push("/decks");
         router.refresh();
       }
     } catch (err: any) {
-      setError(err.message || t("auth.errorOccurred"));
+      // Fallback for unexpected errors
+      const authError = mapAuthError(err, mode);
+      setError(authError.message || t("auth.errorOccurred"));
     } finally {
       setLoading(false);
     }
@@ -217,8 +283,14 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-                  <p className="text-sm text-white/80">{error}</p>
+                <div className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3">
+                  <p className="text-sm text-red-200">{error}</p>
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-2xl border border-green-500/50 bg-green-500/10 p-3">
+                  <p className="text-sm text-green-200">{success}</p>
                 </div>
               )}
 
@@ -233,6 +305,7 @@ export default function LoginPage() {
               <Button
                 type="button"
                 variant="outline"
+                onClick={handleGoogleSignIn}
                 className="w-full h-11 font-semibold bg-white text-slate-900 border border-white/80 shadow-sm hover:bg-white/90"
                 disabled={loading}
               >
@@ -260,6 +333,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setMode(mode === "signin" ? "signup" : "signin");
                     setError(null);
+                    setSuccess(null);
                   }}
                   className="transition hover:text-white"
                   disabled={loading}
