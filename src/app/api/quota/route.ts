@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
 
     const { data: profile, error: profileError } = await adminSupabase
       .from("profiles")
-      .select("plan, ai_cards_used_current_month, ai_cards_monthly_limit, ai_quota_reset_at")
-      .eq("user_id", user.id)
+      .select("plan, role, ai_cards_used_current_month, ai_cards_monthly_limit, ai_quota_reset_at")
+      .eq("id", user.id)
       .single();
 
     if (profileError && profileError.code !== "PGRST116") {
@@ -53,10 +53,16 @@ export async function GET(request: NextRequest) {
       nextMonth.setDate(1);
       nextMonth.setHours(0, 0, 0, 0);
 
+      // Try to get email from auth.users
+      const { data: authUser } = await adminSupabase.auth.admin.getUserById(user.id);
+      const email = authUser?.user?.email || null;
+
       const { data: newProfile, error: createError } = await adminSupabase
         .from("profiles")
         .insert({
-          user_id: user.id,
+          id: user.id,
+          email: email || "",
+          role: "user",
           plan: "free",
           ai_cards_used_current_month: 0,
           ai_cards_monthly_limit: 0,
@@ -92,7 +98,7 @@ export async function GET(request: NextRequest) {
           ai_cards_used_current_month: 0,
           ai_quota_reset_at: nextMonth.toISOString(),
         })
-        .eq("user_id", user.id);
+        .eq("id", user.id);
 
       if (!resetError) {
         profile.ai_cards_used_current_month = 0;
@@ -100,16 +106,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const plan = profile.plan || "free";
+    const role = profile.role || "user";
     const used = profile.ai_cards_used_current_month || 0;
     const limit = profile.ai_cards_monthly_limit || 0;
-    const remaining = Math.max(0, limit - used);
+    
+    // Check if user has premium access (paid plan OR founder/admin role)
+    const isPremium = plan === "starter" || plan === "pro";
+    const isFounderOrAdmin = role === "founder" || role === "admin";
+    const hasAIAccess = isPremium || isFounderOrAdmin;
+    
+    // For founders/admins, show unlimited quota
+    const remaining = isFounderOrAdmin ? 999999 : Math.max(0, limit - used);
+    const effectiveLimit = isFounderOrAdmin ? 999999 : limit;
 
     return NextResponse.json({
-      plan: profile.plan || "free",
+      plan: plan,
+      role: role,
       used,
-      limit,
+      limit: effectiveLimit,
       remaining,
       reset_at: profile.ai_quota_reset_at,
+      has_ai_access: hasAIAccess,
     });
   } catch (error) {
     console.error("[quota] Error:", error);

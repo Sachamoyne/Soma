@@ -215,11 +215,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Get user profile to check quota
+    // Get user profile to check quota and role
     const { data: profile, error: profileError } = await adminSupabase
       .from("profiles")
-      .select("plan, ai_cards_used_current_month, ai_cards_monthly_limit, ai_quota_reset_at")
-      .eq("user_id", user.id)
+      .select("plan, role, ai_cards_used_current_month, ai_cards_monthly_limit, ai_quota_reset_at")
+      .eq("id", user.id)
       .single();
 
     if (profileError && profileError.code !== "PGRST116") {
@@ -231,13 +231,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create profile if it doesn't exist (defaults to free plan)
+      // Profile should exist (created by trigger), but if not, create it
     let userProfile = profile;
     if (!userProfile) {
+      // Try to get email from auth.users
+      const { data: authUser } = await adminSupabase.auth.admin.getUserById(user.id);
+      const email = authUser?.user?.email || null;
+
       const { data: newProfile, error: createError } = await adminSupabase
         .from("profiles")
         .insert({
-          user_id: user.id,
+          id: user.id,
+          email: email || "",
+          role: "user",
           plan: "free",
           ai_cards_used_current_month: 0,
           ai_cards_monthly_limit: 0,
@@ -272,51 +278,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if quota needs reset (new month started)
-    const resetAt = new Date(userProfile.ai_quota_reset_at);
-    const now = new Date();
-    if (resetAt <= now) {
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const { error: resetError } = await adminSupabase
-        .from("profiles")
-        .update({
-          ai_cards_used_current_month: 0,
-          ai_quota_reset_at: nextMonth.toISOString(),
-        })
-        .eq("user_id", user.id);
-
-      if (resetError) {
-        console.error("[generate-cards] Failed to reset quota:", resetError);
-      } else {
-        userProfile.ai_cards_used_current_month = 0;
-        userProfile.ai_quota_reset_at = nextMonth.toISOString();
-      }
-    }
-
     // Check quota (estimate max 10 cards)
     const estimatedCardCount = 10;
     // CRITICAL: Default to "free" if plan is missing or invalid
     const plan = (userProfile.plan === "starter" || userProfile.plan === "pro") 
       ? userProfile.plan 
       : "free";
+    const role = userProfile.role || "user";
     const used = userProfile.ai_cards_used_current_month || 0;
     const limit = userProfile.ai_cards_monthly_limit || 0;
 
-    // STRICT CHECK: Free users cannot generate AI cards at all
+    // Check if user has premium access (paid plan OR founder/admin role)
+    const isPremium = plan === "starter" || plan === "pro";
+    const isFounderOrAdmin = role === "founder" || role === "admin";
+    const hasAIAccess = isPremium || isFounderOrAdmin;
+
+    // Check if quota needs reset (new month started) - only for non-founders/admins
+    if (!isFounderOrAdmin) {
+      const resetAt = new Date(userProfile.ai_quota_reset_at);
+      const now = new Date();
+      if (resetAt <= now) {
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const { error: resetError } = await adminSupabase
+          .from("profiles")
+          .update({
+            ai_cards_used_current_month: 0,
+            ai_quota_reset_at: nextMonth.toISOString(),
+          })
+          .eq("id", user.id);
+
+        if (resetError) {
+          console.error("[generate-cards] Failed to reset quota:", resetError);
+        } else {
+          userProfile.ai_cards_used_current_month = 0;
+          userProfile.ai_quota_reset_at = nextMonth.toISOString();
+        }
+      }
+    }
+
+    // STRICT CHECK: Only premium users or founders/admins can generate AI cards
     let canGenerate = false;
-    if (plan === "free") {
+    if (!hasAIAccess) {
+      // Free user without founder/admin role
       canGenerate = false;
+    } else if (isFounderOrAdmin) {
+      // Founders/admins have unlimited access (bypass quota)
+      canGenerate = true;
     } else if (used + estimatedCardCount <= limit) {
+      // Premium user within quota
       canGenerate = true;
     } else {
+      // Premium user exceeded quota
       canGenerate = false;
     }
 
-    console.log("[generate-cards] Quota check:", { plan, used, limit, canGenerate });
+    console.log("[generate-cards] Quota check:", { plan, role, used, limit, canGenerate, hasAIAccess });
 
     // STRICT ENFORCEMENT: Block free users BEFORE any LLM call
     if (!canGenerate) {
-      if (plan === "free") {
+      if (!hasAIAccess) {
         return NextResponse.json(
           {
             error: "QUOTA_FREE_PLAN",
@@ -325,6 +345,10 @@ export async function POST(request: NextRequest) {
           },
           { status: 403 }
         );
+      } else if (isFounderOrAdmin) {
+        // Founders/admins should have passed the check, but handle edge case
+        // This shouldn't happen, but if quota somehow prevents, allow anyway
+        canGenerate = true;
       } else {
         // Starter or Pro user who exceeded quota
         const remaining = Math.max(0, limit - used);
@@ -394,18 +418,20 @@ export async function POST(request: NextRequest) {
 
     console.log("[generate-cards] LLM call successful, cards count:", result.cards.length);
 
-    // Increment quota with actual card count
-    const actualCardCount = result.cards.length;
-    const { error: incrementError } = await adminSupabase
-      .from("profiles")
-      .update({
-        ai_cards_used_current_month: (userProfile.ai_cards_used_current_month || 0) + actualCardCount,
-      })
-      .eq("user_id", user.id);
+    // Increment quota with actual card count (only for non-founders/admins)
+    if (!isFounderOrAdmin) {
+      const actualCardCount = result.cards.length;
+      const { error: incrementError } = await adminSupabase
+        .from("profiles")
+        .update({
+          ai_cards_used_current_month: (userProfile.ai_cards_used_current_month || 0) + actualCardCount,
+        })
+        .eq("id", user.id);
 
-    if (incrementError) {
-      console.error("[generate-cards] Failed to increment quota:", incrementError);
-      // Don't fail the request, but log the error
+      if (incrementError) {
+        console.error("[generate-cards] Failed to increment quota:", incrementError);
+        // Don't fail the request, but log the error
+      }
     }
 
     // Prepare cards for bulk insert

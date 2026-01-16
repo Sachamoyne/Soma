@@ -86,9 +86,9 @@ export function ImportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importIdRef = useRef<string | null>(null);
 
-  // Check user plan to disable AI generation for free users
+  // Check user plan to disable AI generation
   const userPlan = useUserPlan();
-  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
+  const canUseAI = userPlan?.canUseAI ?? false;
 
   const loadDecks = async () => {
     if (initialDeckId) return;
@@ -471,7 +471,7 @@ export function ImportDialog({
 
         {step === "review-text" && (
           <div className="space-y-4 py-4">
-            {isFreeUser && (
+            {!canUseAI && (
               <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
                 Fonctionnalité réservée aux abonnés. La génération de cartes via IA nécessite un abonnement Starter ou Pro.
               </div>
@@ -550,7 +550,7 @@ export function ImportDialog({
               <Button variant="outline" onClick={() => setStep("file")}>
                 Back
               </Button>
-              {isFreeUser ? (
+              {!canUseAI ? (
                 <Button disabled className="opacity-50 cursor-not-allowed">
                   Fonctionnalité réservée aux abonnés
                 </Button>

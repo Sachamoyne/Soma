@@ -6,7 +6,12 @@ export type Plan = "free" | "starter" | "pro";
 
 interface PlanInfo {
   plan: Plan;
+  role?: string;
   canUseAI: boolean;
+  used?: number;
+  limit?: number;
+  remaining?: number;
+  reset_at?: string;
 }
 
 /**
@@ -23,9 +28,30 @@ export function useUserPlan(): PlanInfo | null {
         if (response.ok) {
           const data = await response.json();
           const plan = (data.plan || "free") as Plan;
+          // Use has_ai_access from API (includes premium plans OR founder/admin role)
+          const canUseAI = Boolean(data.has_ai_access);
+          
+          // Debug log (dev only)
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[useUserPlan] Quota data:", {
+              plan: data.plan,
+              role: data.role,
+              has_ai_access: data.has_ai_access,
+              canUseAI,
+              used: data.used,
+              limit: data.limit,
+              remaining: data.remaining,
+            });
+          }
+          
           setPlanInfo({
             plan,
-            canUseAI: plan !== "free",
+            role: data.role,
+            canUseAI,
+            used: data.used,
+            limit: data.limit,
+            remaining: data.remaining,
+            reset_at: data.reset_at,
           });
         } else {
           // Default to free if quota check fails

@@ -106,11 +106,11 @@ export default function DeckOverviewPage() {
   const [paywallReason, setPaywallReason] = useState<"free_plan" | "quota_exceeded">("free_plan");
   const [paywallPlan, setPaywallPlan] = useState<"starter" | "pro" | undefined>(undefined);
 
-  // Get user plan to disable AI for free users
+  // Get user plan to check AI access
   const userPlan = useUserPlan();
-  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
+  const canUseAI = userPlan?.canUseAI ?? false;
 
-  const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && !isFreeUser;
+  const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && canUseAI;
 
   const handleGenerateWithAI = async () => {
     if (!canGenerateWithAI) return;
@@ -262,7 +262,7 @@ export default function DeckOverviewPage() {
               rows={6}
               className="bg-background"
               placeholder={
-                isFreeUser
+                !canUseAI
                   ? "Fonctionnalité réservée aux abonnés. Passez à Starter ou Pro pour utiliser l'IA."
                   : `Exemple :
 – un cours
@@ -272,9 +272,9 @@ export default function DeckOverviewPage() {
 
 Plus le texte est clair, meilleures seront les cartes.`
               }
-              disabled={isFreeUser}
+              disabled={!canUseAI}
             />
-            {isFreeUser ? (
+            {!canUseAI ? (
               <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
                 Fonctionnalité réservée aux abonnés
               </div>

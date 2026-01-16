@@ -36,12 +36,12 @@ async function updateSubscription(
       subscription_id: subscription.id,
       subscription_status: subscription.status,
       plan_name: planName,
-      ai_cards_limit: plan.aiCardsPerMonth,
+      ai_cards_monthly_limit: plan.aiCardsPerMonth,
       current_period_end: new Date(
         subscription.current_period_end * 1000
       ).toISOString(),
     })
-    .eq("user_id", userId);
+    .eq("id", userId);
 
   if (error) {
     console.error("[webhook] Failed to update subscription:", error);
@@ -58,10 +58,10 @@ async function cancelSubscription(userId: string) {
       subscription_id: null,
       subscription_status: "canceled",
       plan_name: "free",
-      ai_cards_limit: 0,
+      ai_cards_monthly_limit: 0,
       current_period_end: null,
     })
-    .eq("user_id", userId);
+    .eq("id", userId);
 
   if (error) {
     console.error("[webhook] Failed to cancel subscription:", error);

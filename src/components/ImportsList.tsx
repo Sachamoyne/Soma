@@ -23,9 +23,9 @@ export function ImportsList({
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
 
-  // Check user plan to disable AI generation for free users
+  // Check user plan to disable AI generation
   const userPlan = useUserPlan();
-  const isFreeUser = userPlan?.plan === "free" || userPlan === null;
+  const canUseAI = userPlan?.canUseAI ?? false;
 
   useEffect(() => {
     async function loadImports() {
@@ -84,8 +84,8 @@ export function ImportsList({
                     variant="outline"
                     size="sm"
                     onClick={() => handleGenerateAgain(importDoc.id)}
-                    disabled={generating === importDoc.id || isFreeUser}
-                    title={isFreeUser ? "Fonctionnalité réservée aux abonnés" : undefined}
+                    disabled={generating === importDoc.id || !canUseAI}
+                    title={!canUseAI ? "Fonctionnalité réservée aux abonnés" : undefined}
                   >
                     {generating === importDoc.id ? (
                       <>

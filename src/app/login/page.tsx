@@ -14,6 +14,37 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
+/**
+ * Ensures a profile exists for the user (idempotent).
+ * Uses UPSERT to avoid errors if profile already exists.
+ * Does NOT block authentication if profile creation fails.
+ */
+async function ensureProfile(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  userEmail: string | undefined
+): Promise<void> {
+  try {
+    await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          email: userEmail || "",
+          role: "user",
+          plan: "free",
+        },
+        {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        }
+      );
+  } catch (error) {
+    // Log but don't throw - authentication should not fail due to profile creation
+    console.error("[LoginPage] Failed to ensure profile:", error);
+  }
+}
+
 export default function LoginPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -60,28 +91,44 @@ export default function LoginPage() {
 
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
+
+        // Ensure profile exists (idempotent - won't fail if already exists)
+        const user = signInData.user;
+        if (user) {
+          await ensureProfile(supabase, user.id, user.email);
+        }
+
         router.push("/decks");
         router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
         });
-
+        
         if (error) throw error;
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        
+        // Login immédiatement
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+        
         if (signInError) throw signInError;
+        
+        const user = signInData.user;
+        if (!user) throw new Error("User not found after signup");
+        
+        // Ensure profile exists (idempotent - won't fail if already exists)
+        await ensureProfile(supabase, user.id, user.email);
+        
         router.push("/decks");
         router.refresh();
       }
