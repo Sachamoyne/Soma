@@ -57,21 +57,37 @@ async function extractTextFromPdf(
 
   try {
     // Dynamic import to ensure proper ESM loading in Next.js
+    // Use require() fallback for better compatibility with Vercel serverless
     console.log("[extractTextFromPdf] Loading pdf-parse module (dynamic import)...");
-    const pdfParseModule = await import("pdf-parse");
+    
+    let pdfParseModule: any;
+    try {
+      // Try ESM dynamic import first
+      pdfParseModule = await import("pdf-parse");
+    } catch (importError) {
+      // Fallback to require for better Vercel compatibility
+      console.log("[extractTextFromPdf] ESM import failed, trying require...", importError);
+      pdfParseModule = require("pdf-parse");
+    }
+    
     console.log("[extractTextFromPdf] Module loaded, keys:", Object.keys(pdfParseModule));
 
     // pdf-parse v2 exports PDFParse as named export
-    const { PDFParse } = pdfParseModule;
+    // Handle both named export and default export
+    const PDFParse = pdfParseModule.PDFParse || pdfParseModule.default?.PDFParse || pdfParseModule.default;
+    
     console.log("[extractTextFromPdf] PDFParse type:", typeof PDFParse);
 
     if (!PDFParse) {
       console.error("[extractTextFromPdf] PDFParse not found in module");
+      console.error("[extractTextFromPdf] Available exports:", Object.keys(pdfParseModule));
       throw new Error("PDFParse class not found in pdf-parse module");
     }
 
     console.log("[extractTextFromPdf] Creating parser instance...");
-    parser = new PDFParse({ data: buffer });
+    // Ensure buffer is a proper Buffer instance for Vercel
+    const bufferInstance = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    parser = new PDFParse({ data: bufferInstance });
     console.log("[extractTextFromPdf] Parser created, type:", typeof parser);
 
     console.log("[extractTextFromPdf] Calling getText()...");
@@ -110,11 +126,20 @@ async function extractTextFromPdf(
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : "Unknown";
     const errorStack = error instanceof Error ? error.stack : "";
-
+    
+    // Enhanced error logging for Vercel debugging
     console.error("[extractTextFromPdf] CATCH ERROR:", {
       name: errorName,
       message: errorMessage,
       stack: errorStack,
+      bufferLength: buffer?.length,
+      environment: process.env.NODE_ENV,
+      vercel: process.env.VERCEL ? "true" : "false",
+      errorDetails: error instanceof Error ? {
+        code: (error as any).code,
+        errno: (error as any).errno,
+        syscall: (error as any).syscall,
+      } : undefined,
     });
 
     // Detect encrypted PDFs
