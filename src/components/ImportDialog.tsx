@@ -19,6 +19,7 @@ import { listDecks, type Deck } from "@/store/decks";
 import { createImport, generateCards, persistGeneratedCards, type GenerateCardsResult, type CardProposal } from "@/store/imports";
 import { GeneratedCardRow } from "@/components/GeneratedCardRow";
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { createClient } from "@/lib/supabase/client";
 
 // Import dynamique pour éviter les erreurs SSR
 let pdfjsLib: any = null;
@@ -151,6 +152,16 @@ export function ImportDialog({
     setExtractionError(null);
 
     try {
+      // Get Supabase session for auth token
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("No Supabase session. Please log in again.");
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -160,6 +171,7 @@ export function ImportDialog({
       const response = await fetch(`${backendUrl}/anki/import`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "x-soma-backend-key": backendKey,
         },
         body: formData,
