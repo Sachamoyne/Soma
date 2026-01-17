@@ -10,6 +10,7 @@ import { useTranslation } from "@/i18n";
 import { PaywallModal } from "@/components/PaywallModal";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { createClient } from "@/lib/supabase/client";
 
 interface CardPreview {
   front: string;
@@ -263,6 +264,17 @@ export default function DeckOverviewPage() {
     resetPreview();
 
     try {
+      // Get Supabase session for auth token
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setPdfError("No Supabase session. Please log in again.");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("deck_id", String(deckId));
@@ -274,6 +286,7 @@ export default function DeckOverviewPage() {
       const response = await fetch(`${backendUrl}/pdf/generate-cards`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "x-soma-backend-key": backendKey,
         },
         credentials: "include",

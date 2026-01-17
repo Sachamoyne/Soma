@@ -221,30 +221,48 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
   try {
     console.log("[generate-cards-from-pdf] Request received");
 
-    // Parse cookies for auth (same as Anki route)
-    const cookieHeader = req.headers.cookie;
-    const cookies = parseCookies(cookieHeader);
-    
-    // Extract userId from Supabase cookie
-    let userId: string | null = null;
-    for (const [name, value] of cookies.entries()) {
-      if (name.startsWith("sb-") && name.endsWith("-auth-token")) {
-        try {
-          const cookieValue = JSON.parse(value);
-          if (cookieValue.access_token) {
-            const parts = cookieValue.access_token.split(".");
-            if (parts.length === 3) {
-              const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-              const now = Math.floor(Date.now() / 1000);
-              if (payload.exp && payload.exp > now && payload.sub) {
-                userId = payload.sub;
-                break;
-              }
+    // Try to get token from Authorization header first (for cross-domain prod)
+    let accessToken: string | null = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      accessToken = authHeader.substring(7);
+    }
+
+    // Fallback to cookies if no Authorization header (for same-domain local dev)
+    if (!accessToken) {
+      const cookieHeader = req.headers.cookie;
+      const cookies = parseCookies(cookieHeader);
+      
+      for (const [name, value] of cookies.entries()) {
+        if (name.startsWith("sb-") && name.endsWith("-auth-token")) {
+          try {
+            const cookieValue = JSON.parse(value);
+            if (cookieValue.access_token) {
+              accessToken = cookieValue.access_token;
+              break;
             }
+          } catch (e) {
+            console.error("[generate-cards-from-pdf] Failed to parse auth cookie:", e);
           }
-        } catch (e) {
-          console.error("[generate-cards-from-pdf] Failed to parse auth cookie:", e);
         }
+      }
+    }
+
+    let userId: string | null = null;
+
+    if (accessToken) {
+      try {
+        // Decode JWT to extract and validate user ID
+        const parts = accessToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+          const now = Math.floor(Date.now() / 1000);
+          if (payload.exp && payload.exp > now && payload.sub) {
+            userId = payload.sub;
+          }
+        }
+      } catch (e) {
+        console.error("[generate-cards-from-pdf] Failed to parse auth token:", e);
       }
     }
 

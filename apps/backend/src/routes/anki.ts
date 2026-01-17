@@ -404,39 +404,55 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
       return res.status(400).json({ error: "File must be .apkg" });
     }
 
-    // WORKAROUND: Read and validate the auth cookie manually
-    const cookieHeader = req.headers.cookie;
-    const cookies = parseCookies(cookieHeader);
-    let sbCookie: { name: string; value: string } | undefined;
+    // Try to get token from Authorization header first (for cross-domain prod)
+    let accessToken: string | null = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      accessToken = authHeader.substring(7);
+    }
 
-    for (const [name, value] of cookies.entries()) {
-      if (name.startsWith("sb-") && name.endsWith("-auth-token")) {
-        sbCookie = { name, value };
-        break;
+    // Fallback to cookies if no Authorization header (for same-domain local dev)
+    if (!accessToken) {
+      const cookieHeader = req.headers.cookie;
+      const cookies = parseCookies(cookieHeader);
+      let sbCookie: { name: string; value: string } | undefined;
+
+      for (const [name, value] of cookies.entries()) {
+        if (name.startsWith("sb-") && name.endsWith("-auth-token")) {
+          sbCookie = { name, value };
+          break;
+        }
+      }
+
+      if (sbCookie) {
+        try {
+          const cookieValue = JSON.parse(sbCookie.value);
+          if (cookieValue.access_token) {
+            accessToken = cookieValue.access_token;
+          }
+        } catch (e) {
+          console.error("[ANKI IMPORT] Failed to parse auth cookie:", e);
+        }
       }
     }
 
     let userId: string | null = null;
 
-    if (sbCookie) {
+    if (accessToken) {
       try {
-        const cookieValue = JSON.parse(sbCookie.value);
+        // Decode JWT to extract and validate user ID
+        const parts = accessToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+          const now = Math.floor(Date.now() / 1000);
 
-        if (cookieValue.access_token) {
-          // Decode JWT to extract and validate user ID
-          const parts = cookieValue.access_token.split(".");
-          if (parts.length === 3) {
-            const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-            const now = Math.floor(Date.now() / 1000);
-
-            // Verify token is not expired
-            if (payload.exp && payload.exp > now && payload.sub) {
-              userId = payload.sub;
-            }
+          // Verify token is not expired
+          if (payload.exp && payload.exp > now && payload.sub) {
+            userId = payload.sub;
           }
         }
       } catch (e) {
-        console.error("[ANKI IMPORT] Failed to parse auth cookie:", e);
+        console.error("[ANKI IMPORT] Failed to parse auth token:", e);
       }
     }
 
