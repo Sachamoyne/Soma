@@ -19,7 +19,6 @@ import { listDecks, type Deck } from "@/store/decks";
 import { createImport, generateCards, persistGeneratedCards, type GenerateCardsResult, type CardProposal } from "@/store/imports";
 import { GeneratedCardRow } from "@/components/GeneratedCardRow";
 import { useUserPlan } from "@/hooks/useUserPlan";
-import { createClient } from "@/lib/supabase/client";
 
 // Import dynamique pour éviter les erreurs SSR
 let pdfjsLib: any = null;
@@ -152,57 +151,11 @@ export function ImportDialog({
     setExtractionError(null);
 
     try {
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        throw new Error("No Supabase session. Please log in again.");
-      }
-
       const formData = new FormData();
       formData.append("file", file);
 
-      // Get backend config - NEXT_PUBLIC_ vars are injected at build time by Next.js
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const backendKey = process.env.NEXT_PUBLIC_BACKEND_API_KEY || "";
-
-      // TEMPORARY DEBUG LOG - Remove after verification
-      console.log("[ANKI IMPORT] Fetch config:", {
-        backendUrl,
-        backendKeyPresent: !!backendKey,
-        backendKeyLength: backendKey?.length || 0,
-        backendKeyPreview: backendKey ? `${backendKey.substring(0, 4)}...${backendKey.slice(-4)}` : "EMPTY",
-        authTokenPresent: !!session?.access_token,
-        authTokenLength: session?.access_token?.length || 0,
-        envCheck: {
-          NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL ? "SET" : "NOT SET",
-          NEXT_PUBLIC_BACKEND_API_KEY: process.env.NEXT_PUBLIC_BACKEND_API_KEY ? "SET" : "NOT SET",
-        },
-      });
-
-      // CRITICAL: Always include both headers, even if backendKey is empty (dev mode)
-      // FormData does NOT remove custom headers - they must be explicitly set
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${session.access_token}`,
-        "x-soma-backend-key": backendKey,
-      };
-
-      // TEMPORARY DEBUG LOG - Remove after verification
-      console.log("[ANKI IMPORT] Request headers:", {
-        hasAuthorization: !!headers.Authorization,
-        authHeaderLength: headers.Authorization?.length || 0,
-        hasBackendKey: !!headers["x-soma-backend-key"],
-        backendKeyHeaderLength: headers["x-soma-backend-key"]?.length || 0,
-        backendKeyHeaderValue: headers["x-soma-backend-key"] ? `***${headers["x-soma-backend-key"].slice(-4)}` : "EMPTY",
-        allHeaderKeys: Object.keys(headers),
-      });
-
-      const response = await fetch(`${backendUrl}/anki/import`, {
+      const response = await fetch("/api/import/anki", {
         method: "POST",
-        headers,
         body: formData,
         credentials: "include",
       });
