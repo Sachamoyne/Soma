@@ -98,6 +98,8 @@ export default function PricingClient() {
     if (isAlreadyOnPlan) return;
 
     if (!userId) {
+      // Store plan in localStorage to resume checkout after email confirmation
+      localStorage.setItem("pending_plan", plan);
       router.push(`/signup?plan=${plan}`);
       return;
     }
@@ -109,10 +111,22 @@ export default function PricingClient() {
     if (autoCheckoutRan.current) return;
     if (!userId) return;
     if (requestedCheckout !== "1") return;
-    if (requestedPlan !== "starter" && requestedPlan !== "pro") return;
+
+    // Get plan from URL or localStorage (for email confirmation flow)
+    const planFromUrl = requestedPlan;
+    const planFromStorage = localStorage.getItem("pending_plan") as "starter" | "pro" | null;
+    const planToUse = planFromUrl === "starter" || planFromUrl === "pro" 
+      ? planFromUrl 
+      : planFromStorage === "starter" || planFromStorage === "pro"
+        ? planFromStorage
+        : null;
+
+    if (planToUse !== "starter" && planToUse !== "pro") return;
 
     autoCheckoutRan.current = true;
-    void startCheckout(requestedPlan);
+    // Clear localStorage after reading the plan
+    localStorage.removeItem("pending_plan");
+    void startCheckout(planToUse);
     // Note: we intentionally do not router.replace() here because we leave the page to Stripe.
   }, [userId, requestedCheckout, requestedPlan]);
 

@@ -96,9 +96,20 @@ export default function LoginClient() {
         if (!cancelled && user) {
           const plan = searchParams.get("plan");
           const next = searchParams.get("next");
-          // Resume pricing → checkout flow if a plan was selected.
-          if (plan === "starter" || plan === "pro") {
-            router.replace(`/pricing?plan=${plan}&checkout=1`);
+          // Check localStorage for pending plan (from email confirmation flow)
+          const pendingPlan = localStorage.getItem("pending_plan") as "starter" | "pro" | null;
+          
+          // Resume pricing → checkout flow if a plan was selected (URL or localStorage)
+          const planToUse = plan === "starter" || plan === "pro" 
+            ? plan 
+            : pendingPlan === "starter" || pendingPlan === "pro"
+              ? pendingPlan
+              : null;
+              
+          if (planToUse === "starter" || planToUse === "pro") {
+            // Clear localStorage before redirecting
+            if (pendingPlan) localStorage.removeItem("pending_plan");
+            router.replace(`/pricing?checkout=1`);
             router.refresh();
             return;
           }
@@ -134,13 +145,21 @@ export default function LoginClient() {
       
       const plan = searchParams.get("plan");
       const next = searchParams.get("next");
+      // Check localStorage for pending plan (from email confirmation flow)
+      const pendingPlan = localStorage.getItem("pending_plan") as "starter" | "pro" | null;
+      const planToUse = plan === "starter" || plan === "pro" 
+        ? plan 
+        : pendingPlan === "starter" || pendingPlan === "pro"
+          ? pendingPlan
+          : null;
+      
       const qs = new URLSearchParams();
-      if (plan) qs.set("plan", plan);
-      if (next) qs.set("next", next);
-      // If we have a plan, force resume to pricing checkout
-      if (plan === "starter" || plan === "pro") {
-        qs.set("next", `/pricing?plan=${plan}&checkout=1`);
-      }
+      if (planToUse) {
+        // Store plan in localStorage if not already there (for OAuth flow)
+        if (!pendingPlan) localStorage.setItem("pending_plan", planToUse);
+        qs.set("next", `/pricing?checkout=1`);
+      } else if (plan) qs.set("plan", plan);
+      if (next && !planToUse) qs.set("next", next);
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -209,8 +228,20 @@ export default function LoginClient() {
 
         const plan = searchParams.get("plan");
         const next = searchParams.get("next");
-        if (plan === "starter" || plan === "pro") {
-          router.push(`/pricing?plan=${plan}&checkout=1`);
+        // Check localStorage for pending plan (from email confirmation flow)
+        const pendingPlan = localStorage.getItem("pending_plan") as "starter" | "pro" | null;
+        
+        // Resume pricing → checkout flow if a plan was selected (URL or localStorage)
+        const planToUse = plan === "starter" || plan === "pro" 
+          ? plan 
+          : pendingPlan === "starter" || pendingPlan === "pro"
+            ? pendingPlan
+            : null;
+            
+        if (planToUse === "starter" || planToUse === "pro") {
+          // Clear localStorage before redirecting
+          if (pendingPlan) localStorage.removeItem("pending_plan");
+          router.push(`/pricing?checkout=1`);
           router.refresh();
           return;
         }
@@ -263,8 +294,20 @@ export default function LoginClient() {
         // Email already confirmed (shouldn't happen normally, but handle it)
         const plan = searchParams.get("plan");
         const next = searchParams.get("next");
-        if (plan === "starter" || plan === "pro") {
-          router.push(`/pricing?plan=${plan}&checkout=1`);
+        // Check localStorage for pending plan (from email confirmation flow)
+        const pendingPlan = localStorage.getItem("pending_plan") as "starter" | "pro" | null;
+        
+        // Resume pricing → checkout flow if a plan was selected (URL or localStorage)
+        const planToUse = plan === "starter" || plan === "pro" 
+          ? plan 
+          : pendingPlan === "starter" || pendingPlan === "pro"
+            ? pendingPlan
+            : null;
+            
+        if (planToUse === "starter" || planToUse === "pro") {
+          // Clear localStorage before redirecting
+          if (pendingPlan) localStorage.removeItem("pending_plan");
+          router.push(`/pricing?checkout=1`);
           router.refresh();
           return;
         }
