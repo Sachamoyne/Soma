@@ -66,6 +66,11 @@ app.options(
   })
 );
 
+// Explicitly short-circuit PDF preflight before auth and routers
+app.options("/pdf/*", (req, res) => {
+  res.sendStatus(204);
+});
+
 // Body parser for JSON (but NOT for multipart/form-data - multer handles that)
 app.use(express.json({ limit: "50mb" })); // Support large file uploads
 app.use(express.urlencoded({ extended: true, limit: "50mb" })); // Support form data
