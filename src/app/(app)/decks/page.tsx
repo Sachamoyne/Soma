@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Topbar } from "@/components/shell/Topbar";
 import { DeckTree } from "@/components/DeckTree";
 import {
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { listDecks, createDeck, getAnkiCountsForDecks } from "@/store/decks";
 import { ImportDialog } from "@/components/ImportDialog";
 import type { Deck } from "@/lib/db";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ChevronRight } from "lucide-react";
 import { useTranslation } from "@/i18n";
 
 export default function DecksPage() {
@@ -127,58 +128,102 @@ export default function DecksPage() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-card overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
-                <div className="flex items-center gap-2 flex-1">
-                  <div className="w-4" />
-                  <span className="text-xs font-medium text-white/60">
-                    {t("decks.deck")}
-                  </span>
-                </div>
+            <div className="space-y-4">
+              {/* Mobile list as vertical cards */}
+              <div className="space-y-3 md:hidden">
+                {rootDecks.map((deck) => {
+                  const counts = learningCounts[deck.id] || {
+                    new: 0,
+                    learning: 0,
+                    review: 0,
+                  };
+                  const total = cardCounts[deck.id] || 0;
 
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setExpandedDeckIds(new Set())}
-                    className="h-7 px-2 text-xs"
-                  >
-                    {t("decks.collapseAll")}
-                  </Button>
+                  return (
+                    <Link
+                      key={deck.id}
+                      href={`/decks/${deck.id}`}
+                      className="block rounded-2xl border border-white/10 bg-card p-4 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white/90">
+                            {deck.name}
+                          </p>
+                          <p className="mt-1 text-xs text-white/60">
+                            {t("decks.total")} : {total}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-white/40" />
+                      </div>
 
-                  <div className="grid grid-cols-4 w-52 gap-3">
-                    <span className="text-xs text-right text-white/60">{t("decks.new")}</span>
-                    <span className="text-xs text-right text-white/60">{t("decks.learning")}</span>
-                    <span className="text-xs text-right text-white/60">{t("decks.review")}</span>
-                    <span className="text-xs text-right text-white/60">{t("decks.total")}</span>
-                  </div>
-
-                  <div className="w-16" />
-                </div>
+                      <div className="mt-3 flex gap-2 text-xs">
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                          {t("decks.new")} : {counts.new}
+                        </span>
+                        <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">
+                          {t("decks.review")} : {counts.review}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
 
-              {rootDecks.map((deck) => (
-                <DeckTree
-                  key={deck.id}
-                  deck={deck}
-                  allDecks={decks}
-                  cardCounts={cardCounts}
-                  learningCounts={learningCounts}
-                  level={0}
-                  expandedDeckIds={expandedDeckIds}
-                  onToggleExpand={(deckId) => {
-                    setExpandedDeckIds((prev) => {
-                      const next = new Set(prev);
-                      next.has(deckId)
-                        ? next.delete(deckId)
-                        : next.add(deckId);
-                      return next;
-                    });
-                  }}
-                  onDeckCreated={loadDecks}
-                  onDeckDeleted={loadDecks}
-                />
-              ))}
+              {/* Desktop table / tree layout (unchanged) */}
+              <div className="hidden rounded-2xl border border-white/10 bg-card overflow-hidden shadow-sm md:block">
+                <div className="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="w-4" />
+                    <span className="text-xs font-medium text-white/60">
+                      {t("decks.deck")}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedDeckIds(new Set())}
+                      className="h-7 px-2 text-xs"
+                    >
+                      {t("decks.collapseAll")}
+                    </Button>
+
+                    <div className="grid grid-cols-4 w-52 gap-3">
+                      <span className="text-xs text-right text-white/60">{t("decks.new")}</span>
+                      <span className="text-xs text-right text-white/60">{t("decks.learning")}</span>
+                      <span className="text-xs text-right text-white/60">{t("decks.review")}</span>
+                      <span className="text-xs text-right text-white/60">{t("decks.total")}</span>
+                    </div>
+
+                    <div className="w-16" />
+                  </div>
+                </div>
+
+                {rootDecks.map((deck) => (
+                  <DeckTree
+                    key={deck.id}
+                    deck={deck}
+                    allDecks={decks}
+                    cardCounts={cardCounts}
+                    learningCounts={learningCounts}
+                    level={0}
+                    expandedDeckIds={expandedDeckIds}
+                    onToggleExpand={(deckId) => {
+                      setExpandedDeckIds((prev) => {
+                        const next = new Set(prev);
+                        next.has(deckId)
+                          ? next.delete(deckId)
+                          : next.add(deckId);
+                        return next;
+                      });
+                    }}
+                    onDeckCreated={loadDecks}
+                    onDeckDeleted={loadDecks}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

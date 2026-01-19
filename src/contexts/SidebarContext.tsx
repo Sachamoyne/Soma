@@ -12,16 +12,18 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  // Initialize from localStorage if available, default to true (open)
+  // Initialize from localStorage if available, default to true (desktop) / false (mobile)
   const [isOpen, setIsOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-open");
-    if (stored !== null) {
-      setIsOpen(stored === "true");
-    }
+    const hasStored = stored !== null;
+    // Default closed on small screens if no stored preference
+    const prefersClosedOnMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const initial = hasStored ? stored === "true" : !prefersClosedOnMobile;
+    setIsOpen(initial);
     setMounted(true);
   }, []);
 

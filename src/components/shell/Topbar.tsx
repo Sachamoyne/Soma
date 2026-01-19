@@ -26,7 +26,7 @@ export function Topbar({
   const { toggle } = useSidebar();
 
   return (
-    <div className="flex h-20 items-center justify-between border-b border-white/10 bg-slate-950/70 px-10 backdrop-blur-md">
+    <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md md:h-20 md:flex-row md:items-center md:justify-between md:px-10 md:py-0">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -39,7 +39,30 @@ export function Topbar({
         </Button>
         <h2 className="text-2xl font-semibold tracking-tight text-white/90">{title}</h2>
       </div>
-      <div className="flex gap-2">
+
+      {/* Actions - mobile layout */}
+      <div className="flex w-full gap-2 md:hidden">
+        {showNewDeck && onNewDeck && (
+          <Button onClick={onNewDeck} className="flex-1">
+            <Plus className="h-4 w-4" />
+            {t("decks.newDeck")}
+          </Button>
+        )}
+        {showImport && onImport && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onImport}
+            aria-label={t("decks.import")}
+            className="shrink-0"
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Actions - desktop layout (unchanged visually) */}
+      <div className="hidden gap-2 md:flex">
         {actions}
         {showImport && onImport && (
           <Button variant="outline" onClick={onImport}>
