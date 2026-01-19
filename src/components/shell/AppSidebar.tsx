@@ -28,8 +28,8 @@ export function AppSidebar() {
       className={cn(
         "flex h-full flex-col border-r border-white/10 bg-slate-950/70 backdrop-blur-md transition-all duration-300 ease-in-out shrink-0",
         isOpen
-          ? "w-64 relative"
-          : "w-0 overflow-hidden"
+          ? "w-64 max-w-full fixed inset-y-0 left-0 z-40 md:static md:w-64"
+          : "w-0 overflow-hidden md:w-0 md:static md:-translate-x-full md:hidden",
       )}
     >
       {/* Header */}
