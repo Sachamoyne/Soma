@@ -98,8 +98,8 @@ export default function PricingClient() {
     const isAlreadyOnPlan = userId && currentPlan === plan && subscriptionStatus === "active";
     if (isAlreadyOnPlan) return;
 
-    // For Starter/Pro: always go through Stripe checkout first (payment before signup)
-    await startCheckout(plan);
+    // For Starter/Pro: redirect to onboarding page (signup → payment flow)
+    router.push(`/onboarding?plan=${plan}`);
   };
 
   return (

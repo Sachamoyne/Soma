@@ -86,6 +86,50 @@ export default function LoginClient() {
         } = await supabase.auth.getUser();
 
         if (!cancelled && user) {
+          // Check if user has pending subscription
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("subscription_status, plan_name")
+            .eq("id", user.id)
+            .single();
+
+          const subscriptionStatus = (profile as any)?.subscription_status;
+          const planName = (profile as any)?.plan_name;
+
+          // If subscription is pending, trigger Stripe checkout automatically
+          if (subscriptionStatus === "pending" && (planName === "starter" || planName === "pro")) {
+            try {
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+              if (backendUrl) {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.access_token) {
+                  const checkoutResponse = await fetch(`${backendUrl}/stripe/checkout`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ plan: planName }),
+                  });
+
+                  const checkoutData = (await checkoutResponse.json()) as {
+                    url?: string;
+                    error?: string;
+                  };
+
+                  if (checkoutResponse.ok && checkoutData.url) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = checkoutData.url;
+                    return; // Don't redirect to /decks yet
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("[login] Failed to trigger checkout:", err);
+              // Continue to /decks anyway
+            }
+          }
+
           // After login, main entry point is the deck list
           router.replace("/decks");
           router.refresh();
@@ -172,6 +216,50 @@ export default function LoginClient() {
       }
 
       await ensureProfile(supabase, user.id, user.email);
+
+      // Check if user has pending subscription (account created but payment not completed)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_status, plan_name")
+        .eq("id", user.id)
+        .single();
+
+      const subscriptionStatus = (profile as any)?.subscription_status;
+      const planName = (profile as any)?.plan_name;
+
+      // If subscription is pending, trigger Stripe checkout automatically
+      if (subscriptionStatus === "pending" && (planName === "starter" || planName === "pro")) {
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+          if (backendUrl) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              const checkoutResponse = await fetch(`${backendUrl}/stripe/checkout`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ plan: planName }),
+              });
+
+              const checkoutData = (await checkoutResponse.json()) as {
+                url?: string;
+                error?: string;
+              };
+
+              if (checkoutResponse.ok && checkoutData.url) {
+                // Redirect to Stripe Checkout
+                window.location.href = checkoutData.url;
+                return; // Don't redirect to /decks yet
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[login] Failed to trigger checkout:", err);
+          // Continue to /decks anyway
+        }
+      }
 
       router.push("/decks");
       router.refresh();

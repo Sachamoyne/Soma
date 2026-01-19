@@ -111,10 +111,8 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "soma-backend" });
 });
 
-// Public Stripe routes (no auth required - payment before account creation)
-app.use("/stripe", stripeRouter);
-
 // Protected routes - authentication via Supabase JWT in Authorization header
+app.use("/stripe", requireAuth, stripeRouter); // Checkout now requires auth (account before payment)
 app.use("/anki", requireAuth, ankiRouter);
 app.use("/pdf", requireAuth, pdfRouter);
 app.use("/generate", requireAuth, generateRouter);
