@@ -3,6 +3,8 @@ import Stripe from "stripe";
 
 const router = express.Router();
 
+type Plan = "starter" | "pro";
+
 // Initialize Stripe instance (lazy - only when needed)
 let stripeInstance: Stripe | null = null;
 
@@ -30,23 +32,26 @@ router.post("/checkout", async (req: Request, res: Response) => {
   try {
     console.log("[STRIPE/CHECKOUT] Request received");
 
-    // Validate request body
-    const { plan } = req.body;
+    // Extract and type the plan from request body
+    const { plan } = req.body as { plan?: Plan };
 
-    if (!plan || (plan !== "starter" && plan !== "pro")) {
+    // Validate plan is provided and is either "starter" or "pro"
+    if (plan !== "starter" && plan !== "pro") {
       return res.status(400).json({
         error: "INVALID_PLAN",
         message: "Plan must be 'starter' or 'pro'",
       });
     }
 
-    // Get price ID for the plan
-    const priceIdMap: Record<"starter" | "pro", string | undefined> = {
+    // At this point, TypeScript knows plan is "starter" | "pro"
+    // Define price ID mapping with strict typing
+    const PRICE_IDS: Record<Plan, string | undefined> = {
       starter: process.env.SOMA_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID,
       pro: process.env.SOMA_PRO_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID,
     };
 
-    const priceId = priceIdMap[plan];
+    // Access price_id after validation - TypeScript knows plan is Plan
+    const priceId = PRICE_IDS[plan];
 
     if (!priceId) {
       console.error(`[STRIPE/CHECKOUT] Missing price_id for plan: ${plan}`);
