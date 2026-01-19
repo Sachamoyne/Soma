@@ -7,6 +7,10 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const frontendUrl = process.env.FRONTEND_URL;
+const somaStarterPriceId = process.env.SOMA_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID;
+const somaProPriceId = process.env.SOMA_PRO_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID;
 
 if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
   console.error("[BACKEND] ❌ FATAL: Missing required Supabase environment variables");
@@ -24,12 +28,38 @@ if (!openaiApiKey) {
   process.exit(1);
 }
 
+// Validate Stripe configuration (required for checkout)
+if (!stripeSecretKey) {
+  console.error("[BACKEND] ❌ FATAL: Missing STRIPE_SECRET_KEY");
+  console.error("[BACKEND] Server will not start. Please configure STRIPE_SECRET_KEY in Railway.");
+  process.exit(1);
+}
+
+if (!frontendUrl) {
+  console.error("[BACKEND] ❌ FATAL: Missing FRONTEND_URL");
+  console.error("[BACKEND] Server will not start. Please configure FRONTEND_URL in Railway.");
+  process.exit(1);
+}
+
+if (!somaStarterPriceId || !somaProPriceId) {
+  console.error("[BACKEND] ❌ FATAL: Missing Stripe Price IDs");
+  console.error("[BACKEND] Required variables:");
+  console.error("[BACKEND]   - SOMA_STARTER_PRICE_ID or STRIPE_STARTER_PRICE_ID:", somaStarterPriceId ? "SET" : "NOT SET");
+  console.error("[BACKEND]   - SOMA_PRO_PRICE_ID or STRIPE_PRO_PRICE_ID:", somaProPriceId ? "SET" : "NOT SET");
+  console.error("[BACKEND] Server will not start. Please configure these variables in Railway.");
+  process.exit(1);
+}
+
 // Safe log: boolean only, NEVER log the actual key
 console.log("[BACKEND] ✅ Configuration validated");
 console.log("[BACKEND]   - SUPABASE_URL: SET");
 console.log("[BACKEND]   - SUPABASE_SERVICE_ROLE_KEY: SET");
 console.log("[BACKEND]   - SUPABASE_ANON_KEY: SET");
 console.log("[BACKEND]   - OPENAI_API_KEY: SET");
+console.log("[BACKEND]   - STRIPE_SECRET_KEY: SET");
+console.log("[BACKEND]   - FRONTEND_URL: SET");
+console.log("[BACKEND]   - SOMA_STARTER_PRICE_ID: SET");
+console.log("[BACKEND]   - SOMA_PRO_PRICE_ID: SET");
 
 import express from "express";
 import cors from "cors";
@@ -37,6 +67,7 @@ import { requireAuth } from "./middleware/auth";
 import ankiRouter from "./routes/anki";
 import pdfRouter from "./routes/pdf";
 import generateRouter from "./routes/generate";
+import stripeRouter from "./routes/stripe";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,6 +110,9 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" })); // Support form 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "soma-backend" });
 });
+
+// Public Stripe routes (no auth required - payment before account creation)
+app.use("/stripe", stripeRouter);
 
 // Protected routes - authentication via Supabase JWT in Authorization header
 app.use("/anki", requireAuth, ankiRouter);

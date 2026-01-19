@@ -70,7 +70,12 @@ export default function PricingClient() {
   const startCheckout = async (plan: "starter" | "pro") => {
     setLoadingCheckout(plan);
     try {
-      const response = await fetch("/api/stripe/checkout", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      if (!backendUrl) {
+        throw new Error("Backend URL not configured");
+      }
+
+      const response = await fetch(`${backendUrl}/stripe/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),

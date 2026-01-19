@@ -46,7 +46,15 @@ export default function SignupClient() {
   useEffect(() => {
     if (paidParam === "1" && sessionId) {
       setVerifyingSession(true);
-      fetch(`/api/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}`)
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      if (!backendUrl) {
+        console.error("[signup] Backend URL not configured");
+        router.replace("/pricing");
+        router.refresh();
+        return;
+      }
+
+      fetch(`${backendUrl}/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}`)
         .then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.valid) {
@@ -123,15 +131,18 @@ export default function SignupClient() {
       // For paid plans, associate the Stripe session with the new user account
       if (paidPlan && sessionId) {
         try {
-          const associateResponse = await fetch("/api/stripe/associate-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId }),
-          });
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+          if (backendUrl) {
+            const associateResponse = await fetch(`${backendUrl}/stripe/associate-session`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId }),
+            });
 
-          if (!associateResponse.ok) {
-            console.error("[signup] Failed to associate session:", await associateResponse.text());
-            // Continue anyway - webhook might process it later
+            if (!associateResponse.ok) {
+              console.error("[signup] Failed to associate session:", await associateResponse.text());
+              // Continue anyway - webhook might process it later
+            }
           }
         } catch (err) {
           console.error("[signup] Error associating session:", err);
