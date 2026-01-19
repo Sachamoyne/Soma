@@ -30,9 +30,6 @@ export default function SignupClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [verifyingSession, setVerifyingSession] = useState(false);
-  const [paidPlan, setPaidPlan] = useState<"starter" | "pro" | null>(null);
-
   const planParam = searchParams.get("plan");
   const paidParam = searchParams.get("paid");
   const sessionId = searchParams.get("session_id");
@@ -42,8 +39,14 @@ export default function SignupClient() {
       ? planParam
       : null;
 
-  // Verify Stripe session if paid=1
+  // Initialize state based on URL params
+  const [verifyingSession, setVerifyingSession] = useState(paidParam === "1" && !!sessionId);
+  const [paidPlan, setPaidPlan] = useState<"starter" | "pro" | null>(null);
+  const [sessionValidated, setSessionValidated] = useState(plan === "free");
+
+  // Verify Stripe session if paid=1 - CRITICAL: must validate before showing form
   useEffect(() => {
+    // If paid=1, we MUST verify the session before showing the form
     if (paidParam === "1" && sessionId) {
       setVerifyingSession(true);
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -58,17 +61,22 @@ export default function SignupClient() {
         .then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.valid) {
+            // Only redirect if session is invalid
+            console.error("[signup] Invalid or unpaid session");
             router.replace("/pricing");
             router.refresh();
             return;
           }
           const verifiedPlan = data.plan as "starter" | "pro" | null;
           if (verifiedPlan === "starter" || verifiedPlan === "pro") {
+            // Session is valid and paid - show signup form
             setPaidPlan(verifiedPlan);
+            setSessionValidated(true);
             if (data.email) {
               setEmail(data.email); // Pre-fill email from Stripe
             }
           } else {
+            console.error("[signup] Invalid plan in session");
             router.replace("/pricing");
             router.refresh();
           }
@@ -81,10 +89,19 @@ export default function SignupClient() {
         .finally(() => {
           setVerifyingSession(false);
         });
-    } else if (!plan && paidParam !== "1") {
-      // Enforce plan choice before account creation (for free plan)
+    } else if (paidParam === "1" && !sessionId) {
+      // paid=1 but no session_id - invalid state, redirect
+      console.error("[signup] paid=1 but no session_id");
       router.replace("/pricing");
       router.refresh();
+    } else if (!plan && paidParam !== "1") {
+      // Free plan requires ?plan=free
+      router.replace("/pricing");
+      router.refresh();
+    } else if (plan === "free") {
+      // Free plan - no session verification needed
+      setVerifyingSession(false);
+      setSessionValidated(true);
     }
   }, [plan, paidParam, sessionId, router]);
 
@@ -161,8 +178,8 @@ export default function SignupClient() {
     }
   };
 
-  // Show loading while verifying session
-  if (paidParam === "1" && verifyingSession) {
+  // Show loading while verifying session (CRITICAL: don't redirect during verification)
+  if (verifyingSession) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
         <div className="text-center">
@@ -173,8 +190,17 @@ export default function SignupClient() {
   }
 
   // Must have either plan=free OR paid=1 with verified session
+  // If paid=1, session must be validated before showing form
+  if (paidParam === "1" && !sessionValidated) {
+    // Still verifying or validation failed - don't show form yet
+    return null;
+  }
+
   const effectivePlan = plan === "free" ? "free" : paidPlan;
-  if (!effectivePlan) return null;
+  if (!effectivePlan) {
+    // No valid plan - this should not happen, but guard anyway
+  return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -199,10 +225,15 @@ export default function SignupClient() {
               <BrandLogo size={48} iconSize={28} />
               <div>
                 <h1 className="text-2xl font-semibold text-white font-serif">
-                  {t("auth.createAccount", { appName: APP_NAME })}
+                  Create your account
                 </h1>
-                <p className="mt-2 text-xs text-white/60">
-                  Plan choisi : <span className="text-white/80 font-medium">{effectivePlan}</span>
+                {paidParam === "1" && sessionValidated && (
+                  <p className="mt-2 text-sm text-green-200/90">
+                    Payment successful. Please create your account to continue.
+                  </p>
+                )}
+                <p className={`mt-2 text-xs text-white/60 ${paidParam === "1" ? "mt-1" : ""}`}>
+                  Plan : <span className="text-white/80 font-medium">{effectivePlan}</span>
                 </p>
               </div>
             </div>
