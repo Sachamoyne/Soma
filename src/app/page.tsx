@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import { ArrowRight, Brain, Layers, Sparkles } from "lucide-react";
+import { ArrowRight, Brain, Layers, Sparkles, Menu, X } from "lucide-react";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -14,6 +14,7 @@ const playfair = Playfair_Display({ subsets: ["latin"] });
 export default function LandingPage() {
   const { t } = useTranslation();
   const [userPresent, setUserPresent] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -45,11 +46,12 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[3px]" />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/10 via-slate-950/40 to-slate-950/90" />
 
-        <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
-          <div className="flex w-full items-center justify-between rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-md">
+        <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
+          <div className="relative flex w-full items-center justify-between rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-md">
             <div className="text-xs font-semibold tracking-[0.35em] text-white/85">
               {APP_NAME}
             </div>
+            {/* Desktop nav */}
             <nav className="hidden items-center gap-8 text-xs font-light tracking-[0.2em] text-white/75 sm:flex">
               <Link className="transition hover:text-white" href="/pricing">
                 {t("nav.pricing")}
@@ -62,6 +64,48 @@ export default function LandingPage() {
               </Link>
               <LanguageToggle variant="landing" />
             </nav>
+
+            {/* Mobile nav toggle */}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full border border-white/20 bg-black/20 p-2 text-white/80 hover:bg-white/10 sm:hidden"
+              aria-label="Toggle navigation"
+              onClick={() => setMobileNavOpen((open) => !open)}
+            >
+              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+
+            {/* Mobile menu panel */}
+            {mobileNavOpen && (
+              <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-20 rounded-2xl border border-white/15 bg-slate-950/95 px-4 py-4 shadow-lg sm:hidden">
+                <nav className="flex flex-col gap-3 text-sm text-white/85">
+                  <Link
+                    className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/10"
+                    href="/pricing"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    <span>{t("nav.pricing")}</span>
+                  </Link>
+                  <Link
+                    className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/10"
+                    href="#about"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    <span>{t("nav.about")}</span>
+                  </Link>
+                  <Link
+                    className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/10"
+                    href="/login"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    <span>{t("nav.login")}</span>
+                  </Link>
+                  <div className="mt-2 border-t border-white/10 pt-3">
+                    <LanguageToggle variant="landing" />
+                  </div>
+                </nav>
+              </div>
+            )}
           </div>
         </header>
 

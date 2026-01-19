@@ -408,6 +408,7 @@ export default function BrowseAllCardsPage() {
                             onMouseDown={(e) => handleRowMouseDown(e, card.id, index)}
                             onMouseEnter={() => handleRowMouseEnter(index)}
                             onClick={() => handleRowClick(card.id)}
+                            onTouchStart={() => handleRowClick(card.id)}
                             onContextMenu={(e) => handleOpenContextMenu(e, card.id)}
                             onDoubleClick={(e) => handleOpenContextMenu(e, card.id)}
                             className={`
