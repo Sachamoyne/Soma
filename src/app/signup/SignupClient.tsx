@@ -15,8 +15,8 @@ import { mapAuthError } from "@/lib/auth-errors";
 
 /**
  * Single entrypoint: /signup?plan=free|starter|pro
- * FREE: onboarding_status=active, emailRedirectTo /login, no Stripe
- * PAID: onboarding_status=pending_payment, immediate Stripe checkout, email confirmation non-blocking
+ * FREE: profile created client-side, email confirmation required
+ * PAID: profile created by Stripe webhook (service role), immediate checkout redirect
  */
 export default function SignupClient() {
   const { t } = useTranslation();
@@ -31,6 +31,7 @@ export default function SignupClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const planParam = searchParams.get("plan");
   const plan = planParam === "free" || planParam === "starter" || planParam === "pro" ? planParam : null;
@@ -57,6 +58,7 @@ export default function SignupClient() {
       }
 
       if (plan === "free") {
+        // FREE: create user + profile client-side, email confirmation required
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -108,7 +110,8 @@ export default function SignupClient() {
         return;
       }
 
-      // Paid (starter/pro)
+      // PAID (starter/pro): create user, then redirect to Stripe checkout
+      // Profile will be created/updated by Stripe webhook (service role) after payment
       const { data: signUpPaid, error: signUpPaidError } = await supabase.auth.signUp({
         email,
         password,
@@ -133,30 +136,14 @@ export default function SignupClient() {
         return;
       }
 
-      const { error: paidProfileError } = await supabase.from("profiles").upsert(
-        {
-          id: paidUser.id,
-          email: paidUser.email || email,
-          role: "user",
-          plan: "free",
-          plan_name: plan,
-          onboarding_status: "pending_payment",
-          subscription_status: "pending_payment",
-        },
-        { onConflict: "id", ignoreDuplicates: false }
-      );
-
-      if (paidProfileError) {
-        console.error("[signup] Failed to upsert paid profile:", paidProfileError);
-        setError("Erreur lors de la création du profil. Veuillez réessayer.");
-        return;
-      }
-
+      // Redirect to Stripe checkout immediately (no client-side profile upsert)
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       if (!backendUrl) {
         setError("Configuration backend manquante. Veuillez réessayer plus tard.");
         return;
       }
+
+      setRedirecting(true);
 
       const checkoutResponse = await fetch(`${backendUrl}/stripe/checkout`, {
         method: "POST",
@@ -166,11 +153,13 @@ export default function SignupClient() {
 
       const checkoutData = (await checkoutResponse.json()) as { url?: string; error?: string };
       if (!checkoutResponse.ok || !checkoutData.url) {
+        setRedirecting(false);
         throw new Error(checkoutData.error || `Checkout failed (HTTP ${checkoutResponse.status})`);
       }
 
       window.location.href = checkoutData.url;
     } catch (err) {
+      setRedirecting(false);
       const authError = mapAuthError(err, "signup");
       setError(authError.message || "Erreur lors de la création du compte.");
     } finally {
@@ -225,7 +214,7 @@ export default function SignupClient() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={loading}
+                  disabled={loading || redirecting}
                   className="h-11 border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/40"
                 />
               </div>
@@ -242,7 +231,7 @@ export default function SignupClient() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={loading}
+                    disabled={loading || redirecting}
                     minLength={6}
                     className="h-11 border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/40 pr-10"
                   />
@@ -250,7 +239,7 @@ export default function SignupClient() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
-                    disabled={loading}
+                    disabled={loading || redirecting}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -266,6 +255,12 @@ export default function SignupClient() {
               {success && (
                 <div className="rounded-2xl border border-green-500/50 bg-green-500/10 p-3">
                   <p className="text-sm text-green-200">{success}</p>
+                </div>
+              )}
+
+              {redirecting && (
+                <div className="rounded-2xl border border-blue-500/50 bg-blue-500/10 p-3">
+                  <p className="text-sm text-blue-200">Redirection vers le paiement...</p>
                 </div>
               )}
 
@@ -306,9 +301,13 @@ export default function SignupClient() {
               <Button
                 type="submit"
                 className="w-full h-11 text-sm font-semibold bg-white text-slate-900 hover:bg-white/90"
-                disabled={loading || !acceptedTerms}
+                disabled={loading || !acceptedTerms || redirecting}
               >
-                {loading ? t("common.loading") : t("auth.createAccount")}
+                {redirecting
+                  ? "Redirection..."
+                  : loading
+                    ? t("common.loading")
+                    : t("auth.createAccount")}
               </Button>
 
               <div className="text-center text-xs text-white/60">
