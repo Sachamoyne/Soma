@@ -8,6 +8,7 @@ import { APP_NAME } from "@/lib/brand";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { createClient } from "@/lib/supabase/client";
+import { BrandName } from "@/components/BrandName";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -114,7 +115,7 @@ export default function PricingClient() {
               className="text-xs font-semibold tracking-[0.35em] text-white/85"
               href="/"
             >
-              {APP_NAME}
+              <BrandName logoSize={90} />
             </Link>
             <nav className="hidden items-center gap-8 text-xs font-light tracking-[0.2em] text-white/75 sm:flex">
               <Link className="transition hover:text-white" href="/pricing">

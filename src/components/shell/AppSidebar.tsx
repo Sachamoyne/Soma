@@ -8,6 +8,7 @@ import { APP_NAME } from "@/lib/brand";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { BrandName } from "@/components/BrandName";
 
 export function AppSidebar() {
   const { t } = useTranslation();
@@ -34,8 +35,8 @@ export function AppSidebar() {
     >
       {/* Header */}
       <div className="flex h-20 items-center justify-center border-b border-white/10 px-8 overflow-hidden">
-        <h1 className="text-lg font-semibold tracking-wide whitespace-nowrap text-white/90">
-          {APP_NAME}
+        <h1 className="text-2xl font-semibold tracking-wide whitespace-nowrap text-white/90 -ml-3">
+          <BrandName logoSize={100} />
         </h1>
       </div>
 

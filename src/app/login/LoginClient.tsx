@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { APP_NAME } from "@/lib/brand";
 import { BrandLogo } from "@/components/BrandLogo";
+import { BrandName } from "@/components/BrandName";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -293,12 +294,10 @@ export default function LoginClient() {
         <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-16">
           <div className="w-full max-w-md rounded-3xl border border-white/15 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
             <div className="flex flex-col items-center gap-4 text-center">
-              <BrandLogo size={48} iconSize={28} />
-              <div>
-                <h1 className={`${playfair.className} text-2xl font-semibold text-white`}>
-                  {t("auth.signIn", { appName: APP_NAME })}
-                </h1>
-              </div>
+              <h1 className={`${playfair.className} text-2xl font-semibold text-white flex items-center gap-3 justify-center`}>
+                <span>{t("auth.signIn", { appName: APP_NAME }).replace(APP_NAME, "").trim()}</span>
+                <BrandName logoSize={52} />
+              </h1>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">

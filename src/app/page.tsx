@@ -8,6 +8,7 @@ import { ArrowRight, Brain, Layers, Sparkles, Menu, X } from "lucide-react";
 import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { BrandName } from "@/components/BrandName";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -46,11 +47,11 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[3px]" />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/10 via-slate-950/40 to-slate-950/90" />
 
-        <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
+        <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-1 sm:px-10">
           <div className="relative flex w-full items-center justify-between rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-md">
-            <div className="text-xs font-semibold tracking-[0.35em] text-white/85">
-              {APP_NAME}
-            </div>
+            <h1 className="text-lg font-semibold tracking-wide whitespace-nowrap text-white/90">
+              <BrandName logoSize={90} className="landing-page-logo" />
+            </h1>
             {/* Desktop nav */}
             <nav className="hidden items-center gap-8 text-xs font-light tracking-[0.2em] text-white/75 sm:flex">
               <Link className="transition hover:text-white" href="/pricing">
@@ -177,8 +178,9 @@ export default function LandingPage() {
 
         <section id="about" className="relative z-10 border-t border-white/10 bg-slate-950/85">
           <div className="mx-auto grid max-w-5xl gap-10 px-6 py-20 text-left sm:grid-cols-[1fr_1.2fr]">
-            <h2 className={`${playfair.className} text-3xl text-white/90`}>
-              {t("landing.aboutTitle")}
+            <h2 className={`${playfair.className} text-3xl text-white/90 flex items-center gap-2`}>
+              {t("landing.aboutTitle").replace(APP_NAME, "").trim()}{" "}
+              <BrandName logoSize={90} />
             </h2>
             <div className="space-y-4 text-white/70">
               <p>{t("landing.aboutP1")}</p>
