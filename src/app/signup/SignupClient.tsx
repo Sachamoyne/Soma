@@ -93,23 +93,6 @@ export default function SignupClient() {
           throw new Error("User not created");
         }
 
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            id: user.id,
-            email: user.email ?? email,
-            role: "user",
-            plan: "free",
-            plan_name: "free",
-            onboarding_status: "active",
-            subscription_status: "active",
-          },
-          { onConflict: "id" }
-        );
-
-        if (profileError) {
-          throw profileError;
-        }
-
         setSuccess("Compte créé. Vérifiez votre email puis connectez-vous.");
         router.replace("/login");
         router.refresh();
@@ -138,23 +121,6 @@ export default function SignupClient() {
       const user = data.user;
       if (!user) {
         throw new Error("User not created");
-      }
-
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        {
-          id: user.id,
-          email: user.email ?? email,
-          role: "user",
-          plan: "free",
-          plan_name: plan,
-          onboarding_status: "pending_payment",
-          subscription_status: "pending_payment",
-        },
-        { onConflict: "id" }
-      );
-
-      if (profileError) {
-        throw profileError;
       }
 
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
