@@ -35,7 +35,7 @@ export function BrandLogo({
       }}
     >
       <Image
-        src="/logo-soma.png"
+        src="/SOMA BLANC BG removed.svg"
         alt="Soma"
         width={size}
         height={size}

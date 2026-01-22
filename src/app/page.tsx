@@ -39,9 +39,8 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 sm:px-10">
-        <div className="flex items-center gap-3 text-sm font-medium tracking-tight text-foreground">
-          <BrandLogo size={28} />
-          <span>{APP_NAME}</span>
+        <div className="flex items-center -mt-3">
+          <BrandLogo size={104} />
         </div>
         {/* Desktop nav */}
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground sm:flex">
