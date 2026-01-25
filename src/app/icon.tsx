@@ -1,15 +1,15 @@
 import { ImageResponse } from "next/og";
-import path from "node:path";
-import { readFile } from "node:fs/promises";
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
+export const runtime = "edge";
 
 export default async function Icon() {
-  const logoPath = path.join(process.cwd(), "public", "logo-soma.png");
-  const logoBuffer = await readFile(logoPath);
-  const logoBase64 = logoBuffer.toString("base64");
-  const logoSrc = `data:image/png;base64,${logoBase64}`;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+    "http://localhost:3000";
+  const logoSrc = new URL("/logo-soma.png", baseUrl).toString();
 
   return new ImageResponse(
     (
