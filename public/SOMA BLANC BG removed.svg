@@ -1,49 +1,6 @@
-import { cn } from "@/lib/cn";
-
-interface BrandLogoProps {
-  /**
-   * Taille du logo en pixels
-   * @default 56 (h-14)
-   */
-  size?: number;
-  /**
-   * @deprecated Ignoré - conservé pour compatibilité
-   */
-  iconSize?: number;
-  /**
-   * Classes additionnelles pour le conteneur
-   */
-  className?: string;
-}
-
-/**
- * Logo Soma - Source de vérité unique pour le logo de l'application
- * Utilisé sur login, landing, navbar, etc.
- * S'adapte automatiquement au thème : noir en mode clair, blanc en mode sombre
- */
-export function BrandLogo({
-  size = 56,
-  iconSize: _iconSize,
-  className,
-}: BrandLogoProps) {
-  return (
-    <div
-      className={cn("shrink-0 text-foreground", className)}
-      style={{
-        width: size,
-        height: size,
-      }}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        version="1.2"
-        baseProfile="tiny"
-        viewBox="0.00 0.00 500.00 500.00"
-        className="w-full h-full"
-      >
-        <path
-          fill="currentColor"
-          d="
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" viewBox="0.00 0.00 500.00 500.00">
+<path fill="#f9fbf8" d="
   M 138.60 170.92
   A 1.49 1.49 0.0 0 0 140.59 169.30
   Q 140.07 165.88 138.04 163.81
@@ -402,10 +359,8 @@ export function BrandLogo({
   Q 132.94 165.80 134.01 167.35
   Q 135.77 169.88 138.60 170.92
   Z"
-        />
-        <path
-          fill="currentColor"
-          d="
+/>
+<path fill="#f9fbf8" d="
   M 179.30 234.06
   Q 180.20 232.77 180.21 231.48
   A 1.77 1.76 -82.2 0 1 182.43 229.78
@@ -784,10 +739,8 @@ export function BrandLogo({
   L 178.18 234.09
   A 0.70 0.70 0.0 0 0 179.30 234.06
   Z"
-        />
-        <path
-          fill="currentColor"
-          d="
+/>
+<path fill="#f9fbf8" d="
   M 302.59 249.60
   A 0.25 0.25 0.0 0 0 303.02 249.77
   C 309.74 242.32 320.85 244.18 324.59 253.59
@@ -821,10 +774,8 @@ export function BrandLogo({
   A 1.93 1.92 -60.8 0 1 302.59 247.21
   L 302.59 249.60
   Z"
-        />
-        <path
-          fill="currentColor"
-          d="
+/>
+<path fill="#f9fbf8" d="
   M 268.17 245.11
   C 279.06 245.16 284.67 256.05 286.21 265.86
   Q 286.93 270.46 287.21 280.14
@@ -847,10 +798,8 @@ export function BrandLogo({
   Q 281.52 293.07 281.32 282.75
   C 281.15 273.96 281.10 254.63 272.10 251.50
   Z"
-        />
-        <path
-          fill="currentColor"
-          d="
+/>
+<path fill="#f9fbf8" d="
   M 382.02 245.03
   Q 383.48 245.02 384.36 246.20
   A 0.30 0.26 25.8 0 1 384.42 246.33
@@ -881,8 +830,5 @@ export function BrandLogo({
   A 0.41 0.41 0.0 0 0 377.38 284.37
   Q 379.65 284.32 382.05 284.31
   Z"
-        />
-      </svg>
-    </div>
-  );
-}
+/>
+</svg>

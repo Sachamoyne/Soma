@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, BookOpen, Settings, List } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { APP_NAME } from "@/lib/brand";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -36,11 +35,8 @@ export function AppSidebar() {
     >
       {/* Header */}
       <div className="flex h-20 items-center justify-center border-b border-border px-6 overflow-hidden">
-        <div className="flex items-center gap-3">
-          <BrandLogo size={32} />
-          <h1 className="text-lg font-semibold tracking-wide whitespace-nowrap text-foreground">
-            {APP_NAME}
-          </h1>
+        <div className="flex items-center">
+          <BrandLogo size={104} />
         </div>
       </div>
 

@@ -329,5 +329,13 @@
     "allRightsReserved": "All rights reserved.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service"
+  },
+  "cookieConsent": {
+    "title": "Cookie Management",
+    "description": "We use cookies to improve your experience and analyze site usage.",
+    "details": "By accepting, you authorize the use of analytical cookies (Google Analytics) to help us understand how you use our site.",
+    "learnMore": "To learn more, see our",
+    "accept": "Accept",
+    "reject": "Reject"
   }
 }

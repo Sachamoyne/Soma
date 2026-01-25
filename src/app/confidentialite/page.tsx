@@ -85,6 +85,7 @@ export default function ConfidentialitePage() {
                 <li><strong>Données techniques</strong> : Adresse IP, type de navigateur, langue, version de l'application.</li>
                 <li><strong>Données d'activité</strong> : Logs de connexion, rapports d'erreur (crash reports) pour la maintenance.</li>
                 <li><strong>Données de paiement</strong> : SOMA ne stocke jamais vos coordonnées bancaires complètes. Celles-ci sont traitées exclusivement par notre prestataire de paiement sécurisé (Stripe), qui nous renvoie uniquement un "token" de validation et les 4 derniers chiffres de la carte pour votre suivi.</li>
+                <li><strong>Données relatives à la transaction et à la fraude</strong> : Lors du paiement, notre prestataire Stripe collecte des données techniques (adresse IP, informations sur l'appareil et le navigateur) via des cookies et technologies similaires pour opérer son système de détection de fraude ("Stripe Radar") et sécuriser la transaction.</li>
               </ul>
             </section>
 
@@ -145,7 +146,13 @@ export default function ConfidentialitePage() {
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li><strong>Hébergement & Backend</strong> : Hostinger (Europe) et Supabase.</li>
-                <li><strong>Paiement</strong> : Stripe (USA/Europe). Stripe traite les données bancaires de manière sécurisée (Certification PCI-DSS).</li>
+                <li>
+                  <strong>Gestion des paiements</strong> : Stripe Inc. (États-Unis/Europe). Stripe agit en tant que sous-traitant pour le traitement du paiement, mais également en tant que responsable de traitement indépendant pour ses obligations légales (lutte contre le blanchiment, détection de la fraude).
+                  <ul className="list-disc list-inside space-y-1 ml-6 mt-2">
+                    <li><strong>Données transmises</strong> : Nom, Email, Adresse IP, Informations de carte bancaire (traitées directement par Stripe via un champ sécurisé, SOMA n'y a jamais accès).</li>
+                    <li><strong>Garanties</strong> : Les transferts de données vers les États-Unis sont encadrés par le "Data Privacy Framework" auquel Stripe a adhéré.</li>
+                  </ul>
+                </li>
                 <li><strong>Emailing transactionnel</strong> : Google / Gmail (USA).</li>
                 <li><strong>Analyses</strong> : Google Analytics (USA) - Uniquement si vous avez accepté les cookies.</li>
               </ul>

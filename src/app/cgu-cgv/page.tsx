@@ -84,10 +84,22 @@ export default function CGUCGVPage() {
               </p>
 
               <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">
-                3.2 Modalités de paiement
+                3.2 Modalités de paiement et Sécurité
               </h3>
               <p>
-                Le paiement est exigible immédiatement à la commande. Les paiements sont sécurisés et traités par notre prestataire de paiement Stripe. SOMA ne conserve aucune coordonnée bancaire complète.
+                Le paiement est exigible immédiatement à la commande.
+              </p>
+              <p>
+                <strong>Prestataire</strong> : Les paiements sont traités par la plateforme sécurisée Stripe.
+              </p>
+              <p>
+                <strong>Sécurité</strong> : Les transactions sont chiffrées (protocole SSL/TLS). SOMA ne stocke jamais les coordonnées bancaires complètes de l'Utilisateur. Seul un identifiant unique (token) et les 4 derniers chiffres de la carte sont conservés pour gérer l'abonnement et la facturation.
+              </p>
+              <p>
+                <strong>Authentification forte (3D Secure)</strong> : Conformément à la réglementation européenne (DSP2), l'Utilisateur peut être redirigé vers l'application de sa banque pour valider le paiement. En cas d'échec de cette validation, la commande ne pourra pas aboutir.
+              </p>
+              <p>
+                <strong>Incidents</strong> : L'Éditeur ne saurait être tenu responsable en cas d'usage frauduleux des moyens de paiement de l'Utilisateur par un tiers, les opérations de paiement étant gérées exclusivement par Stripe.
               </p>
             </section>
 

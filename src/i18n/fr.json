@@ -329,5 +329,13 @@
     "allRightsReserved": "Tous droits reserves.",
     "privacyPolicy": "Politique de Confidentialite",
     "termsOfService": "CGU / CGV"
+  },
+  "cookieConsent": {
+    "title": "Gestion des cookies",
+    "description": "Nous utilisons des cookies pour ameliorer votre experience et analyser l'utilisation de notre site.",
+    "details": "En acceptant, vous autorisez l'utilisation de cookies analytiques (Google Analytics) pour nous aider a comprendre comment vous utilisez notre site.",
+    "learnMore": "Pour en savoir plus, consultez notre",
+    "accept": "Accepter",
+    "reject": "Refuser"
   }
 }

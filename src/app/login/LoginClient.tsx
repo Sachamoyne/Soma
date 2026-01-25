@@ -284,7 +284,7 @@ export default function LoginClient() {
       <div className="flex min-h-screen items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center gap-4 text-center">
-            <BrandLogo size={48} iconSize={28} />
+            <BrandLogo size={104} />
             <div>
               <h1 className={`${playfair.className} text-2xl font-medium text-foreground`}>
                 {t("auth.signIn", { appName: APP_NAME })}

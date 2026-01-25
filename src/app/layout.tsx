@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from "@/lib/brand";
 import { LanguageProvider } from "@/i18n";
+import { GoogleTagManagerNoscript } from "@/components/GoogleTagManagerNoscript";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -18,7 +19,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Google Tag Manager sera chargé conditionnellement via le composant CookieConsent */}
+      </head>
       <body className={geist.className}>
+        <GoogleTagManagerNoscript />
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
