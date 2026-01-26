@@ -512,6 +512,7 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
     if (validatedDetailLevel !== "standard") {
       generationOptions.detailLevel = validatedDetailLevel;
     }
+    generationOptions.isPdf = true;
 
     // Generate cards preview (NO insertion yet)
     console.log("[generate-cards-from-pdf] Generating cards preview from extracted text...", {

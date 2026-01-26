@@ -2,6 +2,18 @@ import { z } from "zod";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 const MAX_TEXT_LENGTH = 20000;
+const MAX_PDF_ANALYSIS_LENGTH = 8000;
+
+function truncatePdfAnalysisText(text: string): { text: string; truncated: boolean } {
+  if (text.length <= MAX_PDF_ANALYSIS_LENGTH) {
+    return { text, truncated: false };
+  }
+
+  return {
+    text: text.substring(0, MAX_PDF_ANALYSIS_LENGTH) + "\n\n[Texte tronqué pour analyse PDF...]",
+    truncated: true,
+  };
+}
 
 // User-controllable generation parameters
 export type DetailLevel = "summary" | "standard" | "detailed";
@@ -9,6 +21,7 @@ export type DetailLevel = "summary" | "standard" | "detailed";
 export interface GenerationOptions {
   cardsCount?: number;       // If defined: generate EXACTLY this many cards (3-50)
   detailLevel?: DetailLevel; // Default: "standard"
+  isPdf?: boolean;           // If true: skip corrective generation (max 2 LLM calls)
 }
 
 // ============================================================================
@@ -475,34 +488,83 @@ FORMAT :
 
 /**
  * Pipeline complet : Analyse → Génération → Vérification couverture
- * Utilise maximum 2 appels LLM (analyse + génération, ou génération + correction)
+ * Utilise maximum 2 appels LLM (analyse + génération)
+ * Si isPdf=true : JAMAIS de génération corrective (max 2 appels LLM garantis)
  * Fallback vers l'ancienne méthode si le pipeline échoue
  */
 async function generateWithPipeline(
   text: string,
   options?: GenerationOptions
 ): Promise<{ language: string; title: string; cards: any[] } | null> {
+  const pipelineStart = Date.now();
   const cardsCount = options?.cardsCount;
   const detailLevel = options?.detailLevel || "standard";
+  const isPdf = options?.isPdf || false;
+  let llmCallCount = 0;
+
+  const originalTextLength = text.length;
+  const pdfTruncation = isPdf ? truncatePdfAnalysisText(text) : { text, truncated: false };
+  const analysisText = pdfTruncation.text;
+
+  console.log("[generateWithPipeline] START", {
+    isPdf,
+    textLength: text.length,
+    cardsCount,
+    detailLevel,
+  });
+
+  if (isPdf) {
+    console.log("[generateWithPipeline] PDF analysis text size:", {
+      originalLength: originalTextLength,
+      analysisLength: analysisText.length,
+      truncated: pdfTruncation.truncated,
+    });
+  }
 
   // ÉTAPE 2.1 - Analyse du contenu
-  const analysis = await analyzeContent(text);
+  const analysis = await analyzeContent(analysisText);
+  llmCallCount++;
 
   if (!analysis || analysis.concepts.length === 0) {
-    console.log("[generateWithPipeline] Analysis failed or empty, falling back to direct generation");
+    console.log("[generateWithPipeline] Analysis failed or empty, falling back to direct generation", {
+      llmCallCount,
+      durationMs: Date.now() - pipelineStart,
+    });
     return null; // Will trigger fallback
   }
 
   console.log("[generateWithPipeline] Analysis successful:", {
     conceptsDetected: analysis.concepts.length,
+    llmCallCount,
   });
 
   // ÉTAPE 2.2 - Génération des cartes à partir de l'analyse
   const generationResult = await generateCardsFromAnalysis(analysis, options);
+  llmCallCount++;
 
   if (!generationResult || generationResult.cards.length === 0) {
-    console.log("[generateWithPipeline] Card generation failed, falling back to direct generation");
+    console.log("[generateWithPipeline] Card generation failed, falling back to direct generation", {
+      llmCallCount,
+      durationMs: Date.now() - pipelineStart,
+    });
     return null; // Will trigger fallback
+  }
+
+  if (isPdf) {
+    const pipelineDuration = Date.now() - pipelineStart;
+    console.log("[generateWithPipeline] PDF pipeline complete:", {
+      originalTextLength,
+      analysisTextLength: analysisText.length,
+      cardsGenerated: generationResult.cards.length,
+      llmCallCount,
+      pipelineDurationMs: pipelineDuration,
+    });
+
+    return {
+      language: generationResult.language,
+      title: generationResult.title,
+      cards: generationResult.cards,
+    };
   }
 
   // ÉTAPE 2.3 - Vérification de couverture (simple)
@@ -515,18 +577,22 @@ async function generateWithPipeline(
     missingConcepts: missingConcepts.length,
   });
 
-  // Si cardsCount est défini, on ne fait pas de génération corrective
+  // PDF: JAMAIS de génération corrective (optimisation performance)
+  // cardsCount défini: on ne fait pas de génération corrective
   // (le nombre de cartes est plus important que la couverture complète)
-  if (cardsCount !== undefined) {
-    // Vérifier que le nombre de cartes correspond
-    if (generationResult.cards.length !== cardsCount) {
+  if (isPdf || cardsCount !== undefined) {
+    if (cardsCount !== undefined && generationResult.cards.length !== cardsCount) {
       console.warn(`[generateWithPipeline] Card count mismatch: expected ${cardsCount}, got ${generationResult.cards.length}`);
       // On continue quand même, la vérification post-génération dans generateCardsPreview gèrera ça
     }
 
-    console.log("[generateWithPipeline] Pipeline complete (cardsCount specified, skipping coverage correction):", {
+    const pipelineDuration = Date.now() - pipelineStart;
+    console.log("[generateWithPipeline] Pipeline complete (skipping coverage correction):", {
+      reason: isPdf ? "PDF source" : "cardsCount specified",
       conceptsDetected: analysis.concepts.length,
       cardsGenerated: generationResult.cards.length,
+      llmCallCount,
+      pipelineDurationMs: pipelineDuration,
     });
 
     return {
@@ -546,6 +612,7 @@ async function generateWithPipeline(
     console.log("[generateWithPipeline] Attempting to generate cards for missing concepts:", conceptsToFix.length);
 
     const additionalCards = await generateMissingConceptCards(conceptsToFix, detailLevel);
+    llmCallCount++;
 
     if (additionalCards && additionalCards.length > 0) {
       generationResult.cards.push(...additionalCards);
@@ -553,9 +620,12 @@ async function generateWithPipeline(
     }
   }
 
+  const pipelineDuration = Date.now() - pipelineStart;
   console.log("[generateWithPipeline] Pipeline complete:", {
     conceptsDetected: analysis.concepts.length,
     cardsGenerated: generationResult.cards.length,
+    llmCallCount,
+    pipelineDurationMs: pipelineDuration,
   });
 
   return {
@@ -1221,6 +1291,16 @@ export async function generateCardsPreview(
       usedPipeline: true,
     });
   } else {
+    if (options?.isPdf) {
+      console.log("[generateCardsPreview] PDF pipeline failed; skipping fallback to preserve 2-call limit.");
+      return {
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "PDF pipeline failed. Please try again.",
+        status: 500,
+      };
+    }
+
     // Pipeline failed, fallback to direct generation
     console.log("[generateCardsPreview] Pipeline failed, falling back to direct generation...");
 
