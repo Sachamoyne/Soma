@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, Trash2, Sparkles, FileText, Check, X, CheckCheck, XCircle } from "lucide-react";
+import { BookOpen, Trash2, Sparkles, FileText, Check, X, CheckCheck, XCircle, RefreshCw, Trash } from "lucide-react";
 import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches } from "@/store/decks";
 import { useTranslation } from "@/i18n";
 import { PaywallModal } from "@/components/PaywallModal";
@@ -41,11 +41,25 @@ export default function DeckOverviewPage() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
+  // User-controllable generation options
+  // cardsCount: undefined = Auto (default behavior), number = exact count
+  const [cardsCount, setCardsCount] = useState<number | undefined>(undefined);
+  // detailLevel: "standard" is the default, only sent if changed
+  const [detailLevel, setDetailLevel] = useState<"summary" | "standard" | "detailed">("standard");
+
   // New: Preview state (cards not yet confirmed)
   const [generatedCards, setGeneratedCards] = useState<CardPreview[] | null>(null);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
+
+  // Source text for regeneration (stored when generating)
+  const [sourceText, setSourceText] = useState<string>("");
+  const [sourcePdf, setSourcePdf] = useState<File | null>(null);
+
+  // Regeneration loading states
+  const [regeneratingAll, setRegeneratingAll] = useState(false);
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadCounts() {
@@ -125,6 +139,10 @@ export default function DeckOverviewPage() {
     setConfirmedCount(null);
     setAiError(null);
     setPdfError(null);
+    setSourceText("");
+    setSourcePdf(null);
+    setRegeneratingAll(false);
+    setRegeneratingIndex(null);
   };
 
   // Toggle card selection
@@ -150,6 +168,220 @@ export default function DeckOverviewPage() {
   // Deselect all cards
   const deselectAll = () => {
     setSelectedIndices(new Set());
+  };
+
+  // Delete a single card from the preview list
+  const deleteCard = (index: number) => {
+    if (!generatedCards) return;
+
+    const newCards = generatedCards.filter((_, i) => i !== index);
+    setGeneratedCards(newCards.length > 0 ? newCards : null);
+
+    // Update selected indices (shift indices after deleted card)
+    const newSelected = new Set<number>();
+    selectedIndices.forEach((i) => {
+      if (i < index) {
+        newSelected.add(i);
+      } else if (i > index) {
+        newSelected.add(i - 1);
+      }
+      // If i === index, it's being deleted, so skip it
+    });
+    setSelectedIndices(newSelected);
+  };
+
+  // Regenerate all cards
+  const handleRegenerateAll = async () => {
+    if (!sourceText && !sourcePdf) {
+      setAiError("Impossible de regénérer : source non disponible");
+      return;
+    }
+
+    setRegeneratingAll(true);
+    setAiError(null);
+    setPdfError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setAiError("No Supabase session. Please log in again.");
+        return;
+      }
+
+      let response: Response;
+
+      if (sourcePdf) {
+        // Regenerate from PDF
+        const formData = new FormData();
+        formData.append("file", sourcePdf);
+        formData.append("deck_id", String(deckId));
+        formData.append("language", "fr");
+
+        if (cardsCount !== undefined) {
+          formData.append("cardsCount", String(cardsCount));
+        }
+        if (detailLevel !== "standard") {
+          formData.append("detailLevel", detailLevel);
+        }
+
+        response = await fetch(`${BACKEND_URL}/pdf/generate-cards`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: formData,
+        });
+      } else {
+        // Regenerate from text
+        const payload: {
+          deck_id: string;
+          language: string;
+          text: string;
+          cardsCount?: number;
+          detailLevel?: "summary" | "standard" | "detailed";
+        } = {
+          deck_id: String(deckId),
+          language: "fr",
+          text: sourceText,
+        };
+
+        if (cardsCount !== undefined) {
+          payload.cardsCount = cardsCount;
+        }
+        if (detailLevel !== "standard") {
+          payload.detailLevel = detailLevel;
+        }
+
+        response = await fetch(`${BACKEND_URL}/generate/cards`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "QUOTA_FREE_PLAN" || data.error === "QUOTA_EXCEEDED") {
+          setPaywallReason(data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded");
+          setPaywallPlan(data.plan === "starter" ? "starter" : data.plan === "pro" ? "pro" : undefined);
+          setPaywallOpen(true);
+          return;
+        }
+        setAiError(data.message || data.error || "Erreur lors de la regénération");
+        return;
+      }
+
+      // Success - update preview
+      setGeneratedCards(data.cards);
+      setSelectedIndices(new Set(data.cards.map((_: any, i: number) => i)));
+    } catch (error) {
+      console.error("Error regenerating cards:", error);
+      setAiError(error instanceof Error ? error.message : "Erreur lors de la regénération");
+    } finally {
+      setRegeneratingAll(false);
+    }
+  };
+
+  // Regenerate a single card
+  const handleRegenerateCard = async (index: number) => {
+    if (!sourceText && !sourcePdf) {
+      setAiError("Impossible de regénérer : source non disponible");
+      return;
+    }
+
+    if (!generatedCards) return;
+
+    setRegeneratingIndex(index);
+    setAiError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setAiError("No Supabase session. Please log in again.");
+        return;
+      }
+
+      // Generate a single card by requesting cardsCount=1
+      let response: Response;
+
+      if (sourcePdf) {
+        const formData = new FormData();
+        formData.append("file", sourcePdf);
+        formData.append("deck_id", String(deckId));
+        formData.append("language", "fr");
+        formData.append("cardsCount", "3"); // Generate 3 cards to have options
+        if (detailLevel !== "standard") {
+          formData.append("detailLevel", detailLevel);
+        }
+
+        response = await fetch(`${BACKEND_URL}/pdf/generate-cards`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: formData,
+        });
+      } else {
+        const payload = {
+          deck_id: String(deckId),
+          language: "fr",
+          text: sourceText,
+          cardsCount: 3, // Generate 3 cards to have options
+          ...(detailLevel !== "standard" && { detailLevel }),
+        };
+
+        response = await fetch(`${BACKEND_URL}/generate/cards`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "QUOTA_FREE_PLAN" || data.error === "QUOTA_EXCEEDED") {
+          setPaywallReason(data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded");
+          setPaywallPlan(data.plan === "starter" ? "starter" : data.plan === "pro" ? "pro" : undefined);
+          setPaywallOpen(true);
+          return;
+        }
+        setAiError(data.message || data.error || "Erreur lors de la regénération");
+        return;
+      }
+
+      // Replace the card at the given index with the first generated card
+      if (data.cards && data.cards.length > 0) {
+        const newCards = [...generatedCards];
+        newCards[index] = data.cards[0];
+        setGeneratedCards(newCards);
+
+        // Keep it selected
+        if (!selectedIndices.has(index)) {
+          setSelectedIndices(new Set([...selectedIndices, index]));
+        }
+      }
+    } catch (error) {
+      console.error("Error regenerating card:", error);
+      setAiError(error instanceof Error ? error.message : "Erreur lors de la regénération");
+    } finally {
+      setRegeneratingIndex(null);
+    }
   };
 
   // Confirm and insert selected cards
@@ -313,6 +545,16 @@ export default function DeckOverviewPage() {
       formData.append("deck_id", String(deckId));
       formData.append("language", "fr");
 
+      // Only add cardsCount if user specified a value (not "Auto")
+      if (cardsCount !== undefined) {
+        formData.append("cardsCount", String(cardsCount));
+      }
+
+      // Only add detailLevel if not the default "standard"
+      if (detailLevel !== "standard") {
+        formData.append("detailLevel", detailLevel);
+      }
+
       const response = await fetch(`${BACKEND_URL}/pdf/generate-cards`, {
         method: "POST",
         headers: {
@@ -381,6 +623,9 @@ export default function DeckOverviewPage() {
       setGeneratedCards(data.cards);
       // Select all by default
       setSelectedIndices(new Set(data.cards.map((_: any, i: number) => i)));
+      // Store source PDF for potential regeneration
+      setSourcePdf(file);
+      setSourceText("");
     } catch (error) {
       console.error("Error generating cards from PDF:", error);
       setPdfError(
@@ -414,17 +659,36 @@ export default function DeckOverviewPage() {
         return;
       }
 
+      // Build payload with optional generation options
+      const payload: {
+        deck_id: string;
+        language: string;
+        text: string;
+        cardsCount?: number;
+        detailLevel?: "summary" | "standard" | "detailed";
+      } = {
+        deck_id: String(deckId),
+        language: "fr",
+        text: aiText.trim(),
+      };
+
+      // Only add cardsCount if user specified a value (not "Auto")
+      if (cardsCount !== undefined) {
+        payload.cardsCount = cardsCount;
+      }
+
+      // Only add detailLevel if not the default "standard"
+      if (detailLevel !== "standard") {
+        payload.detailLevel = detailLevel;
+      }
+
       const response = await fetch(`${BACKEND_URL}/generate/cards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          deck_id: String(deckId),
-          language: "fr",
-          text: aiText.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -445,6 +709,9 @@ export default function DeckOverviewPage() {
       setGeneratedCards(data.cards);
       // Select all by default
       setSelectedIndices(new Set(data.cards.map((_: any, i: number) => i)));
+      // Store source text for potential regeneration
+      setSourceText(aiText.trim());
+      setSourcePdf(null);
       setAiText("");
     } catch (error) {
       console.error("Error generating AI cards:", error);
@@ -614,17 +881,70 @@ Plus le texte est clair, meilleures seront les cartes.`
                   Fonctionnalité réservée aux abonnés
                 </div>
               ) : (
-                <Button
-                  onClick={handleGenerateWithAI}
-                  disabled={!canGenerateWithAI || pdfLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {aiLoading || pdfLoading
-                    ? "Génération en cours…"
-                    : "Générer des cartes pour ce paquet"}
-                </Button>
+                <>
+                  {/* Generation options - minimal UI */}
+                  <div className="space-y-3 rounded-lg border border-muted/50 bg-muted/20 p-3">
+                    {/* Cards count selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Nombre de cartes
+                      </label>
+                      <div className="flex gap-1.5">
+                        {[
+                          { value: undefined, label: "Auto" },
+                          { value: 5, label: "5" },
+                          { value: 10, label: "10" },
+                          { value: 20, label: "20" },
+                        ].map((option) => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            onClick={() => setCardsCount(option.value)}
+                            disabled={aiLoading || pdfLoading}
+                            className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${
+                              cardsCount === option.value
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-muted hover:bg-muted/50"
+                            } ${aiLoading || pdfLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Detail level selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Niveau de détail
+                      </label>
+                      <select
+                        value={detailLevel}
+                        onChange={(e) => setDetailLevel(e.target.value as "summary" | "standard" | "detailed")}
+                        disabled={aiLoading || pdfLoading}
+                        className="w-full px-3 py-1.5 text-sm rounded-md border border-muted bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="summary">Synthèse</option>
+                        <option value="standard">Standard</option>
+                        <option value="detailed">Détaillé</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleGenerateWithAI}
+                    disabled={!canGenerateWithAI || pdfLoading}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {aiLoading || pdfLoading
+                      ? "Génération en cours…"
+                      : cardsCount !== undefined
+                        ? `Générer ${cardsCount} cartes`
+                        : "Générer des cartes pour ce paquet"}
+                  </Button>
+                </>
               )}
             </div>
           )}
@@ -676,6 +996,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                   variant="outline"
                   size="sm"
                   onClick={selectAll}
+                  disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading}
                   className="flex-1"
                 >
                   <CheckCheck className="mr-2 h-4 w-4" />
@@ -685,10 +1006,21 @@ Plus le texte est clair, meilleures seront les cartes.`
                   variant="outline"
                   size="sm"
                   onClick={deselectAll}
+                  disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading}
                   className="flex-1"
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Tout refuser
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRegenerateAll}
+                  disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading || (!sourceText && !sourcePdf)}
+                  className="flex-1"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${regeneratingAll ? "animate-spin" : ""}`} />
+                  {regeneratingAll ? "Regénération..." : "Tout regénérer"}
                 </Button>
               </div>
 
@@ -720,27 +1052,44 @@ Plus le texte est clair, meilleures seront les cartes.`
                               <p className="text-sm text-muted-foreground">{card.back}</p>
                             </div>
                           </div>
-                          {/* Accept/Reject button */}
-                          <Button
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleCard(index)}
-                            className={`shrink-0 ${
-                              isSelected
-                                ? "bg-green-600 hover:bg-green-700"
-                                : "hover:border-destructive hover:text-destructive"
-                            }`}
-                          >
-                            {isSelected ? (
-                              <>
-                                <Check className="h-4 w-4" />
-                              </>
-                            ) : (
-                              <>
-                                <X className="h-4 w-4" />
-                              </>
-                            )}
-                          </Button>
+                          {/* Card action buttons */}
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {/* Accept/Reject button */}
+                            <Button
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => toggleCard(index)}
+                              disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading}
+                              className={`${
+                                isSelected
+                                  ? "bg-green-600 hover:bg-green-700"
+                                  : "hover:border-destructive hover:text-destructive"
+                              }`}
+                            >
+                              {isSelected ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                            </Button>
+                            {/* Regenerate this card */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRegenerateCard(index)}
+                              disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading || (!sourceText && !sourcePdf)}
+                              title="Regénérer cette carte"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${regeneratingIndex === index ? "animate-spin" : ""}`} />
+                            </Button>
+                            {/* Delete this card */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteCard(index)}
+                              disabled={regeneratingAll || regeneratingIndex !== null || confirmLoading}
+                              className="hover:border-destructive hover:text-destructive"
+                              title="Supprimer cette carte"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -753,14 +1102,14 @@ Plus le texte est clair, meilleures seront les cartes.`
                 <Button
                   variant="outline"
                   onClick={resetPreview}
-                  disabled={confirmLoading}
+                  disabled={confirmLoading || regeneratingAll || regeneratingIndex !== null}
                   className="flex-1"
                 >
                   Annuler
                 </Button>
                 <Button
                   onClick={handleConfirmCards}
-                  disabled={selectedIndices.size === 0 || confirmLoading}
+                  disabled={selectedIndices.size === 0 || confirmLoading || regeneratingAll || regeneratingIndex !== null}
                   className="flex-1"
                 >
                   {confirmLoading ? (
@@ -773,6 +1122,27 @@ Plus le texte est clair, meilleures seront les cartes.`
                   )}
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* Empty state - no cards generated */}
+          {generatedCards && generatedCards.length === 0 && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  Aucune carte générée
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  L&apos;IA n&apos;a pas pu générer de cartes à partir du contenu fourni. Essayez avec un texte plus long ou plus structuré.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={resetPreview}
+                className="w-full"
+              >
+                Retour
+              </Button>
             </div>
           )}
         </div>

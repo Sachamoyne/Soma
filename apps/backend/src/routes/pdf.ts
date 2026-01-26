@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { generateCardsPreview } from "../lib/ai-cards";
+import { generateCardsPreview, GenerationOptions, DetailLevel } from "../lib/ai-cards";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -352,6 +352,36 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       });
     }
 
+    // Get optional generation parameters from form data
+    const { cardsCount, detailLevel } = req.body;
+
+    // Validate optional cardsCount (3-50)
+    let validatedCardsCount: number | undefined;
+    if (cardsCount !== undefined && cardsCount !== "") {
+      const parsedCount = Number(cardsCount);
+      if (!Number.isInteger(parsedCount) || parsedCount < 3 || parsedCount > 50) {
+        return res.status(400).json({
+          success: false,
+          code: "VALIDATION_ERROR",
+          message: "cardsCount must be an integer between 3 and 50",
+        });
+      }
+      validatedCardsCount = parsedCount;
+    }
+
+    // Validate optional detailLevel (enum: "summary" | "standard" | "detailed")
+    let validatedDetailLevel: DetailLevel = "standard";
+    if (detailLevel !== undefined && detailLevel !== "") {
+      if (!["summary", "standard", "detailed"].includes(detailLevel)) {
+        return res.status(400).json({
+          success: false,
+          code: "VALIDATION_ERROR",
+          message: "detailLevel must be 'summary', 'standard', or 'detailed'",
+        });
+      }
+      validatedDetailLevel = detailLevel as DetailLevel;
+    }
+
     // Validate file type
     if (
       file.mimetype !== "application/pdf" &&
@@ -474,10 +504,27 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       });
     }
 
-    // Generate cards preview (NO insertion yet)
-    console.log("[generate-cards-from-pdf] Generating cards preview from extracted text...");
+    // Build generation options
+    const generationOptions: GenerationOptions = {};
+    if (validatedCardsCount !== undefined) {
+      generationOptions.cardsCount = validatedCardsCount;
+    }
+    if (validatedDetailLevel !== "standard") {
+      generationOptions.detailLevel = validatedDetailLevel;
+    }
 
-    const result = await generateCardsPreview(extractedText, deckId, userId);
+    // Generate cards preview (NO insertion yet)
+    console.log("[generate-cards-from-pdf] Generating cards preview from extracted text...", {
+      cardsCount: validatedCardsCount,
+      detailLevel: validatedDetailLevel,
+    });
+
+    const result = await generateCardsPreview(
+      extractedText,
+      deckId,
+      userId,
+      Object.keys(generationOptions).length > 0 ? generationOptions : undefined
+    );
 
     // Handle error responses
     if (!result.success) {

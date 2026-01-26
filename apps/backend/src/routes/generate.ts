@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { generateCardsPreview, confirmAndInsertCards, CardPreview } from "../lib/ai-cards";
+import { generateCardsPreview, confirmAndInsertCards, CardPreview, GenerationOptions, DetailLevel } from "../lib/ai-cards";
 
 const router = express.Router();
 
@@ -21,7 +21,7 @@ router.post("/cards", async (req: Request, res: Response) => {
     }
 
     // Validate request body
-    const { text, deck_id, language } = req.body;
+    const { text, deck_id, language, cardsCount, detailLevel } = req.body;
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return res.status(400).json({
@@ -35,6 +35,31 @@ router.post("/cards", async (req: Request, res: Response) => {
         error: "VALIDATION_ERROR",
         message: "deck_id is required and must be a UUID string",
       });
+    }
+
+    // Validate optional cardsCount (3-50)
+    let validatedCardsCount: number | undefined;
+    if (cardsCount !== undefined) {
+      const parsedCount = Number(cardsCount);
+      if (!Number.isInteger(parsedCount) || parsedCount < 3 || parsedCount > 50) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "cardsCount must be an integer between 3 and 50",
+        });
+      }
+      validatedCardsCount = parsedCount;
+    }
+
+    // Validate optional detailLevel (enum: "summary" | "standard" | "detailed")
+    let validatedDetailLevel: DetailLevel = "standard";
+    if (detailLevel !== undefined) {
+      if (!["summary", "standard", "detailed"].includes(detailLevel)) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "detailLevel must be 'summary', 'standard', or 'detailed'",
+        });
+      }
+      validatedDetailLevel = detailLevel as DetailLevel;
     }
 
     // Verify Supabase configuration
@@ -79,11 +104,21 @@ router.post("/cards", async (req: Request, res: Response) => {
       });
     }
 
+    // Build generation options
+    const generationOptions: GenerationOptions = {};
+    if (validatedCardsCount !== undefined) {
+      generationOptions.cardsCount = validatedCardsCount;
+    }
+    if (validatedDetailLevel !== "standard") {
+      generationOptions.detailLevel = validatedDetailLevel;
+    }
+
     // Generate cards preview
     const result = await generateCardsPreview(
       text.trim(),
       deck_id,
-      userId
+      userId,
+      Object.keys(generationOptions).length > 0 ? generationOptions : undefined
     );
 
     // Handle error responses
