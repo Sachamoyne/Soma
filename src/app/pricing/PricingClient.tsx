@@ -164,7 +164,7 @@ export default function PricingClient() {
 
           {/* Pro Plan - Highlighted */}
           <div className="relative flex flex-col rounded-lg border-2 border-foreground p-6 text-left">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-white">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-white dark:text-black">
               {t("pricing.popular")}
             </span>
             <p className="text-xs font-medium text-muted-foreground">
@@ -187,8 +187,8 @@ export default function PricingClient() {
               disabled={Boolean(userId && currentPlan === "pro" && subscriptionStatus === "active") || loadingCheckout !== null}
               className={`mt-6 rounded-lg px-4 py-2 text-sm font-medium transition ${
                 userId && currentPlan === "pro" && subscriptionStatus === "active"
-                  ? "cursor-not-allowed bg-foreground/50 text-white opacity-50"
-                  : "bg-foreground text-white hover:bg-foreground/90"
+                  ? "cursor-not-allowed bg-foreground/50 text-white dark:text-black opacity-50"
+                  : "bg-foreground text-white dark:text-black hover:bg-foreground/90"
               }`}
             >
               {loadingCheckout === "pro" ? "…" : t("pricing.subscribe")}
