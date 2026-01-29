@@ -5,7 +5,7 @@ import { Topbar } from "@/components/shell/Topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { RichCardInput } from "@/components/RichCardInput";
 import {
   Select,
   SelectContent,
@@ -577,25 +577,19 @@ export default function BrowseAllCardsPage() {
                                 </Select>
                               </div>
 
-                              <div>
-                                <label className="text-sm font-medium mb-2 block">{t("browse.front")}</label>
-                                <Textarea
-                                  value={editFront}
-                                  onChange={(e) => setEditFront(e.target.value)}
-                                  placeholder={t("browse.questionPlaceholder")}
-                                  rows={6}
-                                />
-                              </div>
+                              <RichCardInput
+                                label={t("browse.front")}
+                                value={editFront}
+                                onChange={setEditFront}
+                                placeholder={t("browse.questionPlaceholder")}
+                              />
 
-                              <div>
-                                <label className="text-sm font-medium mb-2 block">{t("browse.back")}</label>
-                                <Textarea
-                                  value={editBack}
-                                  onChange={(e) => setEditBack(e.target.value)}
-                                  placeholder={t("browse.answerPlaceholder")}
-                                  rows={6}
-                                />
-                              </div>
+                              <RichCardInput
+                                label={t("browse.back")}
+                                value={editBack}
+                                onChange={setEditBack}
+                                placeholder={t("browse.answerPlaceholder")}
+                              />
                             </>
                           )}
                         </div>

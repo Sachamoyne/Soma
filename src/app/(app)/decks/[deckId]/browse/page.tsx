@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { RichCardInput } from "@/components/RichCardInput";
 import {
   Dialog,
   DialogContent,
@@ -595,25 +595,19 @@ export default function BrowseCardsPage() {
                         </Select>
                       </div>
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Front</label>
-                        <Textarea
-                          value={editFront}
-                          onChange={(e) => setEditFront(e.target.value)}
-                          placeholder="Question or front text"
-                          rows={6}
-                        />
-                      </div>
+                      <RichCardInput
+                        label="Front"
+                        value={editFront}
+                        onChange={setEditFront}
+                        placeholder="Question or front text"
+                      />
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Back</label>
-                        <Textarea
-                          value={editBack}
-                          onChange={(e) => setEditBack(e.target.value)}
-                          placeholder="Answer or back text"
-                          rows={6}
-                        />
-                      </div>
+                      <RichCardInput
+                        label="Back"
+                        value={editBack}
+                        onChange={setEditBack}
+                        placeholder="Answer or back text"
+                      />
                     </>
                   )}
                 </div>

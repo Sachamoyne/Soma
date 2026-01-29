@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { RichCardInput } from "@/components/RichCardInput";
 import {
   Select,
   SelectContent,
@@ -29,7 +29,6 @@ export default function AddCardsPage() {
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const frontRef = useRef<HTMLTextAreaElement>(null);
 
   const handleCreateCard = async () => {
     if (!front.trim() || !back.trim()) {
@@ -52,9 +51,6 @@ export default function AddCardsPage() {
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
-
-      // Focus back on front field for quick card entry
-      frontRef.current?.focus();
     } catch (error) {
       console.error("Error creating card:", error);
       alert("Failed to create card. Please try again.");
@@ -131,38 +127,22 @@ export default function AddCardsPage() {
             </div>
 
             {/* Front field */}
-            <div>
-              <label htmlFor="card-front" className="mb-2 block text-sm font-medium">
-                Front
-              </label>
-              <Textarea
-                id="card-front"
-                ref={frontRef}
-                value={front}
-                onChange={(e) => setFront(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter the question or front side of the card"
-                rows={4}
-                className="resize-none rounded-lg border border-input bg-muted/10 focus-visible:ring-2 focus-visible:ring-ring"
-                autoFocus
-              />
-            </div>
+            <RichCardInput
+              label="Front"
+              value={front}
+              onChange={setFront}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter the question or front side of the card"
+            />
 
             {/* Back field */}
-            <div>
-              <label htmlFor="card-back" className="mb-2 block text-sm font-medium">
-                Back
-              </label>
-              <Textarea
-                id="card-back"
-                value={back}
-                onChange={(e) => setBack(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter the answer or back side of the card"
-                rows={4}
-                className="resize-none rounded-lg border border-input bg-muted/10 focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+            <RichCardInput
+              label="Back"
+              value={back}
+              onChange={setBack}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter the answer or back side of the card"
+            />
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-4">

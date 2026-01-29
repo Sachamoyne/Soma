@@ -509,14 +509,44 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
       compressedSize: e.header.compressedSize,
     })));
 
+    // Parse the Anki media mapping file (maps numeric names to original filenames)
+    let ankiMediaMap: Record<string, string> = {};
+    const mediaJsonEntry = zip.getEntry("media");
+    if (mediaJsonEntry) {
+      try {
+        const mediaJsonStr = mediaJsonEntry.getData().toString("utf-8");
+        ankiMediaMap = JSON.parse(mediaJsonStr);
+        console.log("[ANKI IMPORT] Parsed media mapping:", Object.keys(ankiMediaMap).length, "entries");
+      } catch (e) {
+        console.warn("[ANKI IMPORT] Failed to parse media mapping file:", e);
+      }
+    }
+
     // Extract and upload media files (images)
     const mediaExtensions = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico"];
-    const mediaFiles = entries.filter((entry) => {
-      const name = entry.entryName.toLowerCase();
-      return !entry.isDirectory && mediaExtensions.some((ext) => name.endsWith(ext));
-    });
 
-    console.log("[ANKI IMPORT] Found", mediaFiles.length, "media files");
+    // Build list of media files to upload, handling both numeric-named and extension-named files
+    const mediaFilesToUpload: Array<{ entry: typeof entries[0]; originalName: string }> = [];
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      const name = entry.entryName;
+
+      // Check if this is a numeric-named file mapped in the media JSON
+      if (ankiMediaMap[name]) {
+        const originalName = ankiMediaMap[name];
+        if (mediaExtensions.some((ext) => originalName.toLowerCase().endsWith(ext))) {
+          mediaFilesToUpload.push({ entry, originalName });
+        }
+        continue;
+      }
+
+      // Also handle files that already have proper extensions (non-standard .apkg)
+      if (mediaExtensions.some((ext) => name.toLowerCase().endsWith(ext))) {
+        mediaFilesToUpload.push({ entry, originalName: name });
+      }
+    }
+
+    console.log("[ANKI IMPORT] Found", mediaFilesToUpload.length, "media files");
 
     // Map of original filename → public URL
     const mediaUrlMap = new Map<string, string>();
@@ -524,19 +554,19 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
     const mediaUploadStart = Date.now();
     // Limit concurrent uploads to avoid overloading storage
     const CONCURRENCY = 5;
-    const uploadQueue = [...mediaFiles];
+    const uploadQueue = [...mediaFilesToUpload];
     const workers: Promise<void>[] = [];
 
     const uploadNext = async () => {
       while (uploadQueue.length > 0) {
-        const mediaFile = uploadQueue.shift();
-        if (!mediaFile) break;
+        const item = uploadQueue.shift();
+        if (!item) break;
         try {
-          const fileName = mediaFile.entryName;
-          const fileData = mediaFile.getData();
+          const { entry, originalName } = item;
+          const fileData = entry.getData();
 
-          // Determine content type from extension
-          const ext = fileName.toLowerCase().match(/\.(\w+)$/)?.[1] || "png";
+          // Determine content type from the original filename's extension
+          const ext = originalName.toLowerCase().match(/\.(\w+)$/)?.[1] || "png";
           const contentTypeMap: Record<string, string> = {
             png: "image/png",
             jpg: "image/jpeg",
@@ -549,8 +579,8 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
           };
           const contentType = contentTypeMap[ext] || "image/png";
 
-          // Upload to Supabase Storage
-          const storagePath = `${userId}/anki-media/${fileName}`;
+          // Upload to Supabase Storage using the original filename
+          const storagePath = `${userId}/anki-media/${originalName}`;
 
           const { error: uploadError } = await supabase.storage
             .from("card-media")
@@ -560,15 +590,15 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
             });
 
           if (uploadError) {
-            console.error(`[ANKI IMPORT] ❌ Failed to upload ${fileName}:`, uploadError);
+            console.error(`[ANKI IMPORT] ❌ Failed to upload ${originalName}:`, uploadError);
             continue;
           }
 
-          // Get public URL
+          // Get public URL and map the original filename
           const { data: urlData } = supabase.storage.from("card-media").getPublicUrl(storagePath);
 
           if (urlData?.publicUrl) {
-            mediaUrlMap.set(fileName, urlData.publicUrl);
+            mediaUrlMap.set(originalName, urlData.publicUrl);
           }
         } catch (error) {
           console.error("[ANKI IMPORT] Error processing media file:", error);
@@ -585,7 +615,7 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
       "[ANKI IMPORT] Media upload complete",
       {
         uploaded: mediaUrlMap.size,
-        total: mediaFiles.length,
+        total: mediaFilesToUpload.length,
       },
       "in ms:",
       Date.now() - mediaUploadStart

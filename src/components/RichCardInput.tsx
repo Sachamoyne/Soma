@@ -9,6 +9,7 @@ interface RichCardInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   label?: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
 export function RichCardInput({
@@ -16,6 +17,7 @@ export function RichCardInput({
   onChange,
   placeholder = "Enter text or drag an image...",
   label,
+  onKeyDown,
 }: RichCardInputProps) {
   const IMAGE_BUCKET = "card-media";
   const [isDragging, setIsDragging] = useState(false);
@@ -238,6 +240,7 @@ export function RichCardInput({
         onDragLeave={handleDragLeave}
         onPaste={handlePaste}
         onInput={handleInput}
+        onKeyDown={onKeyDown}
         className={`
           min-h-[100px] p-3 rounded-md border
           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
