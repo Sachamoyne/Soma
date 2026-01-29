@@ -4,6 +4,7 @@ import "@/styles/globals.css";
 import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from "@/lib/brand";
 import { LanguageProvider } from "@/i18n";
 import { GoogleTagManagerNoscript } from "@/components/GoogleTagManagerNoscript";
+import { Analytics } from "@vercel/analytics/next";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className={geist.className}>
         <GoogleTagManagerNoscript />
         <LanguageProvider>{children}</LanguageProvider>
+        <Analytics />
       </body>
     </html>
   );
