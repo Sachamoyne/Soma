@@ -25,17 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Google tag (gtag.js) - initialisation dans le head comme recommandé par Google */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              // La configuration sera faite côté client selon le consentement
-            `,
-          }}
-        />
+        {/* Google Analytics est initialisé côté client par GoogleAnalyticsScript */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body className={geist.className}>

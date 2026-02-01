@@ -1,10 +1,11 @@
 /**
- * Gestion du consentement aux cookies et chargement conditionnel de Google Tag Manager et Google Analytics
+ * Gestion du consentement aux cookies et chargement conditionnel de Google Tag Manager
+ * 
+ * Note: Google Analytics est géré par le composant GoogleAnalyticsScript
  */
 
 const COOKIE_CONSENT_KEY = "cookie-consent";
 const GTM_ID = "GTM-PSFK9VWM";
-const GA4_ID = "G-T93D9CKZZT";
 
 export type CookieConsent = "accepted" | "rejected" | null;
 
@@ -25,45 +26,6 @@ export function setCookieConsent(consent: "accepted" | "rejected"): void {
   localStorage.setItem(COOKIE_CONSENT_KEY, consent);
   // Déclencher un événement personnalisé pour notifier les autres composants
   window.dispatchEvent(new Event("cookieConsentChanged"));
-}
-
-/**
- * Charge Google Analytics (gtag.js) si le consentement a été donné
- */
-export function loadGoogleAnalytics(): void {
-  if (typeof window === "undefined") return;
-  
-  const consent = getCookieConsent();
-  if (consent !== "accepted") return;
-
-  // Vérifier si gtag est déjà chargé
-  if ((window as any).gtag) return;
-
-  // Vérifier si le script est déjà présent dans le DOM
-  const existingScript = document.querySelector(`script[src*="gtag/js?id=${GA4_ID}"]`);
-  if (existingScript) return;
-
-  // Initialiser dataLayer
-  window.dataLayer = window.dataLayer || [];
-  
-  // Fonction gtag
-  function gtag(...args: any[]) {
-    window.dataLayer!.push(args);
-  }
-  (window as any).gtag = gtag;
-  gtag("js", new Date());
-  gtag("config", GA4_ID);
-
-  // Charger le script gtag.js
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`;
-  const firstScript = document.getElementsByTagName("script")[0];
-  if (firstScript && firstScript.parentNode) {
-    firstScript.parentNode.insertBefore(script, firstScript);
-  } else {
-    document.head.appendChild(script);
-  }
 }
 
 /**
