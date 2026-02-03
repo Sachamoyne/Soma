@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/hooks/useAppRouter";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export default function LoginClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const router = useRouter();
+  const router = useAppRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
@@ -375,28 +376,6 @@ export default function LoginClient() {
               {loading ? t("common.loading") : t("auth.continue")}
             </Button>
 
-            <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              En continuant, vous acceptez notre{" "}
-              <Link
-                href="/confidentialite"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground transition-colors"
-              >
-                Politique de Confidentialité
-              </Link>
-              {" "}et nos{" "}
-              <Link
-                href="/cgu-cgv"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground transition-colors"
-              >
-                CGU/CGV
-              </Link>
-              .
-            </p>
-
             <Button
               type="button"
               variant="outline"
@@ -422,11 +401,34 @@ export default function LoginClient() {
               {t("auth.continueWithGoogle")}
             </Button>
 
-            <div className="text-center text-xs text-muted-foreground">
-              <Link href="/pricing" className="transition hover:text-foreground">
-                {t("auth.viewPlans")}
+            <div className="text-center text-sm text-muted-foreground">
+              {t("auth.newToSoma")}{" "}
+              <Link href="/signup" className="text-foreground underline hover:text-foreground/80 transition-colors">
+                {t("auth.createAccount")}
               </Link>
             </div>
+
+            <p className="text-xs text-muted-foreground text-center leading-relaxed">
+              {t("auth.byCreatingAccount")}{" "}
+              <Link
+                href="/confidentialite"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                Politique de Confidentialité
+              </Link>
+              {" "}et nos{" "}
+              <Link
+                href="/cgu-cgv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                CGU/CGV
+              </Link>
+              .
+            </p>
           </form>
         </div>
       </div>

@@ -32,7 +32,7 @@ export interface SchedulingResult {
 
 export interface IntervalPreview {
   again: string;
-  hard?: string;
+  hard: string;
   good: string;
   easy: string;
 }
@@ -405,16 +405,9 @@ export function previewIntervals(
   const now = new Date();
 
   const againResult = gradeCard(card, "again", settings, now);
+  const hardResult = gradeCard(card, "hard", settings, now);
   const goodResult = gradeCard(card, "good", settings, now);
   const easyResult = gradeCard(card, "easy", settings, now);
-
-  let hardResult: SchedulingResult | null = null;
-  const state = card.state as "new" | "learning" | "review" | "relearning";
-
-  // Hard button only available for learning/review/relearning
-  if (state !== "new") {
-    hardResult = gradeCard(card, "hard", settings, now);
-  }
 
   // Format intervals
   const formatResult = (result: SchedulingResult) => {
@@ -430,7 +423,7 @@ export function previewIntervals(
 
   return {
     again: formatResult(againResult),
-    hard: hardResult ? formatResult(hardResult) : undefined,
+    hard: formatResult(hardResult),
     good: formatResult(goodResult),
     easy: formatResult(easyResult),
   };

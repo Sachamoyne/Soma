@@ -80,7 +80,9 @@
     "invalidCredentials": "Email ou mot de passe incorrect. Veuillez verifier vos identifiants.",
     "noAccountFound": "Aucun compte trouve avec cet email.",
     "profileCreating": "Votre profil est en cours de creation. Veuillez patienter quelques instants et reessayer.",
-    "unexpectedError": "Une erreur est survenue. Veuillez reessayer."
+    "unexpectedError": "Une erreur est survenue. Veuillez reessayer.",
+    "newToSoma": "Nouveau sur Soma ?",
+    "byCreatingAccount": "En creant un compte, vous acceptez notre"
   },
   "pricing": {
     "title": "Tarifs",
@@ -125,7 +127,8 @@
     "portalHelp": "Les changements de plan sont geres via Stripe. Les upgrades sont immediats, les downgrades prennent effet a la fin de la periode en cours.",
     "loadError": "Impossible de charger votre plan.",
     "authError": "Session invalide. Veuillez vous reconnecter.",
-    "portalError": "Impossible d'ouvrir le portail Stripe."
+    "portalError": "Impossible d'ouvrir le portail Stripe.",
+    "appModeNotice": "La gestion de l'abonnement est disponible sur le web."
   },
   "dashboard": {
     "title": "Statistiques",

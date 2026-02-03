@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useIsApp } from "@/hooks/useIsApp";
+import { appHref } from "@/lib/appHref";
 
 interface DeckCardProps {
   id: string;
@@ -11,8 +13,10 @@ interface DeckCardProps {
 }
 
 export function DeckCard({ id, name, cardCount }: DeckCardProps) {
+  const isApp = useIsApp();
+
   return (
-    <Link href={`/decks/${id}`}>
+    <Link href={appHref(`/decks/${id}`, isApp)}>
       <Card className="transition-shadow hover:shadow-md">
         <CardHeader>
           <CardTitle className="line-clamp-2">{name}</CardTitle>

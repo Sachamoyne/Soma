@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
+import { useIsApp } from "@/hooks/useIsApp";
 
 type Plan = "free" | "starter" | "pro";
 
 export default function BillingPage() {
   const { t } = useTranslation();
+  const isApp = useIsApp();
   const supabase = useMemo(() => createClient(), []);
 
   const [plan, setPlan] = useState<Plan>("free");
@@ -131,14 +133,20 @@ export default function BillingPage() {
                 {loadingPlan ? t("common.loading") : planLabel}
               </p>
 
-              <div className="space-y-2">
-                <Button onClick={handleOpenPortal} disabled={openingPortal} className="w-full sm:w-auto">
-                  {openingPortal ? t("billing.openingPortal") : t("billing.manageSubscription")}
-                </Button>
-                <p className="text-xs text-muted-foreground max-w-prose">
-                  {t("billing.portalHelp")}
+              {isApp ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("billing.appModeNotice")}
                 </p>
-              </div>
+              ) : (
+                <div className="space-y-2">
+                  <Button onClick={handleOpenPortal} disabled={openingPortal} className="w-full sm:w-auto">
+                    {openingPortal ? t("billing.openingPortal") : t("billing.manageSubscription")}
+                  </Button>
+                  <p className="text-xs text-muted-foreground max-w-prose">
+                    {t("billing.portalHelp")}
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <p className="text-sm text-destructive">

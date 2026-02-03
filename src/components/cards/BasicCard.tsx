@@ -158,12 +158,11 @@ export function BasicCard({
         ) : (
           <div className="grid grid-cols-2 gap-3 w-full">
             <Button
-              variant="destructive"
               onClick={() => onRate("again")}
               size="lg"
               className={cn(
-                "transition-all flex flex-col h-auto py-4",
-                ratingFlash === "again" && "scale-105 ring-2 ring-destructive"
+                "transition-all flex flex-col h-auto py-4 bg-red-600/80 hover:bg-red-600 text-white",
+                ratingFlash === "again" && "scale-105 ring-2 ring-red-500"
               )}
             >
               <span className="font-medium">Again</span>
@@ -174,16 +173,15 @@ export function BasicCard({
               )}
             </Button>
             <Button
-              variant="outline"
               onClick={() => onRate("hard")}
               size="lg"
               className={cn(
-                "transition-all flex flex-col h-auto py-4",
-                ratingFlash === "hard" && "scale-105 ring-2 ring-ring"
+                "transition-all flex flex-col h-auto py-4 bg-orange-600/80 hover:bg-orange-600 text-white",
+                ratingFlash === "hard" && "scale-105 ring-2 ring-orange-500"
               )}
             >
               <span className="font-medium">Hard</span>
-              {intervalPreviews?.hard && (
+              {intervalPreviews && (
                 <span className="text-xs opacity-70 mt-1">
                   {intervalPreviews.hard}
                 </span>
@@ -193,8 +191,8 @@ export function BasicCard({
               onClick={() => onRate("good")}
               size="lg"
               className={cn(
-                "transition-all flex flex-col h-auto py-4",
-                ratingFlash === "good" && "scale-105 ring-2 ring-primary"
+                "transition-all flex flex-col h-auto py-4 bg-yellow-600/80 hover:bg-yellow-600 text-white",
+                ratingFlash === "good" && "scale-105 ring-2 ring-yellow-500"
               )}
             >
               <span className="font-medium">Good</span>
@@ -205,12 +203,11 @@ export function BasicCard({
               )}
             </Button>
             <Button
-              variant="secondary"
               onClick={() => onRate("easy")}
               size="lg"
               className={cn(
-                "transition-all flex flex-col h-auto py-4",
-                ratingFlash === "easy" && "scale-105 ring-2 ring-secondary"
+                "transition-all flex flex-col h-auto py-4 bg-green-600/80 hover:bg-green-600 text-white",
+                ratingFlash === "easy" && "scale-105 ring-2 ring-green-500"
               )}
             >
               <span className="font-medium">Easy</span>

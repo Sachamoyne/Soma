@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useAppRouter } from "@/hooks/useAppRouter";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Trash2 } from "lucide-react";
 import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches } from "@/store/decks";
@@ -11,7 +12,7 @@ import { AICardGenerator } from "@/components/AICardGenerator";
 export default function DeckOverviewPage() {
   const { t } = useTranslation();
   const params = useParams();
-  const router = useRouter();
+  const router = useAppRouter();
   const deckId = params.deckId as string;
   const [loading, setLoading] = useState(true);
   const [cardCounts, setCardCounts] = useState<{
@@ -119,32 +120,32 @@ export default function DeckOverviewPage() {
   }
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-6 md:space-y-12">
       <div className="flex justify-center">
-        <div className="grid grid-cols-3 gap-16 py-8">
+        <div className="grid grid-cols-3 gap-6 md:gap-16 py-4 md:py-8">
           <div className="text-center">
-            <div className="text-6xl font-bold text-blue-600 dark:text-blue-400 mb-3">
+            <div className="text-4xl md:text-6xl font-bold text-blue-600 dark:text-blue-400 mb-1 md:mb-3">
               {cardCounts.new}
             </div>
-            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.new")}
             </div>
           </div>
 
           <div className="text-center">
-            <div className="text-6xl font-bold text-orange-600 dark:text-orange-400 mb-3">
+            <div className="text-4xl md:text-6xl font-bold text-orange-600 dark:text-orange-400 mb-1 md:mb-3">
               {cardCounts.learning}
             </div>
-            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.learning")}
             </div>
           </div>
 
           <div className="text-center">
-            <div className="text-6xl font-bold text-green-600 dark:text-green-400 mb-3">
+            <div className="text-4xl md:text-6xl font-bold text-green-600 dark:text-green-400 mb-1 md:mb-3">
               {cardCounts.review}
             </div>
-            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.toReview")}
             </div>
           </div>
@@ -156,13 +157,13 @@ export default function DeckOverviewPage() {
           <Button
             size="lg"
             onClick={handleStudy}
-            className="px-16 py-7 text-lg font-semibold shadow-lg"
+            className="px-10 py-5 md:px-16 md:py-7 text-base md:text-lg font-semibold shadow-lg"
           >
             <BookOpen className="mr-3 h-6 w-6" />
             {t("deckOverview.studyNow")}
           </Button>
         ) : totalCards === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-6 md:py-12">
             <p className="text-muted-foreground text-lg mb-3">
               {t("deckOverview.emptyDeck")}
             </p>
@@ -171,7 +172,7 @@ export default function DeckOverviewPage() {
             </p>
           </div>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-6 md:py-12">
             <p className="text-xl text-muted-foreground mb-2">
               {t("deckOverview.congratulations")}
             </p>
@@ -183,14 +184,14 @@ export default function DeckOverviewPage() {
       </div>
 
       {/* AI card generation – scoped to this deck only */}
-      <div className="pt-12 border-t max-w-3xl mx-auto">
+      <div className="pt-6 md:pt-12 border-t max-w-3xl mx-auto">
         <AICardGenerator
           deckId={deckId}
           onCardsConfirmed={handleCardsConfirmed}
         />
       </div>
 
-      <div className="pt-12 border-t flex justify-center">
+      <div className="pt-6 md:pt-12 border-t flex justify-center">
         <Button
           variant="ghost"
           size="sm"

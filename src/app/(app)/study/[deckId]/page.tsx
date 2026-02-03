@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useAppRouter } from "@/hooks/useAppRouter";
 import { StudyCard } from "@/components/StudyCard";
 import { getDueCards, getDeckPath, listDecks } from "@/store/decks";
 import { getEffectiveDeckSettings } from "@/store/deck-settings";
@@ -9,7 +10,7 @@ import type { Deck } from "@/lib/db";
 
 export default function DeckStudyPage() {
   const params = useParams();
-  const router = useRouter();
+  const router = useAppRouter();
   const deckId = params.deckId as string;
   const [deck, setDeck] = useState<Deck | null>(null);
   const [cards, setCards] = useState<any[]>([]);

@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useTranslation } from "@/i18n";
+import { useIsApp } from "@/hooks/useIsApp";
+import { appHref } from "@/lib/appHref";
 
 interface PaywallModalProps {
   open: boolean;
@@ -25,6 +27,7 @@ export function PaywallModal({
   remaining,
 }: PaywallModalProps) {
   const { t } = useTranslation();
+  const isApp = useIsApp();
 
   const isFreePlan = reason === "free_plan";
   const isQuotaExceeded = reason === "quota_exceeded";
@@ -74,7 +77,7 @@ export function PaywallModal({
         <div className="flex flex-col gap-3 pt-4">
           {isFreePlan ? (
             <>
-              <Link href="/pricing" className="w-full">
+              <Link href={appHref("/pricing", isApp)} className="w-full">
                 <Button className="w-full" onClick={() => onOpenChange(false)}>
                   View Plans
                 </Button>
@@ -90,7 +93,7 @@ export function PaywallModal({
           ) : isStarter ? (
             <>
               <Link
-                href="/api/checkout?plan=pro"
+                href={appHref("/api/checkout?plan=pro", isApp)}
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >

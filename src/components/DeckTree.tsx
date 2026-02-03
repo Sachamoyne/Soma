@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type React from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/hooks/useAppRouter";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,7 +44,7 @@ export function DeckTree({
   onDeckDeleted,
 }: DeckTreeProps) {
   const { t } = useTranslation();
-  const router = useRouter();
+  const router = useAppRouter();
   const supabase = createClient();
   const [subDeckDialogOpen, setSubDeckDialogOpen] = useState(false);
   const [subDeckName, setSubDeckName] = useState("");

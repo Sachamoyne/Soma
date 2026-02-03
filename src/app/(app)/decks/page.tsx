@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Topbar } from "@/components/shell/Topbar";
+import { useIsApp } from "@/hooks/useIsApp";
+import { appHref } from "@/lib/appHref";
 import { DeckTree } from "@/components/DeckTree";
 import {
   Dialog,
@@ -22,6 +24,7 @@ import { useTranslation } from "@/i18n";
 
 export default function DecksPage() {
   const { t } = useTranslation();
+  const isApp = useIsApp();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cardCounts, setCardCounts] = useState<Record<string, number>>({});
   const [learningCounts, setLearningCounts] = useState<
@@ -144,7 +147,7 @@ export default function DecksPage() {
                   return (
                     <Link
                       key={deck.id}
-                      href={`/decks/${deck.id}`}
+                      href={appHref(`/decks/${deck.id}`, isApp)}
                       className="block rounded-xl border border-border bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     >
                       <div className="flex items-center justify-between gap-3">

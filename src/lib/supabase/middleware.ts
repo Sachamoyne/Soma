@@ -29,6 +29,16 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // App mode: when ?app=1 is present on the root path, bypass the landing page
+  // and redirect straight to /login (unauthenticated) or /decks (authenticated).
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname === "/" && searchParams.get("app") === "1") {
+    const target = user ? "/decks" : "/login";
+    const url = request.nextUrl.clone();
+    url.pathname = target;
+    return NextResponse.redirect(url);
+  }
+
   // NOTE:
   // We only use this middleware to keep the Supabase session in sync.
   // Route protection and auth redirects are now handled in:

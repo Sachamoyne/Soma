@@ -6,6 +6,8 @@ import { LayoutDashboard, BookOpen, Settings, List, CreditCard } from "lucide-re
 import { cn } from "@/lib/cn";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTranslation } from "@/i18n";
+import { useIsApp } from "@/hooks/useIsApp";
+import { appHref } from "@/lib/appHref";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -14,6 +16,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const pathname = usePathname();
   const { isOpen } = useSidebar();
+  const isApp = useIsApp();
 
   const navItems = [
     // Main entry: deck list
@@ -22,7 +25,7 @@ export function AppSidebar() {
     // Statistics view (formerly dashboard)
     { href: "/statistics", label: t("nav.statistics"), icon: LayoutDashboard },
     { href: "/settings", label: t("nav.settings"), icon: Settings },
-    { href: "/billing", label: t("nav.billing"), icon: CreditCard },
+    ...(!isApp ? [{ href: "/billing", label: t("nav.billing"), icon: CreditCard }] : []),
   ];
 
   return (
@@ -49,7 +52,7 @@ export function AppSidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={appHref(item.href, isApp)}
               className={cn(
                 "relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium tracking-wide transition-all",
                 isActive
