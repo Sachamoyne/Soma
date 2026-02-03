@@ -3,20 +3,57 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
+// Array of example texts with corresponding flashcards
+const EXAMPLES = [
+  {
+    source: "The mitochondria is the powerhouse of the cell.",
+    question: "What is the powerhouse of the cell?",
+    answer: "The mitochondria",
+  },
+  {
+    source: "The French Revolution began in 1789 and marked a turning point in European history.",
+    question: "When did the French Revolution begin?",
+    answer: "1789",
+  },
+  {
+    source: "The derivative of a function measures its instantaneous rate of change.",
+    question: "What does the derivative of a function measure?",
+    answer: "Its instantaneous rate of change",
+  },
+  {
+    source: "Photosynthesis converts light energy into chemical energy stored in glucose.",
+    question: "What does photosynthesis convert light energy into?",
+    answer: "Chemical energy stored in glucose",
+  },
+  {
+    source: "In economics, inflation refers to a general increase in prices over time.",
+    question: "What is inflation in economics?",
+    answer: "A general increase in prices over time",
+  },
+  {
+    source: "DNA consists of two strands forming a double helix structure.",
+    question: "What structure does DNA form?",
+    answer: "A double helix",
+  },
+];
+
 /**
  * LandingAIDemo - Composant ISOLE pour la landing page
  * Animation purement visuelle simulant la generation IA de flashcards
  * AUCUN appel API, AUCUNE logique metier
+ * Rotation automatique entre 6 exemples differents
  */
 export function LandingAIDemo() {
   const [phase, setPhase] = useState<"idle" | "typing" | "generating" | "done">("idle");
   const [typedText, setTypedText] = useState("");
   const [showCard, setShowCard] = useState(false);
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const currentExample = EXAMPLES[exampleIndex];
 
-  const sourceText = "The mitochondria is the powerhouse of the cell.";
+  const sourceText = currentExample.source;
   const flashcard = {
-    question: "What is the powerhouse of the cell?",
-    answer: "The mitochondria",
+    question: currentExample.question,
+    answer: currentExample.answer,
   };
 
   // Animation sequence
@@ -46,7 +83,7 @@ export function LandingAIDemo() {
     }, 35);
 
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, sourceText]);
 
   // Generating to done transition
   useEffect(() => {
@@ -60,7 +97,7 @@ export function LandingAIDemo() {
     return () => clearTimeout(timer);
   }, [phase]);
 
-  // Loop animation
+  // Loop animation - rotate to next example
   useEffect(() => {
     if (phase !== "done") return;
 
@@ -68,7 +105,9 @@ export function LandingAIDemo() {
       setPhase("idle");
       setTypedText("");
       setShowCard(false);
-      // Restart
+      // Move to next example
+      setExampleIndex((prev) => (prev + 1) % EXAMPLES.length);
+      // Restart typing
       setTimeout(() => setPhase("typing"), 600);
     }, 4000);
 
