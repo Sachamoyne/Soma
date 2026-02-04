@@ -185,7 +185,12 @@
     "learning": "En cours",
     "review": "A revoir",
     "total": "Total",
-    "deck": "Paquet"
+    "deck": "Paquet",
+    "revisionMode": "Mode de revision",
+    "modeClassic": "Classique",
+    "modeMath": "Mathematiques",
+    "modeClassicDesc": "Mode standard avec repetition espacee",
+    "modeMathDesc": "Optimise pour les formules et exercices mathematiques"
   },
   "deckOverview": {
     "new": "Nouvelles",
@@ -245,6 +250,35 @@
     "learning": "En apprentissage",
     "review": "A revoir",
     "suspended": "Suspendue"
+  },
+  "cardTypes": {
+    "basic": "Basique",
+    "basicDesc": "Recto → Verso (appuyez pour reveler)",
+    "reversible": "Reversible",
+    "reversibleDesc": "Recto ⇄ Verso (direction aleatoire)",
+    "typed": "Reponse tapee",
+    "typedDesc": "Tapez la reponse pour continuer",
+    "definition": "Definition",
+    "definitionDesc": "Concept → Definition",
+    "property": "Propriete / Theoreme",
+    "propertyDesc": "Hypotheses → Resultat (avec explication optionnelle)",
+    "formula": "Formule",
+    "formulaDesc": "Contexte → Formule (LaTeX supporte)"
+  },
+  "propertyCard": {
+    "theoremName": "Theoreme",
+    "hypotheses": "Hypotheses",
+    "recallHypotheses": "Rappelez les hypotheses",
+    "hypothesesPlaceholder": "Ecrivez les hypotheses de ce theoreme de memoire...",
+    "recallHint": "Tapez les hypotheses de memoire, puis revelez pour verifier",
+    "yourAnswer": "Votre reponse",
+    "compareHint": "Comparez votre reponse avec les hypotheses attendues",
+    "prompt": "Etant donne ces hypotheses, quel est le resultat ?",
+    "result": "Resultat",
+    "showResult": "Afficher le resultat",
+    "revealAnswer": "Verifier ma reponse",
+    "explanation": "Explication / Preuve",
+    "showExplanation": "Voir l'explication"
   },
   "cardContext": {
     "changeDeck": "Changer de paquet...",
@@ -307,6 +341,36 @@
     "successImport": "{cards} cartes importees depuis {decks} paquets",
     "importFailed": "Echec de l'import"
   },
+  "addCards": {
+    "title": "Ajouter des cartes",
+    "subtitle": "Creez de nouvelles cartes pour ce paquet",
+    "modeManual": "Creation manuelle",
+    "modeAI": "Generation IA",
+    "newCard": "Nouvelle carte",
+    "cardType": "Type de carte",
+    "front": "Recto",
+    "back": "Verso",
+    "frontPlaceholder": "Entrez la question ou le recto de la carte",
+    "backPlaceholder": "Entrez la reponse ou le verso de la carte",
+    "addCard": "Ajouter la carte",
+    "adding": "Ajout...",
+    "cardCreated": "Carte creee !",
+    "importFromFile": "Importer un fichier",
+    "shortcutHint": "Appuyez sur Cmd+Entree pour ajouter",
+    "tipsTitle": "Conseils pour creer de bonnes cartes :",
+    "tip1": "Gardez les cartes simples et centrees sur un concept",
+    "tip2": "Utilisez un langage clair et concis",
+    "tip3": "Ajoutez du contexte si necessaire",
+    "tip4": "Utilisez des images ou du formatage pour rendre les cartes memorables",
+    "theoremName": "Nom du theoreme",
+    "theoremNamePlaceholder": "Ex: Theoreme de Bolzano-Weierstrass",
+    "hypotheses": "Hypotheses",
+    "hypothesesPlaceholder": "Les conditions ou hypotheses du theoreme/propriete",
+    "statement": "Enonce / Resultat",
+    "statementPlaceholder": "La conclusion ou le resultat du theoreme",
+    "explanation": "Explication / Preuve (optionnel)",
+    "explanationPlaceholder": "La demonstration ou explication detaillee"
+  },
   "deckTree": {
     "newSubDeck": "Nouveau sous-paquet",
     "newSubDeckDesc": "Creer un sous-paquet sous \"{deckName}\".",
@@ -316,7 +380,10 @@
     "front": "Recto",
     "back": "Verso",
     "questionPlaceholder": "Question ou texte du recto",
-    "answerPlaceholder": "Reponse ou texte du verso"
+    "answerPlaceholder": "Reponse ou texte du verso",
+    "revisionMode": "Mode de revision",
+    "modeClassic": "Classique",
+    "modeMath": "Mathematiques"
   },
   "moveCards": {
     "title": "Deplacer les cartes",

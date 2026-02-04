@@ -14,8 +14,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createDeck, createCard } from "@/store/decks";
+import type { DeckMode } from "@/lib/supabase-db";
 import type { Deck } from "@/lib/db";
 import { ChevronRight, ChevronDown, BookOpen, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { DeckSettingsMenu } from "@/components/DeckSettingsMenu";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/i18n";
@@ -48,6 +57,7 @@ export function DeckTree({
   const supabase = createClient();
   const [subDeckDialogOpen, setSubDeckDialogOpen] = useState(false);
   const [subDeckName, setSubDeckName] = useState("");
+  const [subDeckMode, setSubDeckMode] = useState<DeckMode>("classic");
   const [addCardDialogOpen, setAddCardDialogOpen] = useState(false);
   const [cardFront, setCardFront] = useState("");
   const [cardBack, setCardBack] = useState("");
@@ -65,8 +75,9 @@ export function DeckTree({
     if (!subDeckName.trim()) return;
 
     try {
-      await createDeck(subDeckName.trim(), deck.id);
+      await createDeck(subDeckName.trim(), deck.id, subDeckMode);
       setSubDeckName("");
+      setSubDeckMode("classic");
       setSubDeckDialogOpen(false);
       onDeckCreated();
     } catch (error) {
@@ -83,9 +94,9 @@ export function DeckTree({
     onToggleExpand(deck.id);
   };
 
-  const handleAddCardClick = (e: React.MouseEvent) => {
+  const handleAddSubDeckClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAddCardDialogOpen(true);
+    setSubDeckDialogOpen(true);
   };
 
   const handleCreateCard = async () => {
@@ -194,8 +205,8 @@ export function DeckTree({
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleAddCardClick}
-              aria-label="Add card"
+              onClick={handleAddSubDeckClick}
+              aria-label="Add sub-deck"
               className="h-11 w-11 sm:h-7 sm:w-7 px-0 sm:px-2 text-xs hover:bg-muted"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -228,7 +239,13 @@ export function DeckTree({
         </div>
       )}
 
-      <Dialog open={subDeckDialogOpen} onOpenChange={setSubDeckDialogOpen}>
+      <Dialog open={subDeckDialogOpen} onOpenChange={(open) => {
+        setSubDeckDialogOpen(open);
+        if (!open) {
+          setSubDeckName("");
+          setSubDeckMode("classic");
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("deckTree.newSubDeck")}</DialogTitle>
@@ -237,16 +254,32 @@ export function DeckTree({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Input
-              placeholder={t("deckTree.subDeckName")}
-              value={subDeckName}
-              onChange={(e) => setSubDeckName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleCreateSubDeck();
-                }
-              }}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="sub-deck-name">{t("deckTree.subDeckName")}</Label>
+              <Input
+                id="sub-deck-name"
+                placeholder={t("deckTree.subDeckName")}
+                value={subDeckName}
+                onChange={(e) => setSubDeckName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleCreateSubDeck();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sub-deck-mode">{t("deckTree.revisionMode")}</Label>
+              <Select value={subDeckMode} onValueChange={(value: DeckMode) => setSubDeckMode(value)}>
+                <SelectTrigger id="sub-deck-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">{t("deckTree.modeClassic")}</SelectItem>
+                  <SelectItem value="math">{t("deckTree.modeMath")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubDeckDialogOpen(false)}>

@@ -47,4 +47,5 @@ export {
   type IntervalPreview,
   type SchedulerSettings,
   type Settings,
+  type DeckMode,
 } from "@/lib/supabase-db";

@@ -18,7 +18,7 @@ CREATE TABLE cards (
   deck_id UUID NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
   front TEXT NOT NULL,
   back TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'basic' CHECK (type IN ('basic', 'reversible', 'typed')),
+  type TEXT NOT NULL DEFAULT 'basic' CHECK (type IN ('basic', 'reversible', 'typed', 'definition', 'property', 'formula')),
   extra JSONB,
   state TEXT NOT NULL DEFAULT 'new' CHECK (state IN ('new', 'learning', 'review')),
   due_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

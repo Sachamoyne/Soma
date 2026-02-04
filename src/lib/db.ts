@@ -8,6 +8,7 @@ export type {
   GeneratedCard,
   Settings,
   IntervalPreview,
+  DeckMode,
 } from "./supabase-db";
 
 // Note: The old Dexie 'db' object is no longer available

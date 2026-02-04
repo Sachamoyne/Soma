@@ -265,13 +265,14 @@ async function getOrCreateDeck(
       parentId = existing.id;
       deckCache.set(fullPath, existing.id);
     } else {
-      // Create new deck
+      // Create new deck (always use "classic" mode for Anki imports)
       const { data: newDeck, error }: { data: { id: string } | null; error: any } = await supabase
         .from("decks")
         .insert({
           user_id: userId,
           name: deckName,
           parent_deck_id: parentId,
+          mode: "classic",
         })
         .select("id")
         .single();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,26 +12,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Upload } from "lucide-react";
-import { createCard, invalidateDeckCaches, invalidateCardCaches } from "@/store/decks";
+import { Plus, Upload, PenLine, Sparkles } from "lucide-react";
+import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
-import { CARD_TYPES, type CardType as CardTypeEnum } from "@/lib/card-types";
+import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
+import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AICardGenerator } from "@/components/AICardGenerator";
+import { useTranslation } from "@/i18n";
+
+type CreationMode = "manual" | "ai";
 
 export default function AddCardsPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const supabase = createClient();
   const deckId = params.deckId as string;
 
+  const [deckMode, setDeckMode] = useState<DeckMode>("classic");
+  const [creationMode, setCreationMode] = useState<CreationMode>("manual");
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
+  const [theoremName, setTheoremName] = useState(""); // For property cards - theorem name
+  const [explanation, setExplanation] = useState(""); // For property cards - optional explanation
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Check if current type is property (needs special form)
+  const isPropertyType = cardType === "property";
+
+  // Load deck mode on mount
+  useEffect(() => {
+    async function loadDeckMode() {
+      try {
+        const decks = await listDecks();
+        const deck = decks.find((d) => d.id === deckId);
+        if (deck?.mode) {
+          setDeckMode(deck.mode);
+          // Set default card type based on mode
+          setCardType(getDefaultCardTypeForMode(deck.mode));
+        }
+      } catch (error) {
+        console.error("Error loading deck mode:", error);
+      }
+    }
+    loadDeckMode();
+  }, [deckId]);
+
+  // Get card types for current deck mode
+  const availableCardTypes = useMemo(() => getCardTypesForMode(deckMode), [deckMode]);
+
   const handleCreateCard = async () => {
+    // Validation: property cards require theorem name
+    if (isPropertyType && !theoremName.trim()) {
+      return;
+    }
     if (!front.trim() || !back.trim()) {
       return;
     }
@@ -41,14 +78,28 @@ export default function AddCardsPage() {
 
     try {
       const normalizedDeckId = String(deckId);
-      await createCard(normalizedDeckId, front.trim(), back.trim(), cardType, supabase);
+      
+      // Build extra field for property cards
+      let extra: Record<string, string> | null = null;
+      if (isPropertyType) {
+        extra = {
+          theoremName: theoremName.trim(),
+        };
+        if (explanation.trim()) {
+          extra.explanation = explanation.trim();
+        }
+      }
+
+      await createCard(normalizedDeckId, front.trim(), back.trim(), cardType, supabase, extra);
 
       // Clear form
       setFront("");
       setBack("");
+      setTheoremName("");
+      setExplanation("");
 
       // Show success message
-      setSuccessMessage("Card created successfully!");
+      setSuccessMessage(t("addCards.cardCreated"));
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -76,111 +127,190 @@ export default function AddCardsPage() {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: Manual card creation */}
-        <div className="space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Header with title and mode toggle */}
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">Add Cards</h2>
+              <h2 className="text-2xl font-semibold">{t("addCards.title")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Create new flashcards for this deck
+                {t("addCards.subtitle")}
               </p>
             </div>
-            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import from File
-            </Button>
+            {creationMode === "ai" && (
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                {t("addCards.importFromFile")}
+              </Button>
+            )}
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>New Card</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Success message */}
-              {successMessage && (
-                <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-3 text-sm text-green-800 dark:text-green-200">
-                  {successMessage}
-                </div>
-              )}
+          {/* Mode toggle buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant={creationMode === "manual" ? "default" : "outline"}
+              onClick={() => setCreationMode("manual")}
+              className="flex-1 sm:flex-none"
+            >
+              <PenLine className="mr-2 h-4 w-4" />
+              {t("addCards.modeManual")}
+            </Button>
+            <Button
+              variant={creationMode === "ai" ? "default" : "outline"}
+              onClick={() => setCreationMode("ai")}
+              className="flex-1 sm:flex-none"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {t("addCards.modeAI")}
+            </Button>
+          </div>
+        </div>
 
-              {/* Card type selector */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Card Type</label>
-                <Select
-                  value={cardType}
-                  onValueChange={(value) => setCardType(value as CardTypeEnum)}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background px-4 shadow-sm flex items-center justify-between text-sm text-foreground hover:border-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
-                    <SelectValue className="leading-none text-sm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CARD_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        <div>
-                          <div className="font-medium">{type.label}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {type.description}
+        {/* Manual card creation */}
+        {creationMode === "manual" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("addCards.newCard")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Success message */}
+                {successMessage && (
+                  <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-3 text-sm text-green-800 dark:text-green-200">
+                    {successMessage}
+                  </div>
+                )}
+
+                {/* Card type selector */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">{t("addCards.cardType")}</label>
+                  <Select
+                    value={cardType}
+                    onValueChange={(value) => {
+                      setCardType(value as CardTypeEnum);
+                      // Clear property-specific fields when switching away from property type
+                      if (value !== "property") {
+                        setTheoremName("");
+                        setExplanation("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background px-4 shadow-sm flex items-center justify-between text-sm text-foreground hover:border-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                      <SelectValue className="leading-none text-sm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCardTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          <div>
+                            <div className="font-medium">
+                              {type.labelKey ? t(type.labelKey) : type.label}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {type.descKey ? t(type.descKey) : type.description}
+                            </div>
                           </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Front field */}
-              <RichCardInput
-                label="Front"
-                value={front}
-                onChange={setFront}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter the question or front side of the card"
-              />
+                {/* Fields adapt based on card type */}
+                {isPropertyType ? (
+                  <>
+                    {/* Theorem name field (required) */}
+                    <RichCardInput
+                      label={t("addCards.theoremName")}
+                      value={theoremName}
+                      onChange={setTheoremName}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.theoremNamePlaceholder")}
+                    />
 
-              {/* Back field */}
-              <RichCardInput
-                label="Back"
-                value={back}
-                onChange={setBack}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter the answer or back side of the card"
-              />
+                    {/* Hypotheses field (required) */}
+                    <RichCardInput
+                      label={t("addCards.hypotheses")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.hypothesesPlaceholder")}
+                    />
 
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-xs text-muted-foreground">
-                  Press <kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">Cmd+Enter</kbd> to add card
-                </p>
-                <Button
-                  onClick={handleCreateCard}
-                  disabled={!front.trim() || !back.trim() || creating}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {creating ? "Adding..." : "Add Card"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                    {/* Statement/Result field (required) */}
+                    <RichCardInput
+                      label={t("addCards.statement")}
+                      value={back}
+                      onChange={setBack}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.statementPlaceholder")}
+                    />
 
-          {/* Quick tips */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-6">
-              <h3 className="font-medium mb-2">Tips for creating good flashcards:</h3>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Keep cards simple and focused on one concept</li>
-                <li>Use clear, concise language</li>
-                <li>Add context when necessary</li>
-                <li>Use images or formatting to make cards memorable</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+                    {/* Explanation/Proof field (optional) */}
+                    <RichCardInput
+                      label={t("addCards.explanation")}
+                      value={explanation}
+                      onChange={setExplanation}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.explanationPlaceholder")}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Standard Front field */}
+                    <RichCardInput
+                      label={t("addCards.front")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.frontPlaceholder")}
+                    />
 
-        {/* Right column: AI card generation */}
-        <div>
+                    {/* Standard Back field */}
+                    <RichCardInput
+                      label={t("addCards.back")}
+                      value={back}
+                      onChange={setBack}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.backPlaceholder")}
+                    />
+                  </>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    {t("addCards.shortcutHint").split("Cmd+")[0]}<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">Cmd+Enter</kbd>{t("addCards.shortcutHint").includes("Cmd+Enter") ? "" : t("addCards.shortcutHint").split("Cmd+Enter")[1]}
+                  </p>
+                  <Button
+                    onClick={handleCreateCard}
+                    disabled={!front.trim() || !back.trim() || (isPropertyType && !theoremName.trim()) || creating}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {creating ? t("addCards.adding") : t("addCards.addCard")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick tips */}
+            <Card className="bg-muted/50">
+              <CardContent className="pt-6">
+                <h3 className="font-medium mb-2">{t("addCards.tipsTitle")}</h3>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li>{t("addCards.tip1")}</li>
+                  <li>{t("addCards.tip2")}</li>
+                  <li>{t("addCards.tip3")}</li>
+                  <li>{t("addCards.tip4")}</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* AI card generation */}
+        {creationMode === "ai" && (
           <AICardGenerator deckId={deckId} />
-        </div>
+        )}
       </div>
 
       {/* Import dialog */}

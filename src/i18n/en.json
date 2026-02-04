@@ -185,7 +185,12 @@
     "learning": "Learning",
     "review": "Review",
     "total": "Total",
-    "deck": "Deck"
+    "deck": "Deck",
+    "revisionMode": "Revision mode",
+    "modeClassic": "Classic",
+    "modeMath": "Mathematics",
+    "modeClassicDesc": "Standard mode with spaced repetition",
+    "modeMathDesc": "Optimized for formulas and math exercises"
   },
   "deckOverview": {
     "new": "New",
@@ -245,6 +250,35 @@
     "learning": "Learning",
     "review": "Review",
     "suspended": "Suspended"
+  },
+  "cardTypes": {
+    "basic": "Basic",
+    "basicDesc": "Front → Back (press to reveal)",
+    "reversible": "Reversible",
+    "reversibleDesc": "Front ⇄ Back (random direction)",
+    "typed": "Typed Answer",
+    "typedDesc": "Type the answer to proceed",
+    "definition": "Definition",
+    "definitionDesc": "Concept → Definition",
+    "property": "Property / Theorem",
+    "propertyDesc": "Hypotheses → Result (with optional explanation)",
+    "formula": "Formula",
+    "formulaDesc": "Context → Formula (LaTeX supported)"
+  },
+  "propertyCard": {
+    "theoremName": "Theorem",
+    "hypotheses": "Hypotheses",
+    "recallHypotheses": "Recall the hypotheses",
+    "hypothesesPlaceholder": "Write the hypotheses of this theorem from memory...",
+    "recallHint": "Type the hypotheses from memory, then reveal to check",
+    "yourAnswer": "Your answer",
+    "compareHint": "Compare your answer with the expected hypotheses",
+    "prompt": "Given these hypotheses, what is the result?",
+    "result": "Result",
+    "showResult": "Show result",
+    "revealAnswer": "Check my answer",
+    "explanation": "Explanation / Proof",
+    "showExplanation": "Show explanation"
   },
   "cardContext": {
     "changeDeck": "Change deck...",
@@ -307,6 +341,36 @@
     "successImport": "Successfully imported {cards} cards from {decks} decks",
     "importFailed": "Import failed"
   },
+  "addCards": {
+    "title": "Add Cards",
+    "subtitle": "Create new flashcards for this deck",
+    "modeManual": "Create manually",
+    "modeAI": "Generate with AI",
+    "newCard": "New Card",
+    "cardType": "Card Type",
+    "front": "Front",
+    "back": "Back",
+    "frontPlaceholder": "Enter the question or front side of the card",
+    "backPlaceholder": "Enter the answer or back side of the card",
+    "addCard": "Add Card",
+    "adding": "Adding...",
+    "cardCreated": "Card created!",
+    "importFromFile": "Import from File",
+    "shortcutHint": "Press Cmd+Enter to add card",
+    "tipsTitle": "Tips for creating good flashcards:",
+    "tip1": "Keep cards simple and focused on one concept",
+    "tip2": "Use clear, concise language",
+    "tip3": "Add context when necessary",
+    "tip4": "Use images or formatting to make cards memorable",
+    "theoremName": "Theorem name",
+    "theoremNamePlaceholder": "E.g., Bolzano-Weierstrass theorem",
+    "hypotheses": "Hypotheses",
+    "hypothesesPlaceholder": "The conditions or hypotheses of the theorem/property",
+    "statement": "Statement / Result",
+    "statementPlaceholder": "The conclusion or result of the theorem",
+    "explanation": "Explanation / Proof (optional)",
+    "explanationPlaceholder": "The detailed proof or explanation"
+  },
   "deckTree": {
     "newSubDeck": "New sub-deck",
     "newSubDeckDesc": "Create a sub-deck under \"{deckName}\".",
@@ -316,7 +380,10 @@
     "front": "Front",
     "back": "Back",
     "questionPlaceholder": "Question or front text",
-    "answerPlaceholder": "Answer or back text"
+    "answerPlaceholder": "Answer or back text",
+    "revisionMode": "Revision mode",
+    "modeClassic": "Classic",
+    "modeMath": "Mathematics"
   },
   "moveCards": {
     "title": "Move cards",

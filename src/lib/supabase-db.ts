@@ -93,7 +93,7 @@ export async function listDecks(): Promise<Deck[]> {
 
   const { data, error } = await supabase
     .from("decks")
-    .select("id, user_id, name, parent_deck_id, created_at, updated_at")
+    .select("id, user_id, name, parent_deck_id, mode, created_at, updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -103,9 +103,12 @@ export async function listDecks(): Promise<Deck[]> {
   return result;
 }
 
+export type DeckMode = "classic" | "math";
+
 export async function createDeck(
   name: string,
-  parentDeckId?: string | null
+  parentDeckId?: string | null,
+  mode: DeckMode = "classic"
 ): Promise<Deck> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
@@ -113,6 +116,7 @@ export async function createDeck(
   const insertData: any = {
     user_id: userId,
     name,
+    mode,
   };
 
   if (parentDeckId) {
@@ -347,8 +351,9 @@ export async function createCard(
   deckId: string,
   front: string,
   back: string,
-  type: "basic" | "reversible" | "typed" = "basic",
-  supabase: SupabaseClient
+  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" = "basic",
+  supabase: SupabaseClient,
+  extra?: Record<string, unknown> | null
 ): Promise<Card> {
   // Sanitize inputs
   const sanitizedFront = `${front ?? ""}`.trim();
@@ -414,6 +419,7 @@ export async function createCard(
     front: sanitizedFront,
     back: sanitizedBack,
     type: isReversible ? ("basic" as const) : normalizedType,
+    ...(extra ? { extra } : {}),
   };
   const payload2 = isReversible
     ? {
@@ -448,6 +454,12 @@ export async function createCard(
     due_at: basePayload.due_at,
     rowCount: payloads.length,
   });
+
+  // DEBUG: Log full payload for property cards
+  console.log("[createCard] 📦 Full payload1:", JSON.stringify(payload1, null, 2));
+  if (extra) {
+    console.log("[createCard] 📦 Extra field:", JSON.stringify(extra, null, 2));
+  }
 
   const { data, error } = await supabase
     .from("cards")
@@ -584,7 +596,7 @@ export async function updateCard(
   id: string,
   front: string,
   back: string,
-  type?: "basic" | "reversible" | "typed"
+  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula"
 ): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();

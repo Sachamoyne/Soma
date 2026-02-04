@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, Trash2 } from "lucide-react";
 import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches } from "@/store/decks";
 import { useTranslation } from "@/i18n";
-import { AICardGenerator } from "@/components/AICardGenerator";
 
 export default function DeckOverviewPage() {
   const { t } = useTranslation();
@@ -83,34 +82,6 @@ export default function DeckOverviewPage() {
 
   const hasDueCards = (cardCounts.new + cardCounts.learning + cardCounts.review) > 0;
 
-  const handleCardsConfirmed = async (importedCount: number) => {
-    // Overview-specific retry loop to ensure counts reflect new cards
-    const normalizedDeckId = String(deckId);
-    const previousNew = cardCounts.new;
-    const expectedNew = previousNew + importedCount;
-
-    for (let retry = 0; retry < 3; retry++) {
-      try {
-        invalidateCardCaches();
-        const { due, total } = await getAnkiCountsForDecks([normalizedDeckId]);
-        const counts = due[normalizedDeckId] || { new: 0, learning: 0, review: 0 };
-        setCardCounts(counts);
-        setTotalCards(total[normalizedDeckId] || 0);
-
-        if (counts.new >= expectedNew) {
-          console.log("[handleCardsConfirmed] Counts updated successfully:", counts);
-          break;
-        }
-
-        if (retry < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-      } catch (error) {
-        console.error("[handleCardsConfirmed] Error refreshing counts (retry", retry, "):", error);
-      }
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -181,14 +152,6 @@ export default function DeckOverviewPage() {
             </p>
           </div>
         )}
-      </div>
-
-      {/* AI card generation – scoped to this deck only */}
-      <div className="pt-6 md:pt-12 border-t max-w-3xl mx-auto">
-        <AICardGenerator
-          deckId={deckId}
-          onCardsConfirmed={handleCardsConfirmed}
-        />
       </div>
 
       <div className="pt-6 md:pt-12 border-t flex justify-center">

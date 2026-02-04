@@ -17,9 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listDecks, createDeck, getAnkiCountsForDecks, invalidateDeckCaches, invalidateCardCaches } from "@/store/decks";
+import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import type { Deck } from "@/lib/db";
 import { BookOpen, ChevronRight } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 
 export default function DecksPage() {
@@ -34,6 +43,7 @@ export default function DecksPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deckName, setDeckName] = useState("");
+  const [deckMode, setDeckMode] = useState<DeckMode>("classic");
   const [expandedDeckIds, setExpandedDeckIds] = useState<Set<string>>(new Set());
 
   const loadDecks = async () => {
@@ -85,9 +95,10 @@ export default function DecksPage() {
     if (!deckName.trim()) return;
 
     try {
-      await createDeck(deckName.trim());
+      await createDeck(deckName.trim(), null, deckMode);
       await loadDecks();
       setDeckName("");
+      setDeckMode("classic");
       setDialogOpen(false);
     } catch (error) {
       console.error("Error creating deck:", error);
@@ -234,7 +245,13 @@ export default function DecksPage() {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) {
+          setDeckName("");
+          setDeckMode("classic");
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("decks.newDeck")}</DialogTitle>
@@ -242,13 +259,29 @@ export default function DecksPage() {
               {t("decks.newDeckDesc")}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder={t("decks.deckName")}
-              value={deckName}
-              onChange={(e) => setDeckName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreateDeck()}
-            />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="deck-name">{t("decks.deckName")}</Label>
+              <Input
+                id="deck-name"
+                placeholder={t("decks.deckName")}
+                value={deckName}
+                onChange={(e) => setDeckName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateDeck()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deck-mode">{t("decks.revisionMode")}</Label>
+              <Select value={deckMode} onValueChange={(value: DeckMode) => setDeckMode(value)}>
+                <SelectTrigger id="deck-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">{t("decks.modeClassic")}</SelectItem>
+                  <SelectItem value="math">{t("decks.modeMath")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>

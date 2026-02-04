@@ -28,6 +28,7 @@ import { cn } from "@/lib/cn";
 import { BasicCard } from "@/components/cards/BasicCard";
 import { ReversibleCard } from "@/components/cards/ReversibleCard";
 import { TypedCard } from "@/components/cards/TypedCard";
+import { PropertyCard } from "@/components/cards/PropertyCard";
 import type { CardType as CardTypeEnum } from "@/lib/card-types";
 
 // Session requeue to mimic Anki learning behavior
@@ -491,8 +492,21 @@ export function StudyCard({
                   />
                 );
 
+              case "property":
+                return (
+                  <PropertyCard
+                    card={currentCard}
+                    onRate={handleRate}
+                    intervalPreviews={intervalPreviews}
+                    ratingFlash={ratingFlash}
+                  />
+                );
+
               case "basic":
+              case "definition":
+              case "formula":
               default:
+                // definition and formula cards use BasicCard behavior for now
                 return (
                   <BasicCard
                     card={currentCard}
