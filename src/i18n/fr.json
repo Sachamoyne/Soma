@@ -189,8 +189,18 @@
     "revisionMode": "Mode de revision",
     "modeClassic": "Classique",
     "modeMath": "Mathematiques",
+    "modeLanguages": "Langues",
     "modeClassicDesc": "Mode standard avec repetition espacee",
-    "modeMathDesc": "Optimise pour les formules et exercices mathematiques"
+    "modeMathDesc": "Optimise pour les formules et exercices mathematiques",
+    "modeLanguagesDesc": "Optimise pour le vocabulaire et la grammaire",
+    "sourceLanguage": "Langue source",
+    "targetLanguage": "Langue cible",
+    "vocabDirection": "Direction des cartes",
+    "vocabDirectionNormal": "Normal (source → cible)",
+    "vocabDirectionReversed": "Inverse (cible → source)",
+    "vocabDirectionBoth": "Les deux directions",
+    "sourceLanguagePlaceholder": "Ex: Francais",
+    "targetLanguagePlaceholder": "Ex: Anglais"
   },
   "deckOverview": {
     "new": "Nouvelles",
@@ -263,7 +273,11 @@
     "property": "Propriete / Theoreme",
     "propertyDesc": "Hypotheses → Resultat (avec explication optionnelle)",
     "formula": "Formule",
-    "formulaDesc": "Contexte → Formule (LaTeX supporte)"
+    "formulaDesc": "Contexte → Formule (LaTeX supporte)",
+    "vocabulary": "Vocabulaire",
+    "vocabularyDesc": "Mot → Traduction",
+    "grammarRule": "Regle de grammaire",
+    "grammarRuleDesc": "Regle → Explication + exemple"
   },
   "propertyCard": {
     "theoremName": "Theoreme",
@@ -383,7 +397,34 @@
     "answerPlaceholder": "Reponse ou texte du verso",
     "revisionMode": "Mode de revision",
     "modeClassic": "Classique",
-    "modeMath": "Mathematiques"
+    "modeMath": "Mathematiques",
+    "modeLanguages": "Langues"
+  },
+  "vocabularyImport": {
+    "title": "Importer du vocabulaire",
+    "description": "Uploadez une photo de liste de vocabulaire pour generer des cartes automatiquement.",
+    "uploadPhoto": "Uploader une photo",
+    "uploadHint": "Photo d'une page de vocabulaire (manuel, cahier, liste imprimee)",
+    "extracting": "Extraction du texte...",
+    "parsing": "Analyse du vocabulaire...",
+    "reviewTitle": "Verifier le vocabulaire extrait",
+    "reviewDescription": "Modifiez ou supprimez les entrees incorrectes avant de generer les cartes.",
+    "wordSource": "Mot source",
+    "wordTarget": "Traduction",
+    "gender": "Genre",
+    "plural": "Pluriel",
+    "note": "Note",
+    "example": "Exemple",
+    "addEntry": "Ajouter une entree",
+    "removeEntry": "Supprimer",
+    "generateCards": "Generer les cartes",
+    "skipAndGenerate": "Passer et generer",
+    "generating": "Generation...",
+    "entriesFound": "{count} entrees trouvees",
+    "noEntriesFound": "Aucune entree trouvee. Verifiez la photo ou ajoutez manuellement.",
+    "cardsGenerated": "{count} cartes generees !",
+    "ocrFailed": "Echec de l'extraction du texte. Essayez une photo plus nette.",
+    "parsingFailed": "Echec de l'analyse. Verifiez que la photo contient une liste de vocabulaire."
   },
   "moveCards": {
     "title": "Deplacer les cartes",

@@ -48,4 +48,7 @@ export {
   type SchedulerSettings,
   type Settings,
   type DeckMode,
+  type VocabDirection,
+  type LanguagesConfig,
+  type DeckConfig,
 } from "@/lib/supabase-db";

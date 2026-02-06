@@ -189,8 +189,18 @@
     "revisionMode": "Revision mode",
     "modeClassic": "Classic",
     "modeMath": "Mathematics",
+    "modeLanguages": "Languages",
     "modeClassicDesc": "Standard mode with spaced repetition",
-    "modeMathDesc": "Optimized for formulas and math exercises"
+    "modeMathDesc": "Optimized for formulas and math exercises",
+    "modeLanguagesDesc": "Optimized for vocabulary and grammar",
+    "sourceLanguage": "Source language",
+    "targetLanguage": "Target language",
+    "vocabDirection": "Card direction",
+    "vocabDirectionNormal": "Normal (source → target)",
+    "vocabDirectionReversed": "Reversed (target → source)",
+    "vocabDirectionBoth": "Both directions",
+    "sourceLanguagePlaceholder": "E.g., French",
+    "targetLanguagePlaceholder": "E.g., English"
   },
   "deckOverview": {
     "new": "New",
@@ -263,7 +273,11 @@
     "property": "Property / Theorem",
     "propertyDesc": "Hypotheses → Result (with optional explanation)",
     "formula": "Formula",
-    "formulaDesc": "Context → Formula (LaTeX supported)"
+    "formulaDesc": "Context → Formula (LaTeX supported)",
+    "vocabulary": "Vocabulary",
+    "vocabularyDesc": "Word → Translation",
+    "grammarRule": "Grammar Rule",
+    "grammarRuleDesc": "Rule → Explanation + example"
   },
   "propertyCard": {
     "theoremName": "Theorem",
@@ -383,7 +397,34 @@
     "answerPlaceholder": "Answer or back text",
     "revisionMode": "Revision mode",
     "modeClassic": "Classic",
-    "modeMath": "Mathematics"
+    "modeMath": "Mathematics",
+    "modeLanguages": "Languages"
+  },
+  "vocabularyImport": {
+    "title": "Import Vocabulary",
+    "description": "Upload a photo of a vocabulary list to automatically generate cards.",
+    "uploadPhoto": "Upload photo",
+    "uploadHint": "Photo of a vocabulary page (textbook, notebook, printed list)",
+    "extracting": "Extracting text...",
+    "parsing": "Parsing vocabulary...",
+    "reviewTitle": "Review extracted vocabulary",
+    "reviewDescription": "Edit or remove incorrect entries before generating cards.",
+    "wordSource": "Source word",
+    "wordTarget": "Translation",
+    "gender": "Gender",
+    "plural": "Plural",
+    "note": "Note",
+    "example": "Example",
+    "addEntry": "Add entry",
+    "removeEntry": "Remove",
+    "generateCards": "Generate cards",
+    "skipAndGenerate": "Skip & generate",
+    "generating": "Generating...",
+    "entriesFound": "{count} entries found",
+    "noEntriesFound": "No entries found. Check the photo or add manually.",
+    "cardsGenerated": "{count} cards generated!",
+    "ocrFailed": "Failed to extract text. Try a clearer photo.",
+    "parsingFailed": "Failed to parse. Make sure the photo contains a vocabulary list."
   },
   "moveCards": {
     "title": "Move cards",

@@ -98,7 +98,7 @@ export function BasicCard({
         }}
       >
         <div
-          className="relative w-full min-h-[400px]"
+          className="relative w-full h-[min(50vh,500px)] min-h-[280px]"
           style={{
             transformStyle: "preserve-3d",
             transform: showBack ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -107,38 +107,42 @@ export function BasicCard({
         >
           {/* Front face */}
           <Card
-            className="absolute inset-0 w-full min-h-[400px] shadow-lg border-border/50"
+            className="absolute inset-0 w-full overflow-hidden shadow-lg border-border/50"
             style={{
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
               transform: "rotateY(0deg)",
             }}
           >
-            <CardContent className="flex min-h-[400px] flex-col items-center justify-center p-12">
-              <div className="text-center max-w-2xl">
-                <div
-                  className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
-                  dangerouslySetInnerHTML={{ __html: card.front }}
-                />
+            <CardContent className="h-full overflow-y-auto p-0">
+              <div className="flex min-h-full items-center justify-center p-12">
+                <div className="text-center max-w-2xl">
+                  <div
+                    className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
+                    dangerouslySetInnerHTML={{ __html: card.front }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Back face */}
           <Card
-            className="absolute inset-0 w-full min-h-[400px] shadow-lg border-border/50"
+            className="absolute inset-0 w-full overflow-hidden shadow-lg border-border/50"
             style={{
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
             }}
           >
-            <CardContent className="flex min-h-[400px] flex-col items-center justify-center p-12">
-              <div className="text-center max-w-2xl">
-                <div
-                  className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
-                  dangerouslySetInnerHTML={{ __html: card.back }}
-                />
+            <CardContent className="h-full overflow-y-auto p-0">
+              <div className="flex min-h-full items-center justify-center p-12">
+                <div className="text-center max-w-2xl">
+                  <div
+                    className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
+                    dangerouslySetInnerHTML={{ __html: card.back }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

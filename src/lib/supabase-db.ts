@@ -93,7 +93,7 @@ export async function listDecks(): Promise<Deck[]> {
 
   const { data, error } = await supabase
     .from("decks")
-    .select("id, user_id, name, parent_deck_id, mode, created_at, updated_at")
+    .select("id, user_id, name, parent_deck_id, mode, config, created_at, updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -103,12 +103,26 @@ export async function listDecks(): Promise<Deck[]> {
   return result;
 }
 
-export type DeckMode = "classic" | "math";
+export type DeckMode = "classic" | "math" | "languages";
+
+/** Vocabulary direction for languages mode */
+export type VocabDirection = "normal" | "reversed" | "both";
+
+/** Configuration for languages mode decks */
+export interface LanguagesConfig {
+  sourceLanguage: string;
+  targetLanguage: string;
+  vocabDirection: VocabDirection;
+}
+
+/** Deck configuration (mode-specific settings stored in config JSONB) */
+export type DeckConfig = LanguagesConfig | null;
 
 export async function createDeck(
   name: string,
   parentDeckId?: string | null,
-  mode: DeckMode = "classic"
+  mode: DeckMode = "classic",
+  config?: DeckConfig
 ): Promise<Deck> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
@@ -121,6 +135,11 @@ export async function createDeck(
 
   if (parentDeckId) {
     insertData.parent_deck_id = parentDeckId;
+  }
+
+  // Add config for modes that require it (e.g., languages)
+  if (config) {
+    insertData.config = config;
   }
 
   const { data, error } = await supabase
@@ -351,7 +370,7 @@ export async function createCard(
   deckId: string,
   front: string,
   back: string,
-  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" = "basic",
+  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" = "basic",
   supabase: SupabaseClient,
   extra?: Record<string, unknown> | null
 ): Promise<Card> {
@@ -596,7 +615,7 @@ export async function updateCard(
   id: string,
   front: string,
   back: string,
-  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula"
+  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule"
 ): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();

@@ -11,8 +11,11 @@ export type ClassicCardType = "basic" | "reversible" | "typed";
 // Math mode card types (semantic types, behave like "basic" during review)
 export type MathCardType = "definition" | "property" | "formula";
 
+// Languages mode card types (semantic types, behave like "basic" during review)
+export type LanguagesCardType = "vocabulary" | "grammar_rule";
+
 // Union of all card types
-export type CardType = ClassicCardType | MathCardType;
+export type CardType = ClassicCardType | MathCardType | LanguagesCardType;
 
 export interface CardTypeInfo {
   id: CardType;
@@ -87,6 +90,30 @@ export const MATH_CARD_TYPES: CardTypeInfo[] = [
 ];
 
 /**
+ * Languages mode card types (semantic types for language learning):
+ * - vocabulary: Word → Translation (with optional gender, plural, notes)
+ * - grammar_rule: Rule title → Explanation + example
+ *
+ * These behave like "basic" cards during review for now.
+ */
+export const LANGUAGES_CARD_TYPES: CardTypeInfo[] = [
+  {
+    id: "vocabulary",
+    label: "Vocabulary",
+    description: "Word → Translation",
+    labelKey: "cardTypes.vocabulary",
+    descKey: "cardTypes.vocabularyDesc",
+  },
+  {
+    id: "grammar_rule",
+    label: "Grammar Rule",
+    description: "Rule → Explanation + example",
+    labelKey: "cardTypes.grammarRule",
+    descKey: "cardTypes.grammarRuleDesc",
+  },
+];
+
+/**
  * Legacy export for backward compatibility
  * @deprecated Use CLASSIC_CARD_TYPES or getCardTypesForMode() instead
  */
@@ -95,15 +122,29 @@ export const CARD_TYPES: CardTypeInfo[] = CLASSIC_CARD_TYPES;
 /**
  * Returns the appropriate card types for a given deck mode
  */
-export function getCardTypesForMode(mode: "classic" | "math"): CardTypeInfo[] {
-  return mode === "math" ? MATH_CARD_TYPES : CLASSIC_CARD_TYPES;
+export function getCardTypesForMode(mode: "classic" | "math" | "languages"): CardTypeInfo[] {
+  switch (mode) {
+    case "math":
+      return MATH_CARD_TYPES;
+    case "languages":
+      return LANGUAGES_CARD_TYPES;
+    default:
+      return CLASSIC_CARD_TYPES;
+  }
 }
 
 /**
  * Returns the default card type for a given deck mode
  */
-export function getDefaultCardTypeForMode(mode: "classic" | "math"): CardType {
-  return mode === "math" ? "definition" : "basic";
+export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages"): CardType {
+  switch (mode) {
+    case "math":
+      return "definition";
+    case "languages":
+      return "vocabulary";
+    default:
+      return "basic";
+  }
 }
 
 /**
@@ -117,8 +158,9 @@ export interface CardWithType {
 
 /** All valid card type values */
 const ALL_CARD_TYPES: CardType[] = [
-  "basic", "reversible", "typed",  // Classic
-  "definition", "property", "formula",  // Math
+  "basic", "reversible", "typed",           // Classic
+  "definition", "property", "formula",       // Math
+  "vocabulary", "grammar_rule",              // Languages
 ];
 
 /**
@@ -141,6 +183,13 @@ export function getDefaultCardType(): CardType {
  */
 export function isMathCardType(type: CardType): type is MathCardType {
   return type === "definition" || type === "property" || type === "formula";
+}
+
+/**
+ * Checks if a card type is a languages-specific type
+ */
+export function isLanguagesCardType(type: CardType): type is LanguagesCardType {
+  return type === "vocabulary" || type === "grammar_rule";
 }
 
 /**

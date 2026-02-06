@@ -9,6 +9,9 @@ export type {
   Settings,
   IntervalPreview,
   DeckMode,
+  VocabDirection,
+  LanguagesConfig,
+  DeckConfig,
 } from "./supabase-db";
 
 // Note: The old Dexie 'db' object is no longer available

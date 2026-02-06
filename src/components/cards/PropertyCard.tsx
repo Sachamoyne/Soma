@@ -125,8 +125,9 @@ export function PropertyCard({
     <>
       {/* Card container */}
       <div className="relative w-full">
-        <Card className="w-full min-h-[400px] shadow-lg border-border/50">
-          <CardContent className="flex min-h-[400px] flex-col p-8 md:p-12">
+        <Card className="w-full h-[min(50vh,500px)] min-h-[280px] overflow-hidden shadow-lg border-border/50">
+          <CardContent className="h-full overflow-y-auto p-0">
+            <div className="flex min-h-full flex-col p-8 md:p-12">
             {/* PHASE 1: Question - Theorem name + User input for hypotheses */}
             {!showResult && (
               <div className="flex-1 flex flex-col">
@@ -270,6 +271,7 @@ export function PropertyCard({
                 )}
               </div>
             )}
+            </div>
           </CardContent>
         </Card>
       </div>

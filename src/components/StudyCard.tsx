@@ -28,7 +28,6 @@ import { cn } from "@/lib/cn";
 import { BasicCard } from "@/components/cards/BasicCard";
 import { ReversibleCard } from "@/components/cards/ReversibleCard";
 import { TypedCard } from "@/components/cards/TypedCard";
-import { PropertyCard } from "@/components/cards/PropertyCard";
 import type { CardType as CardTypeEnum } from "@/lib/card-types";
 
 // Session requeue to mimic Anki learning behavior
@@ -459,7 +458,7 @@ export function StudyCard({
         </div>
 
         {/* Main content container */}
-        <div className="mx-auto flex max-w-3xl w-full flex-col items-center justify-center space-y-8">
+        <div className="mx-auto flex max-w-3xl w-full flex-col items-center space-y-8 pt-16">
           {error && (
             <div className="w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -492,21 +491,8 @@ export function StudyCard({
                   />
                 );
 
-              case "property":
-                return (
-                  <PropertyCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
               case "basic":
-              case "definition":
-              case "formula":
               default:
-                // definition and formula cards use BasicCard behavior for now
                 return (
                   <BasicCard
                     card={currentCard}

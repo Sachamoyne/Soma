@@ -67,6 +67,7 @@ import { requireAuth } from "./middleware/auth";
 import ankiRouter from "./routes/anki";
 import pdfRouter from "./routes/pdf";
 import generateRouter from "./routes/generate";
+import languagesRouter from "./routes/languages";
 import stripeRouter, { handleStripeWebhook } from "./routes/stripe";
 
 const app = express();
@@ -122,6 +123,7 @@ app.use("/stripe", stripeRouter);
 app.use("/anki", requireAuth, ankiRouter);
 app.use("/pdf", requireAuth, pdfRouter);
 app.use("/generate", requireAuth, generateRouter);
+app.use("/languages", requireAuth, languagesRouter);
 
 // Start server
 app.listen(PORT, () => {

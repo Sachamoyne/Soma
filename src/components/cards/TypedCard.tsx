@@ -71,74 +71,76 @@ export function TypedCard({
     <>
       {/* Card container */}
       <div className="relative w-full">
-        <Card className="w-full min-h-[400px] shadow-lg border-border/50">
-          <CardContent className="flex min-h-[400px] flex-col items-center justify-center p-12 gap-8">
-            {/* Question */}
-            <div className="text-center max-w-2xl">
-              <div
-                className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
-                dangerouslySetInnerHTML={{ __html: card.front }}
-              />
-            </div>
-
-            {/* Input field */}
-            {!isSubmitted ? (
-              <div className="w-full max-w-md">
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type your answer..."
-                  className="text-lg h-12 text-center"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                />
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  Press Enter to submit
-                </p>
-              </div>
-            ) : (
-              <div className="w-full max-w-md space-y-4">
-                {/* User's answer with feedback */}
+        <Card className="w-full h-[min(50vh,500px)] min-h-[280px] overflow-hidden shadow-lg border-border/50">
+          <CardContent className="h-full overflow-y-auto p-0">
+            <div className="flex min-h-full flex-col items-center justify-center p-12 gap-8">
+              {/* Question */}
+              <div className="text-center max-w-2xl">
                 <div
-                  className={cn(
-                    "flex items-center gap-3 p-4 rounded-lg border-2",
-                    isCorrect
-                      ? "bg-green-50 dark:bg-green-950/20 border-green-500"
-                      : "bg-red-50 dark:bg-red-950/20 border-red-500"
-                  )}
-                >
-                  {isCorrect ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Your answer:</p>
-                    <p className="font-medium">{userAnswer}</p>
-                  </div>
-                </div>
-
-                {/* Correct answer (if wrong) */}
-                {!isCorrect && (
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <p className="text-sm text-muted-foreground">Correct answer:</p>
-                    <p className="font-medium text-lg">{expectedAnswer}</p>
-                  </div>
-                )}
-
-                {/* Success message (if correct) */}
-                {isCorrect && (
-                  <p className="text-center text-sm text-green-600 dark:text-green-400">
-                    Correct! Rate how well you knew this card.
-                  </p>
-                )}
+                  className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
+                  dangerouslySetInnerHTML={{ __html: card.front }}
+                />
               </div>
-            )}
+
+              {/* Input field */}
+              {!isSubmitted ? (
+                <div className="w-full max-w-md">
+                  <Input
+                    ref={inputRef}
+                    type="text"
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type your answer..."
+                    className="text-lg h-12 text-center"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                  />
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Press Enter to submit
+                  </p>
+                </div>
+              ) : (
+                <div className="w-full max-w-md space-y-4">
+                  {/* User's answer with feedback */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-lg border-2",
+                      isCorrect
+                        ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                        : "bg-red-50 dark:bg-red-950/20 border-red-500"
+                    )}
+                  >
+                    {isCorrect ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Your answer:</p>
+                      <p className="font-medium">{userAnswer}</p>
+                    </div>
+                  </div>
+
+                  {/* Correct answer (if wrong) */}
+                  {!isCorrect && (
+                    <div className="p-4 rounded-lg bg-muted/50 border">
+                      <p className="text-sm text-muted-foreground">Correct answer:</p>
+                      <p className="font-medium text-lg">{expectedAnswer}</p>
+                    </div>
+                  )}
+
+                  {/* Success message (if correct) */}
+                  {isCorrect && (
+                    <p className="text-center text-sm text-green-600 dark:text-green-400">
+                      Correct! Rate how well you knew this card.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

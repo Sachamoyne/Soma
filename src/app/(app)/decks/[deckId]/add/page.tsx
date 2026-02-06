@@ -13,13 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Upload, PenLine, Sparkles } from "lucide-react";
-import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks } from "@/store/decks";
+import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks, type Deck } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
 import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
+import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
 import { AICardGenerator } from "@/components/AICardGenerator";
 import { useTranslation } from "@/i18n";
+import { Camera } from "lucide-react";
 
 type CreationMode = "manual" | "ai";
 
@@ -29,6 +31,7 @@ export default function AddCardsPage() {
   const supabase = createClient();
   const deckId = params.deckId as string;
 
+  const [deck, setDeck] = useState<Deck | null>(null);
   const [deckMode, setDeckMode] = useState<DeckMode>("classic");
   const [creationMode, setCreationMode] = useState<CreationMode>("manual");
   const [front, setFront] = useState("");
@@ -38,6 +41,7 @@ export default function AddCardsPage() {
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [vocabImportDialogOpen, setVocabImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Check if current type is property (needs special form)
@@ -45,20 +49,23 @@ export default function AddCardsPage() {
 
   // Load deck mode on mount
   useEffect(() => {
-    async function loadDeckMode() {
+    async function loadDeck() {
       try {
         const decks = await listDecks();
-        const deck = decks.find((d) => d.id === deckId);
-        if (deck?.mode) {
-          setDeckMode(deck.mode);
-          // Set default card type based on mode
-          setCardType(getDefaultCardTypeForMode(deck.mode));
+        const foundDeck = decks.find((d) => d.id === deckId);
+        if (foundDeck) {
+          setDeck(foundDeck);
+          if (foundDeck.mode) {
+            setDeckMode(foundDeck.mode);
+            // Set default card type based on mode
+            setCardType(getDefaultCardTypeForMode(foundDeck.mode));
+          }
         }
       } catch (error) {
-        console.error("Error loading deck mode:", error);
+        console.error("Error loading deck:", error);
       }
     }
-    loadDeckMode();
+    loadDeck();
   }, [deckId]);
 
   // Get card types for current deck mode
@@ -125,6 +132,12 @@ export default function AddCardsPage() {
     setImportDialogOpen(false);
   };
 
+  const handleVocabImportSuccess = () => {
+    invalidateDeckCaches();
+    invalidateCardCaches();
+    setVocabImportDialogOpen(false);
+  };
+
   return (
     <>
       <div className="max-w-3xl mx-auto space-y-6">
@@ -137,12 +150,21 @@ export default function AddCardsPage() {
                 {t("addCards.subtitle")}
               </p>
             </div>
-            {creationMode === "ai" && (
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                {t("addCards.importFromFile")}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {/* Vocabulary import button for languages mode */}
+              {deckMode === "languages" && deck && (
+                <Button variant="outline" onClick={() => setVocabImportDialogOpen(true)}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  {t("vocabularyImport.title")}
+                </Button>
+              )}
+              {creationMode === "ai" && (
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("addCards.importFromFile")}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Mode toggle buttons */}
@@ -320,6 +342,16 @@ export default function AddCardsPage() {
         initialDeckId={deckId}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Vocabulary import dialog for languages mode */}
+      {deck && deckMode === "languages" && (
+        <VocabularyImportDialog
+          open={vocabImportDialogOpen}
+          onOpenChange={setVocabImportDialogOpen}
+          deck={deck}
+          onSuccess={handleVocabImportSuccess}
+        />
+      )}
     </>
   );
 }

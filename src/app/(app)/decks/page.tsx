@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listDecks, createDeck, getAnkiCountsForDecks, invalidateDeckCaches, invalidateCardCaches } from "@/store/decks";
-import type { DeckMode } from "@/lib/supabase-db";
+import type { DeckMode, VocabDirection, LanguagesConfig } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import type { Deck } from "@/lib/db";
 import { BookOpen, ChevronRight } from "lucide-react";
@@ -45,6 +45,10 @@ export default function DecksPage() {
   const [deckName, setDeckName] = useState("");
   const [deckMode, setDeckMode] = useState<DeckMode>("classic");
   const [expandedDeckIds, setExpandedDeckIds] = useState<Set<string>>(new Set());
+  // Languages mode options
+  const [sourceLanguage, setSourceLanguage] = useState("");
+  const [targetLanguage, setTargetLanguage] = useState("");
+  const [vocabDirection, setVocabDirection] = useState<VocabDirection>("normal");
 
   const loadDecks = async () => {
     try {
@@ -93,12 +97,33 @@ export default function DecksPage() {
 
   const handleCreateDeck = async () => {
     if (!deckName.trim()) return;
+    
+    // Validate languages mode requirements
+    if (deckMode === "languages") {
+      if (!sourceLanguage.trim() || !targetLanguage.trim()) {
+        alert(t("decks.sourceLanguage") + " / " + t("decks.targetLanguage") + " required");
+        return;
+      }
+    }
 
     try {
-      await createDeck(deckName.trim(), null, deckMode);
+      // Build config for languages mode
+      const config: LanguagesConfig | undefined = deckMode === "languages" 
+        ? {
+            sourceLanguage: sourceLanguage.trim(),
+            targetLanguage: targetLanguage.trim(),
+            vocabDirection,
+          }
+        : undefined;
+      
+      await createDeck(deckName.trim(), null, deckMode, config);
       await loadDecks();
+      // Reset form
       setDeckName("");
       setDeckMode("classic");
+      setSourceLanguage("");
+      setTargetLanguage("");
+      setVocabDirection("normal");
       setDialogOpen(false);
     } catch (error) {
       console.error("Error creating deck:", error);
@@ -250,6 +275,9 @@ export default function DecksPage() {
         if (!open) {
           setDeckName("");
           setDeckMode("classic");
+          setSourceLanguage("");
+          setTargetLanguage("");
+          setVocabDirection("normal");
         }
       }}>
         <DialogContent>
@@ -279,9 +307,47 @@ export default function DecksPage() {
                 <SelectContent>
                   <SelectItem value="classic">{t("decks.modeClassic")}</SelectItem>
                   <SelectItem value="math">{t("decks.modeMath")}</SelectItem>
+                  <SelectItem value="languages">{t("decks.modeLanguages")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            
+            {/* Languages mode options */}
+            {deckMode === "languages" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="source-language">{t("decks.sourceLanguage")}</Label>
+                  <Input
+                    id="source-language"
+                    placeholder={t("decks.sourceLanguagePlaceholder")}
+                    value={sourceLanguage}
+                    onChange={(e) => setSourceLanguage(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target-language">{t("decks.targetLanguage")}</Label>
+                  <Input
+                    id="target-language"
+                    placeholder={t("decks.targetLanguagePlaceholder")}
+                    value={targetLanguage}
+                    onChange={(e) => setTargetLanguage(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vocab-direction">{t("decks.vocabDirection")}</Label>
+                  <Select value={vocabDirection} onValueChange={(value: VocabDirection) => setVocabDirection(value)}>
+                    <SelectTrigger id="vocab-direction">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">{t("decks.vocabDirectionNormal")}</SelectItem>
+                      <SelectItem value="reversed">{t("decks.vocabDirectionReversed")}</SelectItem>
+                      <SelectItem value="both">{t("decks.vocabDirectionBoth")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
