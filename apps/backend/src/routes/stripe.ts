@@ -1,8 +1,53 @@
 import express, { Request, Response } from "express";
 // @ts-ignore stripe types may be missing in local env; present in prod deps
 import Stripe from "stripe";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
+
+// ============================================================================
+// LOCAL TYPE DEFINITIONS FOR SUPABASE TABLES
+// These types are manually maintained to match DB schema (see migrations).
+// ============================================================================
+
+/** Affiliate record from the affiliates table */
+interface Affiliate {
+  id: string;
+  name: string;
+  slug: string;
+  stripe_coupon_id: string | null;
+  stripe_promotion_code_id: string | null;
+  commission_percent: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Affiliate conversion record for the affiliate_conversions table */
+interface AffiliateConversionInsert {
+  affiliate_id: string;
+  user_id: string;
+  stripe_checkout_session_id: string;
+  stripe_subscription_id: string | null;
+  amount_paid_cents: number;
+  discount_cents: number;
+  commission_percent: number;
+  commission_cents: number;
+}
+
+/** Profile record from the profiles table */
+interface Profile {
+  id: string;
+  email: string | null;
+  role: string | null;
+  plan: string | null;
+  plan_name: string | null;
+  stripe_customer_id: string | null;
+  onboarding_status: string | null;
+  subscription_status: string | null;
+  ai_cards_monthly_limit: number | null;
+  ai_cards_used_current_month: number | null;
+  ai_quota_reset_at: string | null;
+}
 
 const router = express.Router();
 
@@ -330,7 +375,7 @@ async function extractPromotionCodeFromSession(
  * Non-blocking: errors are logged but do not fail the webhook
  */
 async function recordAffiliateConversion(
-  supabase: ReturnType<typeof createSupabaseClient>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   session: Stripe.Checkout.Session,
   promotionCodeId: string,
@@ -338,12 +383,15 @@ async function recordAffiliateConversion(
 ): Promise<void> {
   try {
     // 1. Look up affiliate by stripe_promotion_code_id
-    const { data: affiliate, error: affiliateError } = await supabase
+    const { data: affiliateData, error: affiliateError } = await supabase
       .from('affiliates')
       .select('id, name, commission_percent')
       .eq('stripe_promotion_code_id', promotionCodeId)
       .eq('is_active', true)
       .single();
+
+    // Cast to typed interface (Supabase returns unknown without generated types)
+    const affiliate = affiliateData as Affiliate | null;
 
     if (affiliateError || !affiliate) {
       // No affiliate found - might be a non-affiliate coupon, which is fine
@@ -358,18 +406,20 @@ async function recordAffiliateConversion(
     const commissionCents = Math.round(amountTotal * (affiliate.commission_percent / 100));
 
     // 3. Insert conversion (idempotent via UNIQUE constraint on stripe_checkout_session_id)
+    const conversionData: AffiliateConversionInsert = {
+      affiliate_id: affiliate.id,
+      user_id: userId,
+      stripe_checkout_session_id: session.id,
+      stripe_subscription_id: session.subscription as string | null,
+      amount_paid_cents: amountTotal,
+      discount_cents: discountAmount,
+      commission_percent: affiliate.commission_percent,
+      commission_cents: commissionCents,
+    };
+
     const { error: insertError } = await supabase
       .from('affiliate_conversions')
-      .upsert({
-        affiliate_id: affiliate.id,
-        user_id: userId,
-        stripe_checkout_session_id: session.id,
-        stripe_subscription_id: session.subscription as string | null,
-        amount_paid_cents: amountTotal,
-        discount_cents: discountAmount,
-        commission_percent: affiliate.commission_percent,
-        commission_cents: commissionCents,
-      }, {
+      .upsert(conversionData as any, {
         onConflict: 'stripe_checkout_session_id',
         ignoreDuplicates: true,  // Don't error on duplicate, just skip
       });
@@ -471,15 +521,18 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     console.log(`[STRIPE/WEBHOOK] Activating user ${supabaseUserId} with plan: ${finalPlan}`);
 
     // Get existing profile to preserve important fields (stripe_customer_id, role)
-    const { data: existingProfile } = await supabase
+    const { data: existingProfileData } = await supabase
       .from("profiles")
       .select("stripe_customer_id, role, ai_cards_monthly_limit, ai_cards_used_current_month, ai_quota_reset_at")
       .eq("id", supabaseUserId)
       .single();
 
+    // Cast to typed interface (Supabase returns unknown without generated types)
+    const existingProfile = existingProfileData as Partial<Profile> | null;
+
     // Preserve privileged roles (founder/admin) - never overwrite them
     const privilegedRoles = ["founder", "admin"];
-    const existingRole = existingProfile?.role as string | undefined;
+    const existingRole = existingProfile?.role;
     const preserveRole = existingRole && privilegedRoles.includes(existingRole);
 
     const quotaLimitByPlan: Record<Plan, number> = {
@@ -495,7 +548,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     // CRITICAL: Use UPSERT to create/update profile.
     // This ensures paid users always get the correct plan set.
     // The webhook is the SINGLE SOURCE OF TRUTH for paid plan activation.
-    const profileData = {
+    const profileData: Record<string, unknown> = {
       id: supabaseUserId,
       email: userEmail,
       role: preserveRole ? existingRole : "user",
@@ -503,17 +556,24 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       plan_name: finalPlan,
       onboarding_status: "active",
       subscription_status: "active",
-      ...(shouldSetQuotaLimit ? { ai_cards_monthly_limit: targetMonthlyLimit } : {}),
-      ...(existingProfile?.ai_cards_used_current_month !== null && existingProfile?.ai_cards_used_current_month !== undefined
-        ? { ai_cards_used_current_month: existingProfile.ai_cards_used_current_month }
-        : {}),
-      ...(existingProfile?.ai_quota_reset_at ? {} : { ai_quota_reset_at: nextMonthReset.toISOString() }),
-      ...(existingProfile?.stripe_customer_id ? { stripe_customer_id: existingProfile.stripe_customer_id } : {}),
     };
+
+    if (shouldSetQuotaLimit) {
+      profileData.ai_cards_monthly_limit = targetMonthlyLimit;
+    }
+    if (existingProfile?.ai_cards_used_current_month !== null && existingProfile?.ai_cards_used_current_month !== undefined) {
+      profileData.ai_cards_used_current_month = existingProfile.ai_cards_used_current_month;
+    }
+    if (!existingProfile?.ai_quota_reset_at) {
+      profileData.ai_quota_reset_at = nextMonthReset.toISOString();
+    }
+    if (existingProfile?.stripe_customer_id) {
+      profileData.stripe_customer_id = existingProfile.stripe_customer_id;
+    }
 
     const { error: upsertError } = await supabase
       .from("profiles")
-      .upsert(profileData, {
+      .upsert(profileData as any, {
         onConflict: "id",
         ignoreDuplicates: false  // Force update even if exists
       });
