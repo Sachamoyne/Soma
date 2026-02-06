@@ -193,6 +193,8 @@
     "modeClassicDesc": "Mode standard avec repetition espacee",
     "modeMathDesc": "Optimise pour les formules et exercices mathematiques",
     "modeLanguagesDesc": "Optimise pour le vocabulaire et la grammaire",
+    "modeHumanities": "Humanites",
+    "modeHumanitiesDesc": "Optimise pour les concepts, auteurs et savoirs structures",
     "sourceLanguage": "Langue source",
     "targetLanguage": "Langue cible",
     "vocabDirection": "Direction des cartes",
@@ -277,7 +279,9 @@
     "vocabulary": "Vocabulaire",
     "vocabularyDesc": "Mot → Traduction",
     "grammarRule": "Regle de grammaire",
-    "grammarRuleDesc": "Regle → Explication + exemple"
+    "grammarRuleDesc": "Regle → Explication + exemple",
+    "philosophyConcept": "Concept philosophique",
+    "philosophyConceptDesc": "Concept → Auteur, Oeuvre, Explication, Exemple"
   },
   "propertyCard": {
     "theoremName": "Theoreme",
@@ -293,6 +297,13 @@
     "revealAnswer": "Verifier ma reponse",
     "explanation": "Explication / Preuve",
     "showExplanation": "Voir l'explication"
+  },
+  "philosophyCard": {
+    "author": "Auteur",
+    "work": "Oeuvre",
+    "date": "Date",
+    "explanation": "Explication",
+    "example": "Exemple"
   },
   "cardContext": {
     "changeDeck": "Changer de paquet...",
@@ -383,7 +394,19 @@
     "statement": "Enonce / Resultat",
     "statementPlaceholder": "La conclusion ou le resultat du theoreme",
     "explanation": "Explication / Preuve (optionnel)",
-    "explanationPlaceholder": "La demonstration ou explication detaillee"
+    "explanationPlaceholder": "La demonstration ou explication detaillee",
+    "concept": "Concept",
+    "conceptPlaceholder": "Ex : Le Cogito, Le Contrat social, La Volonte de puissance",
+    "conceptAuthor": "Auteur",
+    "conceptAuthorPlaceholder": "Ex : Descartes, Rousseau, Nietzsche",
+    "conceptWork": "Oeuvre",
+    "conceptWorkPlaceholder": "Ex : Meditations metaphysiques",
+    "conceptDate": "Date ou periode",
+    "conceptDatePlaceholder": "Ex : 1641, XVIIe siecle",
+    "conceptExplanation": "Explication du concept",
+    "conceptExplanationPlaceholder": "Explication structuree du concept",
+    "conceptExample": "Exemple mobilisable",
+    "conceptExamplePlaceholder": "Exemple pour une dissertation, une situation, une citation reformulee"
   },
   "deckTree": {
     "newSubDeck": "Nouveau sous-paquet",
@@ -398,7 +421,8 @@
     "revisionMode": "Mode de revision",
     "modeClassic": "Classique",
     "modeMath": "Mathematiques",
-    "modeLanguages": "Langues"
+    "modeLanguages": "Langues",
+    "modeHumanities": "Humanites"
   },
   "vocabularyImport": {
     "title": "Importer du vocabulaire",

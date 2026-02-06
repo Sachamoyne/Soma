@@ -38,6 +38,12 @@ export default function AddCardsPage() {
   const [back, setBack] = useState("");
   const [theoremName, setTheoremName] = useState(""); // For property cards - theorem name
   const [explanation, setExplanation] = useState(""); // For property cards - optional explanation
+  // Philosophy concept fields
+  const [conceptAuthor, setConceptAuthor] = useState("");
+  const [conceptWork, setConceptWork] = useState("");
+  const [conceptDate, setConceptDate] = useState("");
+  const [conceptExplanation, setConceptExplanation] = useState("");
+  const [conceptExample, setConceptExample] = useState("");
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -46,6 +52,7 @@ export default function AddCardsPage() {
 
   // Check if current type is property (needs special form)
   const isPropertyType = cardType === "property";
+  const isPhilosophyConceptType = cardType === "philosophy_concept";
 
   // Load deck mode on mount
   useEffect(() => {
@@ -76,7 +83,10 @@ export default function AddCardsPage() {
     if (isPropertyType && !theoremName.trim()) {
       return;
     }
-    if (!front.trim() || !back.trim()) {
+    // Validation: philosophy_concept cards require concept (front)
+    if (isPhilosophyConceptType) {
+      if (!front.trim()) return;
+    } else if (!front.trim() || !back.trim()) {
       return;
     }
 
@@ -85,7 +95,7 @@ export default function AddCardsPage() {
 
     try {
       const normalizedDeckId = String(deckId);
-      
+
       // Build extra field for property cards
       let extra: Record<string, string> | null = null;
       if (isPropertyType) {
@@ -97,13 +107,39 @@ export default function AddCardsPage() {
         }
       }
 
-      await createCard(normalizedDeckId, front.trim(), back.trim(), cardType, supabase, extra);
+      // Build extra field for philosophy concept cards
+      if (isPhilosophyConceptType) {
+        extra = {};
+        if (conceptAuthor.trim()) extra.author = conceptAuthor.trim();
+        if (conceptWork.trim()) extra.work = conceptWork.trim();
+        if (conceptDate.trim()) extra.date = conceptDate.trim();
+        if (conceptExplanation.trim()) extra.explanation = conceptExplanation.trim();
+        if (conceptExample.trim()) extra.example = conceptExample.trim();
+      }
+
+      // For philosophy_concept, build a summary back from the structured fields
+      let cardBack = back.trim();
+      if (isPhilosophyConceptType) {
+        const parts: string[] = [];
+        if (conceptAuthor.trim()) parts.push(conceptAuthor.trim());
+        if (conceptWork.trim()) parts.push(conceptWork.trim());
+        if (conceptDate.trim()) parts.push(`(${conceptDate.trim()})`);
+        if (conceptExplanation.trim()) parts.push(`— ${conceptExplanation.trim()}`);
+        cardBack = parts.join(" ") || front.trim();
+      }
+
+      await createCard(normalizedDeckId, front.trim(), cardBack, cardType, supabase, extra);
 
       // Clear form
       setFront("");
       setBack("");
       setTheoremName("");
       setExplanation("");
+      setConceptAuthor("");
+      setConceptWork("");
+      setConceptDate("");
+      setConceptExplanation("");
+      setConceptExample("");
 
       // Show success message
       setSuccessMessage(t("addCards.cardCreated"));
@@ -215,6 +251,14 @@ export default function AddCardsPage() {
                         setTheoremName("");
                         setExplanation("");
                       }
+                      // Clear philosophy concept fields when switching away
+                      if (value !== "philosophy_concept") {
+                        setConceptAuthor("");
+                        setConceptWork("");
+                        setConceptDate("");
+                        setConceptExplanation("");
+                        setConceptExample("");
+                      }
                     }}
                   >
                     <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background px-4 shadow-sm flex items-center justify-between text-sm text-foreground hover:border-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -238,7 +282,63 @@ export default function AddCardsPage() {
                 </div>
 
                 {/* Fields adapt based on card type */}
-                {isPropertyType ? (
+                {isPhilosophyConceptType ? (
+                  <>
+                    {/* Concept field (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.concept")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptPlaceholder")}
+                    />
+
+                    {/* Author field */}
+                    <RichCardInput
+                      label={t("addCards.conceptAuthor")}
+                      value={conceptAuthor}
+                      onChange={setConceptAuthor}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptAuthorPlaceholder")}
+                    />
+
+                    {/* Work field */}
+                    <RichCardInput
+                      label={t("addCards.conceptWork")}
+                      value={conceptWork}
+                      onChange={setConceptWork}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptWorkPlaceholder")}
+                    />
+
+                    {/* Date field */}
+                    <RichCardInput
+                      label={t("addCards.conceptDate")}
+                      value={conceptDate}
+                      onChange={setConceptDate}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptDatePlaceholder")}
+                    />
+
+                    {/* Explanation field */}
+                    <RichCardInput
+                      label={t("addCards.conceptExplanation")}
+                      value={conceptExplanation}
+                      onChange={setConceptExplanation}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptExplanationPlaceholder")}
+                    />
+
+                    {/* Example field */}
+                    <RichCardInput
+                      label={t("addCards.conceptExample")}
+                      value={conceptExample}
+                      onChange={setConceptExample}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.conceptExamplePlaceholder")}
+                    />
+                  </>
+                ) : isPropertyType ? (
                   <>
                     {/* Theorem name field (required) */}
                     <RichCardInput
@@ -305,7 +405,7 @@ export default function AddCardsPage() {
                   </p>
                   <Button
                     onClick={handleCreateCard}
-                    disabled={!front.trim() || !back.trim() || (isPropertyType && !theoremName.trim()) || creating}
+                    disabled={(!isPhilosophyConceptType && (!front.trim() || !back.trim())) || (isPhilosophyConceptType && !front.trim()) || (isPropertyType && !theoremName.trim()) || creating}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {creating ? t("addCards.adding") : t("addCards.addCard")}

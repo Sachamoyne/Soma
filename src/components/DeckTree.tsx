@@ -278,6 +278,7 @@ export function DeckTree({
                   <SelectItem value="classic">{t("deckTree.modeClassic")}</SelectItem>
                   <SelectItem value="math">{t("deckTree.modeMath")}</SelectItem>
                   <SelectItem value="languages">{t("deckTree.modeLanguages")}</SelectItem>
+                  <SelectItem value="humanities">{t("deckTree.modeHumanities")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -14,8 +14,11 @@ export type MathCardType = "definition" | "property" | "formula";
 // Languages mode card types (semantic types, behave like "basic" during review)
 export type LanguagesCardType = "vocabulary" | "grammar_rule";
 
+// Humanities mode card types (semantic types for philosophy, etc.)
+export type HumanitiesCardType = "philosophy_concept";
+
 // Union of all card types
-export type CardType = ClassicCardType | MathCardType | LanguagesCardType;
+export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType;
 
 export interface CardTypeInfo {
   id: CardType;
@@ -114,6 +117,22 @@ export const LANGUAGES_CARD_TYPES: CardTypeInfo[] = [
 ];
 
 /**
+ * Humanities mode card types (semantic types for humanities):
+ * - philosophy_concept: Concept name → Structured back with author, work, date, explanation, example
+ *
+ * These use the extra JSONB field for structured data.
+ */
+export const HUMANITIES_CARD_TYPES: CardTypeInfo[] = [
+  {
+    id: "philosophy_concept",
+    label: "Philosophy Concept",
+    description: "Concept → Author, Work, Explanation, Example",
+    labelKey: "cardTypes.philosophyConcept",
+    descKey: "cardTypes.philosophyConceptDesc",
+  },
+];
+
+/**
  * Legacy export for backward compatibility
  * @deprecated Use CLASSIC_CARD_TYPES or getCardTypesForMode() instead
  */
@@ -122,12 +141,14 @@ export const CARD_TYPES: CardTypeInfo[] = CLASSIC_CARD_TYPES;
 /**
  * Returns the appropriate card types for a given deck mode
  */
-export function getCardTypesForMode(mode: "classic" | "math" | "languages"): CardTypeInfo[] {
+export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities"): CardTypeInfo[] {
   switch (mode) {
     case "math":
       return MATH_CARD_TYPES;
     case "languages":
       return LANGUAGES_CARD_TYPES;
+    case "humanities":
+      return HUMANITIES_CARD_TYPES;
     default:
       return CLASSIC_CARD_TYPES;
   }
@@ -136,12 +157,14 @@ export function getCardTypesForMode(mode: "classic" | "math" | "languages"): Car
 /**
  * Returns the default card type for a given deck mode
  */
-export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages"): CardType {
+export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages" | "humanities"): CardType {
   switch (mode) {
     case "math":
       return "definition";
     case "languages":
       return "vocabulary";
+    case "humanities":
+      return "philosophy_concept";
     default:
       return "basic";
   }
@@ -161,6 +184,7 @@ const ALL_CARD_TYPES: CardType[] = [
   "basic", "reversible", "typed",           // Classic
   "definition", "property", "formula",       // Math
   "vocabulary", "grammar_rule",              // Languages
+  "philosophy_concept",                      // Humanities
 ];
 
 /**
@@ -190,6 +214,13 @@ export function isMathCardType(type: CardType): type is MathCardType {
  */
 export function isLanguagesCardType(type: CardType): type is LanguagesCardType {
   return type === "vocabulary" || type === "grammar_rule";
+}
+
+/**
+ * Checks if a card type is a humanities-specific type
+ */
+export function isHumanitiesCardType(type: CardType): type is HumanitiesCardType {
+  return type === "philosophy_concept";
 }
 
 /**

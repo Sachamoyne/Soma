@@ -15,7 +15,7 @@ export interface Database {
           user_id: string
           name: string
           parent_deck_id: string | null
-          mode: "classic" | "math" | "languages"
+          mode: "classic" | "math" | "languages" | "humanities"
           config: Json | null
           created_at: string
           updated_at: string
@@ -25,7 +25,7 @@ export interface Database {
           user_id: string
           name: string
           parent_deck_id?: string | null
-          mode?: "classic" | "math" | "languages"
+          mode?: "classic" | "math" | "languages" | "humanities"
           config?: Json | null
           created_at?: string
           updated_at?: string
@@ -35,7 +35,7 @@ export interface Database {
           user_id?: string
           name?: string
           parent_deck_id?: string | null
-          mode?: "classic" | "math" | "languages"
+          mode?: "classic" | "math" | "languages" | "humanities"
           config?: Json | null
           created_at?: string
           updated_at?: string
@@ -48,7 +48,7 @@ export interface Database {
           deck_id: string
           front: string
           back: string
-          type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule"
+          type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept"
           extra: Json | null
           state: "new" | "learning" | "review" | "relearning"
           due_at: string
@@ -68,7 +68,7 @@ export interface Database {
           deck_id: string
           front: string
           back: string
-          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule"
+          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept"
           extra?: Json | null
           state?: "new" | "learning" | "review" | "relearning"
           due_at?: string
@@ -88,7 +88,7 @@ export interface Database {
           deck_id?: string
           front?: string
           back?: string
-          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule"
+          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept"
           extra?: Json | null
           state?: "new" | "learning" | "review" | "relearning"
           due_at?: string

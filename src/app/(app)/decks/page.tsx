@@ -308,6 +308,7 @@ export default function DecksPage() {
                   <SelectItem value="classic">{t("decks.modeClassic")}</SelectItem>
                   <SelectItem value="math">{t("decks.modeMath")}</SelectItem>
                   <SelectItem value="languages">{t("decks.modeLanguages")}</SelectItem>
+                  <SelectItem value="humanities">{t("decks.modeHumanities")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

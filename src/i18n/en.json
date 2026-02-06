@@ -193,6 +193,8 @@
     "modeClassicDesc": "Standard mode with spaced repetition",
     "modeMathDesc": "Optimized for formulas and math exercises",
     "modeLanguagesDesc": "Optimized for vocabulary and grammar",
+    "modeHumanities": "Humanities",
+    "modeHumanitiesDesc": "Optimized for concepts, authors and structured knowledge",
     "sourceLanguage": "Source language",
     "targetLanguage": "Target language",
     "vocabDirection": "Card direction",
@@ -277,7 +279,9 @@
     "vocabulary": "Vocabulary",
     "vocabularyDesc": "Word → Translation",
     "grammarRule": "Grammar Rule",
-    "grammarRuleDesc": "Rule → Explanation + example"
+    "grammarRuleDesc": "Rule → Explanation + example",
+    "philosophyConcept": "Philosophy Concept",
+    "philosophyConceptDesc": "Concept → Author, Work, Explanation, Example"
   },
   "propertyCard": {
     "theoremName": "Theorem",
@@ -293,6 +297,13 @@
     "revealAnswer": "Check my answer",
     "explanation": "Explanation / Proof",
     "showExplanation": "Show explanation"
+  },
+  "philosophyCard": {
+    "author": "Author",
+    "work": "Work",
+    "date": "Date",
+    "explanation": "Explanation",
+    "example": "Example"
   },
   "cardContext": {
     "changeDeck": "Change deck...",
@@ -383,7 +394,19 @@
     "statement": "Statement / Result",
     "statementPlaceholder": "The conclusion or result of the theorem",
     "explanation": "Explanation / Proof (optional)",
-    "explanationPlaceholder": "The detailed proof or explanation"
+    "explanationPlaceholder": "The detailed proof or explanation",
+    "concept": "Concept",
+    "conceptPlaceholder": "E.g., The Cogito, The Social Contract, The Will to Power",
+    "conceptAuthor": "Author",
+    "conceptAuthorPlaceholder": "E.g., Descartes, Rousseau, Nietzsche",
+    "conceptWork": "Work",
+    "conceptWorkPlaceholder": "E.g., Meditations on First Philosophy",
+    "conceptDate": "Date or period",
+    "conceptDatePlaceholder": "E.g., 1641, 17th century",
+    "conceptExplanation": "Explanation of the concept",
+    "conceptExplanationPlaceholder": "Structured explanation of the concept",
+    "conceptExample": "Usable example",
+    "conceptExamplePlaceholder": "Example for an essay, a situation, a reformulated quote"
   },
   "deckTree": {
     "newSubDeck": "New sub-deck",
@@ -398,7 +421,8 @@
     "revisionMode": "Revision mode",
     "modeClassic": "Classic",
     "modeMath": "Mathematics",
-    "modeLanguages": "Languages"
+    "modeLanguages": "Languages",
+    "modeHumanities": "Humanities"
   },
   "vocabularyImport": {
     "title": "Import Vocabulary",
