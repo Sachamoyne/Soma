@@ -21,6 +21,7 @@ export function CookieConsent() {
       setVisible(true);
     } else if (consent === "accepted") {
       // Charger GTM si le consentement a été accepté
+      // Google Analytics est géré par GoogleAnalyticsScript dans le layout
       loadGoogleTagManager();
     }
   }, []);
@@ -29,6 +30,7 @@ export function CookieConsent() {
     setCookieConsent("accepted");
     setVisible(false);
     // Charger GTM immédiatement après acceptation
+    // Google Analytics sera chargé automatiquement via l'événement cookieConsentChanged
     loadGoogleTagManager();
   };
 

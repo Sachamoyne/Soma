@@ -1,5 +1,7 @@
 /**
  * Gestion du consentement aux cookies et chargement conditionnel de Google Tag Manager
+ * 
+ * Note: Google Analytics est géré par le composant GoogleAnalyticsScript
  */
 
 const COOKIE_CONSENT_KEY = "cookie-consent";
@@ -35,10 +37,11 @@ export function loadGoogleTagManager(): void {
   const consent = getCookieConsent();
   if (consent !== "accepted") return;
 
-  // Vérifier si GTM est déjà chargé
-  if (window.dataLayer) return;
+  // Vérifier si GTM est déjà chargé (vérifier si le script existe dans le DOM)
+  const existingGtmScript = document.querySelector(`script[src*="gtm.js?id=${GTM_ID}"]`);
+  if (existingGtmScript) return;
 
-  // Initialiser dataLayer
+  // Initialiser dataLayer si pas déjà fait
   window.dataLayer = window.dataLayer || [];
   
   // Fonction GTM
@@ -58,10 +61,11 @@ export function loadGoogleTagManager(): void {
 }
 
 /**
- * Déclare les types pour window.dataLayer
+ * Déclare les types pour window.dataLayer et gtag
  */
 declare global {
   interface Window {
     dataLayer?: any[];
+    gtag?: (...args: any[]) => void;
   }
 }
