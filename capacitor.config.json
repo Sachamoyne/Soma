@@ -1,0 +1,12 @@
+{
+    "appId": "com.sachamoyne.soma",
+    "appName": "Soma",
+    "webDir": "public",
+    "server": {
+      "url": "https://soma-edu.com",
+      "allowNavigation": [
+        "soma-edu.com",
+        "*.soma-edu.com"
+      ]
+    }
+  }
