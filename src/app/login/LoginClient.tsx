@@ -311,7 +311,10 @@ export default function LoginClient() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Language and theme toggle in top right */}
-      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+      <div
+        className="absolute right-6 z-20 flex items-center gap-3"
+        style={{ top: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+      >
         <LanguageToggle variant="minimal" />
         <ThemeToggle variant="minimal" />
       </div>

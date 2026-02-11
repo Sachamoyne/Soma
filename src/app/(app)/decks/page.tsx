@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Topbar } from "@/components/shell/Topbar";
 import { useIsApp } from "@/hooks/useIsApp";
 import { appHref } from "@/lib/appHref";
@@ -20,7 +19,9 @@ import { listDecks, createDeck, getAnkiCountsForDecks, invalidateDeckCaches, inv
 import type { DeckMode, VocabDirection, LanguagesConfig } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import type { Deck } from "@/lib/db";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { useAppRouter } from "@/hooks/useAppRouter";
+import { DeckSettingsMenu } from "@/components/DeckSettingsMenu";
+import { BookOpen } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ import { useTranslation } from "@/i18n";
 export default function DecksPage() {
   const { t } = useTranslation();
   const isApp = useIsApp();
+  const router = useAppRouter();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cardCounts, setCardCounts] = useState<Record<string, number>>({});
   const [learningCounts, setLearningCounts] = useState<
@@ -192,10 +194,10 @@ export default function DecksPage() {
                   const total = cardCounts[deck.id] || 0;
 
                   return (
-                    <Link
+                    <div
                       key={deck.id}
-                      href={appHref(`/decks/${deck.id}`, isApp)}
-                      className="block rounded-xl border border-border bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                      className="rounded-xl border border-border bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] cursor-pointer"
+                      onClick={() => router.push(appHref(`/decks/${deck.id}`, isApp))}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
@@ -206,18 +208,27 @@ export default function DecksPage() {
                             {t("decks.total")} : {total}
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <DeckSettingsMenu
+                            deckId={deck.id}
+                            deckName={deck.name}
+                            onUpdate={loadDecks}
+                          />
+                        </div>
                       </div>
 
                       <div className="mt-3 flex gap-2 text-xs">
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-600">
+                        <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-600">
                           {t("decks.new")} : {counts.new}
                         </span>
-                        <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-600">
+                        <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-600">
+                          {t("decks.learning")} : {counts.learning}
+                        </span>
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-600">
                           {t("decks.review")} : {counts.review}
                         </span>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
