@@ -1,10 +1,10 @@
 "use client";
 
-import { useAppRouter } from "@/hooks/useAppRouter";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 export function BackButton() {
-  const router = useAppRouter();
+  const router = useRouter();
   return (
     <button
       onClick={() => router.back()}
