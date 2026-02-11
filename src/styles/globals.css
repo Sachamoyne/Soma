@@ -150,6 +150,20 @@
   }
 }
 
+/* iOS native: reposition dialogs when virtual keyboard is open */
+body.native-ios.keyboard-open [role="dialog"] {
+  top: 1rem !important;
+  transform: translateX(-50%) translateY(0) !important;
+  max-height: calc(var(--vvh, 50vh) - 2rem) !important;
+  overflow-y: auto !important;
+}
+
+/* iOS native: ensure inputs inside dialogs scroll into view */
+body.native-ios [role="dialog"] {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Premium animations */
 @layer utilities {
   @keyframes float {

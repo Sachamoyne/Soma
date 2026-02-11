@@ -332,7 +332,7 @@ export default function BrowseAllCardsPage() {
     <>
       <Topbar title={t("browse.title")} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto px-10 py-8">
+        <div className="flex-1 overflow-y-auto px-4 md:px-10 py-4 md:py-8">
           {loading ? (
             <div className="rounded-xl border border-border bg-background px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               <p className="text-muted-foreground">{t("browse.loadingCards")}</p>
@@ -390,9 +390,9 @@ export default function BrowseAllCardsPage() {
                   <div className="flex-1 border border-border rounded-xl overflow-hidden flex flex-col bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     <div className="border-b border-border/60 bg-foreground/[0.02] px-4 py-2 flex items-center text-xs font-medium text-muted-foreground">
                       <div className="flex-1">{t("browse.front")}</div>
-                      <div className="w-40">{t("decks.deck")}</div>
-                      <div className="w-24">{t("browse.state")}</div>
-                      <div className="w-32">{t("browse.due")}</div>
+                      <div className="hidden md:block w-40">{t("decks.deck")}</div>
+                      <div className="hidden md:block w-24">{t("browse.state")}</div>
+                      <div className="hidden md:block w-32">{t("browse.due")}</div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto">
@@ -420,17 +420,17 @@ export default function BrowseAllCardsPage() {
                               {stripAndTruncate(card.front, 100)}
                             </div>
 
-                            <div className="w-40 text-xs text-muted-foreground truncate pr-2">
+                            <div className="hidden md:block w-40 text-xs text-muted-foreground truncate pr-2">
                               {deckPath}
                             </div>
 
-                            <div className="w-24">
+                            <div className="hidden md:block w-24">
                               <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${badge.color}`}>
                                 {badge.label}
                               </span>
                             </div>
 
-                            <div className="w-32 text-sm text-muted-foreground">
+                            <div className="hidden md:block w-32 text-sm text-muted-foreground">
                               {getNextReviewText(card)}
                             </div>
                           </div>
@@ -439,7 +439,7 @@ export default function BrowseAllCardsPage() {
                     </div>
                   </div>
 
-                  <div className="w-96 border border-border rounded-xl overflow-hidden flex flex-col bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <div className="hidden md:flex w-96 border border-border rounded-xl overflow-hidden flex-col bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     {activeCard ? (
                       <>
                         <div className="border-b border-border/60 px-4 py-3 flex items-center justify-between bg-foreground/[0.02]">

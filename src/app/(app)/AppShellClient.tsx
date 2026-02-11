@@ -71,8 +71,36 @@ function NativeAppLayout({ children }: { children: React.ReactNode }) {
   // Handle Capacitor deep links (appUrlOpen + cold start launch URL)
   useDeepLinks();
 
+  // Add native-ios class to body + detect iOS keyboard via visualViewport
+  useEffect(() => {
+    document.body.classList.add("native-ios");
+
+    const vv = window.visualViewport;
+    if (vv) {
+      const handleResize = () => {
+        const keyboardOpen = vv.height < window.innerHeight * 0.75;
+        document.body.classList.toggle("keyboard-open", keyboardOpen);
+        if (keyboardOpen) {
+          document.documentElement.style.setProperty("--vvh", `${vv.height}px`);
+        }
+      };
+      vv.addEventListener("resize", handleResize);
+      return () => {
+        document.body.classList.remove("native-ios", "keyboard-open");
+        vv.removeEventListener("resize", handleResize);
+      };
+    }
+
+    return () => {
+      document.body.classList.remove("native-ios", "keyboard-open");
+    };
+  }, []);
+
   return (
-    <div className="app-shell flex h-screen w-screen max-w-full flex-col overflow-hidden bg-background text-foreground">
+    <div
+      className="app-shell flex h-screen w-screen max-w-full flex-col overflow-hidden bg-background text-foreground"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       <div
         className="flex flex-1 flex-col overflow-hidden min-w-0"
         style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}

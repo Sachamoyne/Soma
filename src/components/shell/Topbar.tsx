@@ -30,7 +30,7 @@ export function Topbar({
   return (
     <div
       className="flex flex-col gap-3 border-b border-border bg-background px-4 pb-3 pt-[calc(var(--sat)+0.75rem)] min-h-[calc(var(--sat)+3.5rem)] md:min-h-0 md:h-20 md:flex-row md:items-center md:justify-between md:px-10 md:py-0"
-      style={{ "--sat": "env(safe-area-inset-top, 0px)" } as React.CSSProperties}
+      style={{ "--sat": isNative ? "0px" : "env(safe-area-inset-top, 0px)" } as React.CSSProperties}
     >
       <div className="flex items-center gap-4">
         {!isNative && (
