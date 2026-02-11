@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LogOut } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
+import { Browser } from "@capacitor/browser";
 
 const DEFAULT_SETTINGS: Partial<Settings> = {
   newCardsPerDay: 20,
@@ -77,17 +78,10 @@ export default function SettingsPage() {
   };
 
   const handleOpenWebsite = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const targetPath = user ? "/billing" : "/pricing";
-      const url = `https://soma-edu.com${targetPath}?source=ios_app&from_native=1`;
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error resolving upgrade destination:", error);
-      window.open("https://soma-edu.com/pricing?source=ios_app&from_native=1", "_blank", "noopener,noreferrer");
+    if (isNativeIOS) {
+      await Browser.open({ url: "https://soma-edu.com/billing?source=ios_app" });
+    } else {
+      window.location.href = "https://soma-edu.com/billing?source=ios_app";
     }
   };
 
