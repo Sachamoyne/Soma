@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Edit, Pause, Play, Save, X } from "lucide-react";
+import { Trash2, Edit, Pause, Play, Save, X, ArrowLeft, ChevronRight } from "lucide-react";
 import {
   listAllCards,
   deleteCard,
@@ -39,6 +39,7 @@ import { CARD_TYPES, type CardType as CardTypeEnum } from "@/lib/card-types";
 import { MoveCardsDialog } from "@/components/MoveCardsDialog";
 import { CardContextMenu } from "@/components/cards/CardContextMenu";
 import { useTranslation } from "@/i18n";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 function stripAndTruncate(html: string, maxLength: number = 80): string {
   const text = html.replace(/<[^>]*>/g, "").trim();
@@ -77,6 +78,8 @@ export default function BrowseAllCardsPage() {
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [editCardType, setEditCardType] = useState<CardTypeEnum>("basic");
+
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const deckPathById = useMemo(() => {
     const map = new Map<string, string>();
@@ -332,7 +335,7 @@ export default function BrowseAllCardsPage() {
     <>
       <Topbar title={t("browse.title")} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto px-10 py-8">
+        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-10 md:py-8">
           {loading ? (
             <div className="rounded-2xl border border-border bg-background px-8 py-14 text-center shadow-sm">
               <p className="text-muted-foreground">{t("browse.loadingCards")}</p>
@@ -385,7 +388,177 @@ export default function BrowseAllCardsPage() {
                     {t("browse.noCardsHint")}
                   </p>
                 </div>
+              ) : isMobile ? (
+                /* ── Mobile: list → detail navigation ── */
+                activeCard ? (
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <div className="flex items-center gap-1 py-2 border-b border-border mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setActiveCardId(null);
+                          setIsEditing(false);
+                        }}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        {t("common.back")}
+                      </Button>
+                      <div className="flex-1" />
+                      {!isEditing ? (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleStartEdit}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={() =>
+                              activeCard.suspended
+                                ? handleUnsuspendCard(activeCard.id)
+                                : handleSuspendCard(activeCard.id)
+                            }
+                          >
+                            {activeCard.suspended ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => handleDeleteCard(activeCard.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" onClick={handleSaveEdit}>
+                            <Save className="h-4 w-4 mr-1" />
+                            {t("common.save")}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+                      {!isEditing ? (
+                        <>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">{t("browse.front")}</p>
+                            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.front }} />
+                          </div>
+                          <Separator />
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">{t("browse.back")}</p>
+                            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.back }} />
+                          </div>
+                          <Separator />
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("decks.deck")}:</span>
+                              <span className="font-medium">{activeCardDeckPath}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("browse.type")}:</span>
+                              <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("browse.state")}:</span>
+                              <span className="font-medium">{capitalizeValue(getStateBadge(activeCard).label)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("browse.due")}:</span>
+                              <span className="font-medium">{getNextReviewText(activeCard)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("browse.interval")}:</span>
+                              <span className="font-medium">{activeCard.interval_days} {t("common.days")}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t("browse.reviews")}:</span>
+                              <span className="font-medium">{activeCard.reps}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">{t("browse.cardType")}</label>
+                            <Select
+                              value={editCardType}
+                              onValueChange={(value) => setEditCardType(value as CardTypeEnum)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CARD_TYPES.map((type) => (
+                                  <SelectItem key={type.id} value={type.id}>
+                                    {type.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">{t("browse.front")}</label>
+                            <Textarea
+                              value={editFront}
+                              onChange={(e) => setEditFront(e.target.value)}
+                              placeholder={t("browse.questionPlaceholder")}
+                              rows={6}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">{t("browse.back")}</label>
+                            <Textarea
+                              value={editBack}
+                              onChange={(e) => setEditBack(e.target.value)}
+                              placeholder={t("browse.answerPlaceholder")}
+                              rows={6}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Mobile card list */
+                  <div className="flex-1 overflow-y-auto">
+                    {cards.map((card) => {
+                      const badge = getStateBadge(card);
+                      const deckPath = deckPathById.get(card.deck_id) || "Unknown deck";
+                      return (
+                        <div
+                          key={card.id}
+                          onClick={() => {
+                            setActiveCardId(card.id);
+                            setIsEditing(false);
+                          }}
+                          className={`flex items-center gap-3 px-4 py-3 active:bg-muted/50 min-h-[48px] cursor-pointer border-b border-border/30 ${
+                            card.suspended ? "opacity-50" : ""
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">
+                              {stripAndTruncate(card.front, 55)}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] leading-tight px-1.5 py-0.5 rounded font-medium ${badge.color}`}>
+                                {badge.label}
+                              </span>
+                              <span className="text-xs text-muted-foreground truncate">
+                                {deckPath}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
               ) : (
+                /* ── Desktop: split view (unchanged) ── */
                 <div className="flex gap-4 h-[calc(100vh-280px)]">
                   <div className="flex-1 border rounded-lg overflow-hidden flex flex-col bg-background">
                     <div className="border-b bg-muted/50 px-4 py-2 flex items-center text-xs font-medium text-muted-foreground">
@@ -712,3 +885,5 @@ export default function BrowseAllCardsPage() {
     </>
   );
 }
+
+

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/brand";
 import { Brain, Layers, Sparkles } from "lucide-react";
@@ -7,11 +9,23 @@ import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { BrandLogo } from "@/components/BrandLogo";
+import { isNativeIOS } from "@/lib/native";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
 export default function WelcomePage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const nativeIOS = isNativeIOS();
+
+  useEffect(() => {
+    if (!nativeIOS) return;
+    router.replace("/decks");
+  }, [nativeIOS, router]);
+
+  if (nativeIOS) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">

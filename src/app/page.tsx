@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
@@ -12,11 +13,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
 import { LandingAIDemo } from "@/components/LandingAIDemo";
 import { CookieConsent } from "@/components/CookieConsent";
+import { isNativeIOS } from "@/lib/native";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
 export default function LandingPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const nativeIOS = isNativeIOS();
   const [userPresent, setUserPresent] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -27,6 +31,10 @@ export default function LandingPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (nativeIOS) {
+        router.replace(user ? "/decks" : "/login");
+        return;
+      }
       if (active) {
         setUserPresent(Boolean(user));
       }
@@ -35,7 +43,11 @@ export default function LandingPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [nativeIOS, router]);
+
+  if (nativeIOS) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -10,6 +10,8 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
+import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
+import { NativeIOSSubscriptionsBlocked } from "@/components/NativeIOSSubscriptionsBlocked";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -18,6 +20,7 @@ export default function PricingClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
+  const nativeIOS = useIsNativeIOS();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<"free" | "starter" | "pro">("free");
@@ -25,6 +28,7 @@ export default function PricingClient() {
   const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
 
   useEffect(() => {
+    if (nativeIOS) return;
     let cancelled = false;
 
     async function loadUserAndPlan() {
@@ -67,7 +71,11 @@ export default function PricingClient() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, [nativeIOS, supabase]);
+
+  if (nativeIOS) {
+    return <NativeIOSSubscriptionsBlocked continueHref="/decks" />;
+  }
 
   // All CTA go to /signup?plan=...
   const handleSubscribeClick = (plan: "starter" | "pro") => {

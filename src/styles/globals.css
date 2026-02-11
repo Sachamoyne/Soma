@@ -164,6 +164,19 @@ body.native-ios [role="dialog"] {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Mobile: prevent nested scroll in AI card preview list */
+@media (max-width: 767px) {
+  .max-h-96 {
+    max-height: none;
+  }
+
+  /* Mobile: ensure touch-friendly tap targets in AI card actions */
+  .flex-col.gap-1\.5 > button {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
 /* Premium animations */
 @layer utilities {
   @keyframes float {

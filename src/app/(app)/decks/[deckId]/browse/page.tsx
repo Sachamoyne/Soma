@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Edit, Pause, Play, Save, X } from "lucide-react";
+import { Trash2, Edit, Pause, Play, Save, X, ArrowLeft, ChevronRight } from "lucide-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
   listCardsForDeckTree,
   deleteCard,
@@ -103,6 +104,7 @@ export default function BrowseCardsPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
   const lastSelectedIndex = useRef<number | null>(null);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -345,6 +347,199 @@ export default function BrowseCardsPage() {
     );
   }
 
+  /* ── Mobile: touch-friendly list → detail navigation ── */
+  if (isMobile) {
+    return (
+      <>
+        {activeCard ? (
+          /* Card detail — full width */
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex items-center gap-1 py-2 border-b border-border mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setActiveCardId(null);
+                  setIsEditing(false);
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex-1" />
+              {!isEditing ? (
+                <>
+                  <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleStartEdit}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() =>
+                      activeCard.suspended
+                        ? handleUnsuspendCard(activeCard.id)
+                        : handleSuspendCard(activeCard.id)
+                    }
+                  >
+                    {activeCard.suspended ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => handleDeleteCard(activeCard.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" onClick={handleSaveEdit}>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+              {!isEditing ? (
+                <>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Front</p>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.front }} />
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Back</p>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.back }} />
+                  </div>
+                  <Separator />
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Type:</span>
+                      <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">State:</span>
+                      <span className="font-medium">{capitalizeValue(getStateBadge(activeCard).label)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Due:</span>
+                      <span className="font-medium">{getNextReviewText(activeCard)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Interval:</span>
+                      <span className="font-medium">{activeCard.interval_days} days</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Reviews:</span>
+                      <span className="font-medium">{activeCard.reps}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Card Type</label>
+                    <Select
+                      value={editCardType}
+                      onValueChange={(value) => setEditCardType(value as CardTypeEnum)}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CARD_TYPES.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <RichCardInput label="Front" value={editFront} onChange={setEditFront} placeholder="Question or front text" />
+                  <RichCardInput label="Back" value={editBack} onChange={setEditBack} placeholder="Answer or back text" />
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Card list — touch-friendly rows */
+          <>
+            <div className="mb-3">
+              <p className="text-sm text-muted-foreground">
+                {cards.length} {cards.length === 1 ? "card" : "cards"} total
+              </p>
+            </div>
+
+            {cards.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg mb-3">No cards in this deck yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  Use the <strong>Add</strong> tab to create cards.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                {cards.map((card) => {
+                  const badge = getStateBadge(card);
+                  return (
+                    <div
+                      key={card.id}
+                      onClick={() => {
+                        setActiveCardId(card.id);
+                        setIsEditing(false);
+                      }}
+                      className={`flex items-center gap-3 px-2 py-3 active:bg-muted/50 min-h-[44px] cursor-pointer border-b border-border/30 ${
+                        card.suspended ? "opacity-50" : ""
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground truncate">
+                          {stripAndTruncate(card.front, 55)}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-[10px] leading-tight px-1.5 py-0.5 rounded font-medium ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {getNextReviewText(card)}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Dialogs */}
+        <MoveCardsDialog
+          open={moveDialogOpen}
+          onOpenChange={setMoveDialogOpen}
+          cardIds={moveDialogCardIds}
+          currentDeckId={deckId}
+          onSuccess={handleMoveCards}
+        />
+        <Dialog open={dueDateDialogOpen} onOpenChange={setDueDateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set due date</DialogTitle>
+              <DialogDescription>Choose a new due date for this card.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDueDateDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSetDueDate} disabled={!dueDateValue}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  /* ── Desktop: split-view browse (unchanged) ── */
   return (
     <>
       {/* Header with actions */}

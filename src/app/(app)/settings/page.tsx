@@ -12,6 +12,7 @@ import { getSettings, updateSettings, type Settings } from "@/store/settings";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut } from "lucide-react";
 import { useTranslation } from "@/i18n";
+import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 
 const DEFAULT_SETTINGS: Partial<Settings> = {
   newCardsPerDay: 20,
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: Partial<Settings> = {
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const isNativeIOS = useIsNativeIOS();
   const [settings, setSettings] = useState<Partial<Settings>>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,6 +74,10 @@ export default function SettingsPage() {
       console.error("Error logging out:", error);
       setLoggingOut(false);
     }
+  };
+
+  const handleOpenWebsite = () => {
+    window.open("https://soma-edu.com", "_blank");
   };
 
   if (loading) {
@@ -164,6 +170,22 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {isNativeIOS && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Upgrade your plan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  To subscribe or manage your plan, visit soma-edu.com from your browser.
+                </p>
+                <Button type="button" variant="outline" onClick={handleOpenWebsite}>
+                  Open website
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex justify-between items-center">
             <Button

@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
-import { useIsApp } from "@/hooks/useIsApp";
+import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 
 type Plan = "free" | "starter" | "pro";
 
 export default function BillingPage() {
   const { t } = useTranslation();
-  const isApp = useIsApp();
+  const isNativeIOS = useIsNativeIOS();
   const supabase = useMemo(() => createClient(), []);
 
   const [plan, setPlan] = useState<Plan>("free");
@@ -79,6 +79,11 @@ export default function BillingPage() {
 
   const handleOpenPortal = useCallback(async () => {
     try {
+      if (isNativeIOS) {
+        setError("Subscriptions are available on the web version.");
+        return;
+      }
+
       setOpeningPortal(true);
       setError(null);
 
@@ -114,7 +119,7 @@ export default function BillingPage() {
     } finally {
       setOpeningPortal(false);
     }
-  }, [supabase, t]);
+  }, [isNativeIOS, supabase, t]);
 
   const planLabel =
     plan === "pro" ? "Pro" : plan === "starter" ? "Starter" : t("pricing.free");
@@ -130,10 +135,10 @@ export default function BillingPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {loadingPlan ? t("common.loading") : planLabel}
+                {loadingPlan ? t("common.loading") : isNativeIOS ? t("pricing.free") : planLabel}
               </p>
 
-              {isApp ? (
+              {isNativeIOS ? (
                 <p className="text-sm text-muted-foreground">
                   {t("billing.appModeNotice")}
                 </p>
@@ -160,4 +165,3 @@ export default function BillingPage() {
     </>
   );
 }
-

@@ -16,7 +16,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
 import { consumePostLoginRedirect } from "@/lib/deepLinks";
-import { isNativeApp } from "@/lib/native";
+import { isNativeApp, isNativeIOS } from "@/lib/native";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -39,6 +39,7 @@ export default function LoginClient() {
   // Check for checkout=success in URL (user just paid)
   const checkoutSuccess = searchParams.get("checkout") === "success";
   const showAppleSignIn = isNativeApp();
+  const nativeIOS = isNativeIOS();
 
   useEffect(() => {
     // If a valid session already exists, redirect away from /login
@@ -95,7 +96,7 @@ export default function LoginClient() {
           // RULE 2: subscription_status === "pending_payment" → /pricing (user must click to pay)
           if (subscriptionStatus === "pending_payment") {
             router.refresh();
-            router.replace("/pricing");
+            router.replace(nativeIOS ? "/decks" : "/pricing");
             return;
           }
 
@@ -123,7 +124,7 @@ export default function LoginClient() {
     return () => {
       cancelled = true;
     };
-  }, [router, supabase]);
+  }, [nativeIOS, router, supabase, t]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -282,7 +283,7 @@ export default function LoginClient() {
       // RULE 2: subscription_status === "pending_payment" → /pricing (user must click to pay)
       if (subscriptionStatus === "pending_payment") {
         router.refresh();
-        router.push("/pricing");
+        router.push(nativeIOS ? "/decks" : "/pricing");
         return;
       }
 
@@ -327,7 +328,7 @@ export default function LoginClient() {
           </div>
 
           {/* Success message after Stripe checkout */}
-          {checkoutSuccess && (
+          {checkoutSuccess && !nativeIOS && (
             <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -448,7 +449,10 @@ export default function LoginClient() {
 
             <div className="text-center text-sm text-muted-foreground">
               {t("auth.newToSoma")}{" "}
-              <Link href="/signup" className="text-foreground underline hover:text-foreground/80 transition-colors">
+              <Link
+                href={nativeIOS ? "/signup?plan=free" : "/signup"}
+                className="text-foreground underline hover:text-foreground/80 transition-colors"
+              >
                 {t("auth.createAccount")}
               </Link>
             </div>

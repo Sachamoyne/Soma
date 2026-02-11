@@ -1,12 +1,17 @@
 import AppShellClient from "./AppShellClient";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { isNativeIOSUserAgent } from "@/lib/native-server";
 
 export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const nativeIOSRequest = isNativeIOSUserAgent(headerStore.get("user-agent"));
+
   // Simple server-side auth guard for all routes under (app)
   // - If no authenticated user: redirect to /login
   // - If authenticated: render the authenticated app shell
@@ -35,7 +40,7 @@ export default async function AppLayout({
 
   // RULE 2: subscription_status === "pending_payment" → /pricing
   if (subscriptionStatus === "pending_payment") {
-    redirect("/pricing");
+    redirect(nativeIOSRequest ? "/decks" : "/pricing");
   }
 
   // RULE 3: Free user (null or "free") → email required

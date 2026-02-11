@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/i18n";
+import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 
 interface QuotaInfo {
   plan: string;
@@ -13,6 +14,7 @@ interface QuotaInfo {
 
 export function QuotaIndicator() {
   const { t } = useTranslation();
+  const isNativeIOS = useIsNativeIOS();
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +37,10 @@ export function QuotaIndicator() {
   }, []);
 
   if (loading || !quota) {
+    return null;
+  }
+
+  if (isNativeIOS) {
     return null;
   }
 

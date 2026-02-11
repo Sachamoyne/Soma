@@ -13,6 +13,7 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
+import { isNativeIOS } from "@/lib/native";
 
 /**
  * Single entry point: /signup?plan=free|starter|pro
@@ -32,12 +33,14 @@ export default function SignupClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
+  const nativeIOS = isNativeIOS();
 
   const planParam = searchParams.get("plan");
-  const plan =
+  const requestedPlan =
     planParam === "free" || planParam === "starter" || planParam === "pro"
       ? planParam
       : null;
+  const plan = nativeIOS ? "free" : requestedPlan;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,11 +52,11 @@ export default function SignupClient() {
 
   // Guard: signup must always have a valid plan
   useEffect(() => {
-    if (!plan) {
-      router.replace("/pricing");
+    if (!requestedPlan || (nativeIOS && requestedPlan !== "free")) {
+      router.replace(nativeIOS ? "/signup?plan=free" : "/pricing");
       router.refresh();
     }
-  }, [plan, router]);
+  }, [nativeIOS, requestedPlan, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +106,11 @@ export default function SignupClient() {
       // --------------------
       // PAID PLANS (starter / pro)
       // --------------------
+      if (nativeIOS) {
+        setError("Subscriptions are available on the web version.");
+        return;
+      }
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -167,9 +175,11 @@ export default function SignupClient() {
               <h1 className="text-2xl font-medium text-foreground font-serif">
                 {t("auth.createYourAccount")}
               </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("auth.planLabel")} : <span className="text-foreground font-medium">{plan}</span>
-              </p>
+              {!nativeIOS && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{plan}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -233,7 +243,7 @@ export default function SignupClient() {
                 className="mt-0.5"
               />
               <span>
-                J'accepte la{" "}
+                J&apos;accepte la{" "}
                 <Link href="/confidentialite" className="underline hover:text-foreground">
                   Politique de Confidentialité
                 </Link>{" "}
@@ -250,7 +260,12 @@ export default function SignupClient() {
             </Button>
 
             <div className="text-center text-sm text-muted-foreground">
-              <Link href="/pricing" className="hover:text-foreground transition-colors">{t("auth.backToPlans")}</Link>
+              <Link
+                href={nativeIOS ? "/login" : "/pricing"}
+                className="hover:text-foreground transition-colors"
+              >
+                {nativeIOS ? t("auth.signIn") : t("auth.backToPlans")}
+              </Link>
             </div>
           </form>
         </div>
