@@ -5,7 +5,7 @@ import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from "@/lib/brand";
 import { LanguageProvider } from "@/i18n";
 import { GoogleTagManagerNoscript } from "@/components/GoogleTagManagerNoscript";
 import { GoogleAnalyticsScript } from "@/components/GoogleAnalyticsScript";
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 import { OfflineBanner } from "@/components/OfflineBanner";
 
 const geist = Geist({ subsets: ["latin"] });
