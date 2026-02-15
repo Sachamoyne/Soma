@@ -24,4 +24,33 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
     }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let context = URLContexts.first else { return }
+
+        var options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+        if let sourceApplication = context.options.sourceApplication {
+            options[.sourceApplication] = sourceApplication
+        }
+        if let annotation = context.options.annotation {
+            options[.annotation] = annotation
+        }
+        options[.openInPlace] = context.options.openInPlace
+
+        _ = ApplicationDelegateProxy.shared.application(
+            UIApplication.shared,
+            open: context.url,
+            options: options
+        )
+    }
+
+    func scene(
+        _ scene: UIScene,
+        continue userActivity: NSUserActivity
+    ) {
+        _ = ApplicationDelegateProxy.shared.application(
+            UIApplication.shared,
+            continue: userActivity
+        ) { _ in }
+    }
 }

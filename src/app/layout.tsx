@@ -7,6 +7,7 @@ import { GoogleTagManagerNoscript } from "@/components/GoogleTagManagerNoscript"
 import { GoogleAnalyticsScript } from "@/components/GoogleAnalyticsScript";
 import { Analytics } from "@vercel/analytics/next";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { NativeOAuthCallbackHandler } from "@/components/NativeOAuthCallbackHandler";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className={geist.className}>
         <GoogleTagManagerNoscript />
         <GoogleAnalyticsScript />
+        <NativeOAuthCallbackHandler />
         <OfflineBanner />
         <LanguageProvider>{children}</LanguageProvider>
         <Analytics />
