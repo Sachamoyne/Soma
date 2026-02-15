@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import Link from "next/link";
@@ -16,16 +16,12 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
-import { consumePostLoginRedirect } from "@/lib/deepLinks";
 import { isNativeApp, isNativeIOS } from "@/lib/native";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
-type ProfileSnapshot = {
-  subscription_status: string | null;
-};
-
-const IOS_OAUTH_REDIRECT_URL = "soma://auth/callback?next=/decks";
+const DECKS_PATH = "/decks";
+const IOS_OAUTH_REDIRECT_URL = "soma://auth/callback";
 
 export default function LoginClient() {
   const { t } = useTranslation();
@@ -90,16 +86,15 @@ export default function LoginClient() {
               setError(t("auth.confirmEmailFirstWithSpam"));
               return;
             }
-            const redirectPath = consumePostLoginRedirect() ?? "/decks";
             router.refresh();
-            router.replace(redirectPath);
+            router.replace(DECKS_PATH);
             return;
           }
 
-          // RULE 2: subscription_status === "pending_payment" → /pricing (user must click to pay)
+          // RULE 2: subscription_status === "pending_payment" -> /decks
           if (subscriptionStatus === "pending_payment") {
             router.refresh();
-            router.replace(nativeIOS ? "/decks" : "/pricing");
+            router.replace(DECKS_PATH);
             return;
           }
 
@@ -111,9 +106,8 @@ export default function LoginClient() {
           }
 
           // Free user with confirmed email → access to /decks
-          const redirectPath = consumePostLoginRedirect() ?? "/decks";
           router.refresh();
-          router.replace(redirectPath);
+          router.replace(DECKS_PATH);
         }
       } catch (error) {
         // Catch all errors - don't let them bubble up as "loader failed"
@@ -139,7 +133,7 @@ export default function LoginClient() {
 
       const redirectTo = nativeIOS
         ? IOS_OAUTH_REDIRECT_URL
-        : `${window.location.origin}/auth/callback?next=/decks`;
+        : `${window.location.origin}/auth/callback`;
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -191,7 +185,7 @@ export default function LoginClient() {
     try {
       const redirectTo = nativeIOS
         ? IOS_OAUTH_REDIRECT_URL
-        : `${window.location.origin}/auth/callback?next=/decks`;
+        : `${window.location.origin}/auth/callback`;
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "apple",
@@ -321,16 +315,15 @@ export default function LoginClient() {
           setError(t("auth.confirmEmailFirstWithSpam"));
           return;
         }
-        const redirectPath = consumePostLoginRedirect() ?? "/decks";
         router.refresh();
-        router.push(redirectPath);
+        router.push(DECKS_PATH);
         return;
       }
 
-      // RULE 2: subscription_status === "pending_payment" → /pricing (user must click to pay)
+      // RULE 2: subscription_status === "pending_payment" -> /decks
       if (subscriptionStatus === "pending_payment") {
         router.refresh();
-        router.push(nativeIOS ? "/decks" : "/pricing");
+        router.push(DECKS_PATH);
         return;
       }
 
@@ -342,9 +335,8 @@ export default function LoginClient() {
       }
 
       // Free user with confirmed email → access to /decks
-      const redirectPath = consumePostLoginRedirect() ?? "/decks";
       router.refresh();
-      router.push(redirectPath);
+      router.push(DECKS_PATH);
     } catch (err) {
       // Catch all unexpected errors
       console.error("[LoginPage] Unexpected error during login:", err);
