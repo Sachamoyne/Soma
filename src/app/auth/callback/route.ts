@@ -7,11 +7,10 @@ const DECKS_PATH = "/decks";
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const redirectUrl = new URL(DECKS_PATH, requestUrl.origin);
 
   if (!code) {
-    console.warn("[auth/callback] Missing code query param. Redirecting to /decks.");
-    return NextResponse.redirect(redirectUrl);
+    console.warn("[auth/callback] Missing code query param. Redirecting to /login.");
+    return NextResponse.redirect(new URL("/login", requestUrl.origin));
   }
 
   const supabase = await createClient();
@@ -19,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error("[auth/callback] Error exchanging code for session:", error);
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(new URL("/login", requestUrl.origin));
   }
 
   // Ensure profile exists after OAuth authentication.
@@ -30,10 +29,7 @@ export async function GET(request: NextRequest) {
 
       if (supabaseUrl && serviceKey) {
         const adminSupabase = createServiceClient(supabaseUrl, serviceKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
+          auth: { autoRefreshToken: false, persistSession: false },
         });
 
         // Preserve privileged roles while upserting a profile row.
@@ -47,20 +43,15 @@ export async function GET(request: NextRequest) {
         const existingRole = existingProfile?.role;
         const shouldPreserveRole = existingRole && privilegedRoles.includes(existingRole);
 
-        await adminSupabase
-          .from("profiles")
-          .upsert(
-            {
-              id: data.user.id,
-              email: data.user.email || "",
-              ...(shouldPreserveRole ? { role: existingRole } : { role: "user" }),
-              plan: "free",
-            },
-            {
-              onConflict: "id",
-              ignoreDuplicates: false,
-            }
-          );
+        await adminSupabase.from("profiles").upsert(
+          {
+            id: data.user.id,
+            email: data.user.email || "",
+            ...(shouldPreserveRole ? { role: existingRole } : { role: "user" }),
+            plan: "free",
+          },
+          { onConflict: "id", ignoreDuplicates: false }
+        );
       }
     } catch (profileError) {
       console.error("[auth/callback] Failed to ensure profile:", profileError);
@@ -68,5 +59,5 @@ export async function GET(request: NextRequest) {
   }
 
   console.info("[auth/callback] Session exchange successful. Redirecting to /decks.");
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(new URL(DECKS_PATH, requestUrl.origin));
 }

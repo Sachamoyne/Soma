@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Browser } from "@capacitor/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
@@ -16,12 +15,12 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
-import { isNativeApp, isNativeIOS } from "@/lib/native";
+import { isNativeIOS } from "@/lib/native";
+import { OAuthButtons } from "@/components/OAuthButtons";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
 const DECKS_PATH = "/decks";
-const IOS_OAUTH_REDIRECT_URL = "soma://auth/callback";
 
 export default function LoginClient() {
   const { t } = useTranslation();
@@ -37,7 +36,6 @@ export default function LoginClient() {
 
   // Check for checkout=success in URL (user just paid)
   const checkoutSuccess = searchParams.get("checkout") === "success";
-  const showAppleSignIn = isNativeApp();
   const nativeIOS = isNativeIOS();
 
   useEffect(() => {
@@ -54,7 +52,6 @@ export default function LoginClient() {
         // Handle auth errors gracefully - don't show "loader failed"
         if (userError) {
           console.log("[LoginPage] No active session or auth error:", userError.message);
-          // This is normal for users who aren't logged in - don't show error
           return;
         }
 
@@ -66,12 +63,10 @@ export default function LoginClient() {
             .eq("id", user.id)
             .single();
 
-          // Handle profile fetch errors gracefully
           if (profileError && profileError.code !== "PGRST116") {
             console.error("[LoginPage] Profile fetch error:", profileError);
           }
 
-          // RULE: If profile not loaded yet, do NOTHING (no redirect during loading)
           if (!profile) {
             return;
           }
@@ -79,9 +74,7 @@ export default function LoginClient() {
           const subscriptionStatus = (profile as any)?.subscription_status as string | null;
           console.log("[LOGIN/checkSession] subscription_status =", subscriptionStatus);
 
-          // RULE 1: subscription_status === "active" → access to /decks (email check first)
           if (subscriptionStatus === "active") {
-            // Paid users must also confirm their email
             if (!user.email_confirmed_at) {
               setError(t("auth.confirmEmailFirstWithSpam"));
               return;
@@ -91,28 +84,23 @@ export default function LoginClient() {
             return;
           }
 
-          // RULE 2: subscription_status === "pending_payment" -> /decks
           if (subscriptionStatus === "pending_payment") {
             router.refresh();
             router.replace(DECKS_PATH);
             return;
           }
 
-          // RULE 3: Free user (subscription_status is null or "free") → email required
           if (!user.email_confirmed_at) {
             await supabase.auth.signOut();
             setError(t("auth.confirmEmailFirst"));
             return;
           }
 
-          // Free user with confirmed email → access to /decks
           router.refresh();
           router.replace(DECKS_PATH);
         }
       } catch (error) {
-        // Catch all errors - don't let them bubble up as "loader failed"
         console.error("[LoginPage] Failed to check existing session:", error);
-        // Don't set error for session check failures - just let user try to log in
       }
     }
 
@@ -123,108 +111,6 @@ export default function LoginClient() {
     };
   }, [nativeIOS, router, supabase, t]);
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      console.log("[LoginPage] Starting Google OAuth sign in...");
-
-      const redirectTo = nativeIOS
-        ? IOS_OAUTH_REDIRECT_URL
-        : `${window.location.origin}/auth/callback`;
-
-      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          skipBrowserRedirect: nativeIOS,
-        },
-      });
-
-      if (oauthError) {
-        console.error("[LoginPage] Google OAuth error:", oauthError);
-        const authError = mapAuthError(oauthError, "signin");
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (nativeIOS && data?.url) {
-        if (!/^https?:\/\//i.test(data.url)) {
-          setError(t("auth.googleSignInError"));
-          setLoading(false);
-          return;
-        }
-        await Browser.open({ url: data.url });
-        setLoading(false);
-        return;
-      }
-
-      if (nativeIOS && !data?.url) {
-        setError(t("auth.googleSignInError"));
-        setLoading(false);
-        return;
-      }
-
-      console.log("[LoginPage] Google OAuth initiated successfully:", data);
-    } catch (err) {
-      console.error("[LoginPage] Unexpected error during Google sign in:", err);
-      const authError = mapAuthError(err, "signin");
-      setError(authError.message || t("auth.googleSignInError"));
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const redirectTo = nativeIOS
-        ? IOS_OAUTH_REDIRECT_URL
-        : `${window.location.origin}/auth/callback`;
-
-      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "apple",
-        options: {
-          redirectTo,
-          skipBrowserRedirect: nativeIOS,
-        },
-      });
-
-      if (oauthError) {
-        const authError = mapAuthError(oauthError, "signin");
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (nativeIOS && data?.url) {
-        if (!/^https?:\/\//i.test(data.url)) {
-          setError(t("auth.unexpectedError"));
-          setLoading(false);
-          return;
-        }
-        await Browser.open({ url: data.url });
-        setLoading(false);
-        return;
-      }
-
-      if (nativeIOS && !data?.url) {
-        setError(t("auth.unexpectedError"));
-        setLoading(false);
-        return;
-      }
-    } catch (err) {
-      const authError = mapAuthError(err, "signin");
-      setError(authError.message || t("auth.unexpectedError"));
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -232,17 +118,14 @@ export default function LoginClient() {
     setSuccess(null);
 
     try {
-      // SIGN IN only (existing accounts)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      // Handle specific Supabase auth errors with clear messages
       if (signInError) {
         console.log("[LoginPage] Sign in error:", signInError.message, signInError.status);
 
-        // Check for specific error types
         if (signInError.message?.includes("Email not confirmed") ||
             signInError.message?.includes("email_not_confirmed")) {
           setError(t("auth.confirmEmailFirstWithSpam"));
@@ -255,7 +138,6 @@ export default function LoginClient() {
           return;
         }
 
-        // Generic auth error handling
         const authError = mapAuthError(signInError, "signin");
         setError(authError.message);
         return;
@@ -267,9 +149,7 @@ export default function LoginClient() {
         return;
       }
 
-      // CRITICAL: Wait for session to be fully persisted in cookies
-      // This prevents "loader failed" errors on first login after email confirmation
-      // Retry loop to ensure session is ready
+      // Wait for session to be fully persisted in cookies
       let sessionReady = false;
       for (let i = 0; i < 5; i++) {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -284,22 +164,18 @@ export default function LoginClient() {
         console.warn("[LoginPage] Session not ready after retries, proceeding anyway");
       }
 
-      // Small additional delay to ensure cookies are persisted
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Get profile - subscription_status is the SINGLE SOURCE OF TRUTH
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("subscription_status")
         .eq("id", user.id)
         .single();
 
-      // Handle profile fetch error gracefully
       if (profileError && profileError.code !== "PGRST116") {
         console.error("[LoginPage] Profile fetch error:", profileError);
       }
 
-      // RULE: If profile not loaded yet, show error (don't redirect during loading)
       if (!profile) {
         setError(t("auth.profileCreating"));
         return;
@@ -308,9 +184,7 @@ export default function LoginClient() {
       const subscriptionStatus = (profile as any)?.subscription_status as string | null;
       console.log("[LOGIN/handleSubmit] subscription_status =", subscriptionStatus);
 
-      // RULE 1: subscription_status === "active" → access to /decks (email check first)
       if (subscriptionStatus === "active") {
-        // Paid users must also confirm their email
         if (!user.email_confirmed_at) {
           setError(t("auth.confirmEmailFirstWithSpam"));
           return;
@@ -320,25 +194,21 @@ export default function LoginClient() {
         return;
       }
 
-      // RULE 2: subscription_status === "pending_payment" -> /decks
       if (subscriptionStatus === "pending_payment") {
         router.refresh();
         router.push(DECKS_PATH);
         return;
       }
 
-      // RULE 3: Free user (subscription_status is null or "free") → email required
       if (!user.email_confirmed_at) {
         await supabase.auth.signOut();
         setError(t("auth.confirmEmailFirst"));
         return;
       }
 
-      // Free user with confirmed email → access to /decks
       router.refresh();
       router.push(DECKS_PATH);
     } catch (err) {
-      // Catch all unexpected errors
       console.error("[LoginPage] Unexpected error during login:", err);
       const authError = mapAuthError(err, "signin");
       setError(authError.message || t("auth.unexpectedError"));
@@ -452,42 +322,10 @@ export default function LoginClient() {
               {loading ? t("common.loading") : t("auth.continue")}
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGoogleSignIn}
-              className="w-full h-11"
-              disabled={loading}
-            >
-              <svg
-                className="mr-2 h-4 w-4"
-                aria-hidden="true"
-                focusable="false"
-                data-prefix="fab"
-                data-icon="google"
-                role="img"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 488 512"
-              >
-                <path
-                  fill="#4285F4"
-                  d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
-                ></path>
-              </svg>
-              {t("auth.continueWithGoogle")}
-            </Button>
-
-            {showAppleSignIn && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAppleSignIn}
-                className="w-full h-11"
-                disabled={loading}
-              >
-                Continue with Apple
-              </Button>
-            )}
+            <OAuthButtons
+              loading={loading}
+              onError={(msg) => setError(msg || null)}
+            />
 
             <div className="text-center text-sm text-muted-foreground">
               {t("auth.newToSoma")}{" "}
@@ -507,7 +345,7 @@ export default function LoginClient() {
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground transition-colors"
               >
-                Politique de Confidentialité
+                Politique de Confidentialit&eacute;
               </Link>
               {" "}et nos{" "}
               <Link
