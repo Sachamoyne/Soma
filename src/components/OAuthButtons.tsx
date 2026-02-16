@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n";
@@ -18,8 +17,7 @@ interface OAuthButtonsProps {
 export function OAuthButtons({ loading: externalLoading, disabled, onError }: OAuthButtonsProps) {
   const { t } = useTranslation();
   const [oauthLoading, setOauthLoading] = useState(false);
-  const nativeIOS = isNativeIOS();
-  const showApple = isNativeApp();
+  const native = isNativeApp();
   const loading = externalLoading || oauthLoading;
 
   const startOAuth = async (provider: OAuthProvider) => {
@@ -29,17 +27,19 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
     try {
       const supabase = createClient();
 
-      const redirectTo = nativeIOS
-        ? "soma://auth/callback"
+      // iOS Apple: use the HTTPS bridge page so Safari can redirect back via custom scheme.
+      // Web Google: use the server-side /auth/callback route.
+      const redirectTo = isNativeIOS()
+        ? "https://soma-edu.com/auth/native-callback"
         : `${window.location.origin}/auth/callback`;
 
-      console.log(`[OAuth] Starting ${provider}, redirectTo: ${redirectTo}, skipBrowserRedirect: ${nativeIOS}`);
+      console.log(`[OAuth] Starting ${provider}, redirectTo: ${redirectTo}`);
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo,
-          skipBrowserRedirect: nativeIOS,
+          skipBrowserRedirect: false,
         },
       });
 
@@ -50,21 +50,10 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
         return;
       }
 
-      if (nativeIOS) {
-        if (!data?.url) {
-          console.error(`[OAuth] No URL returned for ${provider}`);
-          onError(t("auth.unexpectedError"));
-          setOauthLoading(false);
-          return;
-        }
-
-        console.log(`[OAuth] Opening browser: ${data.url.substring(0, 80)}...`);
-        await Browser.open({ url: data.url });
-        setOauthLoading(false);
-        return;
-      }
-
-      // Web: Supabase handles redirect automatically
+      // Supabase handles the redirect automatically.
+      // Web: redirects to /auth/callback (server-side exchange).
+      // iOS: Safari opens, Apple auth completes, redirects to /auth/native-callback
+      //       which triggers soma://auth/callback deep link back into the app.
     } catch (err) {
       console.error(`[OAuth] Unexpected error:`, err);
       onError(t("auth.unexpectedError"));
@@ -74,30 +63,34 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => startOAuth("google")}
-        className="w-full h-11"
-        disabled={loading || disabled}
-      >
-        <svg
-          className="mr-2 h-4 w-4"
-          aria-hidden="true"
-          focusable="false"
-          role="img"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 488 512"
+      {/* Google: web only */}
+      {!native && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => startOAuth("google")}
+          className="w-full h-11"
+          disabled={loading || disabled}
         >
-          <path
-            fill="#4285F4"
-            d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
-          />
-        </svg>
-        {t("auth.continueWithGoogle")}
-      </Button>
+          <svg
+            className="mr-2 h-4 w-4"
+            aria-hidden="true"
+            focusable="false"
+            role="img"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 488 512"
+          >
+            <path
+              fill="#4285F4"
+              d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
+            />
+          </svg>
+          {t("auth.continueWithGoogle")}
+        </Button>
+      )}
 
-      {showApple && (
+      {/* Apple: iOS only */}
+      {native && (
         <Button
           type="button"
           variant="outline"

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Browser } from "@capacitor/browser";
 import {
   Capacitor,
   registerPlugin,
@@ -79,20 +78,17 @@ export function NativeOAuthCallbackHandler() {
       inProgressRef.current = true;
 
       try {
-        console.log("[NativeOAuth] 1/4 Closing browser...");
-        void Browser.close();
+        console.log("[NativeOAuth] 1/4 Code extracted:", code ? "yes" : "NO");
 
-        console.log("[NativeOAuth] 2/4 Code extracted:", code ? "yes" : "NO");
-
-        console.log("[NativeOAuth] 3/5 Exchanging code for session...");
+        console.log("[NativeOAuth] 2/4 Exchanging code for session...");
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           console.error("[NativeOAuth] exchangeCodeForSession failed:", error.message);
           return;
         }
-        console.log("[NativeOAuth] 3/5 Session established ✓");
+        console.log("[NativeOAuth] 2/4 Session established ✓");
 
-        console.log("[NativeOAuth] 4/5 Ensuring profile exists...");
+        console.log("[NativeOAuth] 3/4 Ensuring profile exists...");
         try {
           await fetch("/api/auth/ensure-profile", { method: "POST" });
         } catch (e) {
@@ -100,7 +96,7 @@ export function NativeOAuthCallbackHandler() {
         }
 
         if (!cancelled) {
-          console.log("[NativeOAuth] 5/5 Navigating to /decks...");
+          console.log("[NativeOAuth] 4/4 Navigating to /decks...");
           router.replace("/decks");
         }
       } catch (err) {
