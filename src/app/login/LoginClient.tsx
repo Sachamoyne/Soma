@@ -16,7 +16,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
 import { isNativeIOS } from "@/lib/native";
-import { OAuthButtons } from "@/components/OAuthButtons";
+
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -280,11 +280,6 @@ export default function LoginClient() {
             >
               {loading ? t("common.loading") : t("auth.continue")}
             </Button>
-
-            <OAuthButtons
-              loading={loading}
-              onError={(msg) => setError(msg || null)}
-            />
 
             <div className="text-center text-sm text-muted-foreground">
               {t("auth.newToSoma")}{" "}

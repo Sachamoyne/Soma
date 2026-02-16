@@ -14,7 +14,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
 import { isNativeIOS } from "@/lib/native";
-import { OAuthButtons } from "@/components/OAuthButtons";
+
 
 /**
  * Single entry point: /signup?plan=free|starter|pro
@@ -259,17 +259,6 @@ export default function SignupClient() {
             <Button type="submit" disabled={loading || !acceptedTerms} className="w-full h-11">
               {loading ? t("common.loading") : t("auth.createAccount")}
             </Button>
-
-            <div className="relative flex items-center gap-4 py-1">
-              <div className="flex-1 border-t border-muted" />
-              <span className="text-xs text-muted-foreground">{t("common.or") || "or"}</span>
-              <div className="flex-1 border-t border-muted" />
-            </div>
-
-            <OAuthButtons
-              loading={loading}
-              onError={(msg) => setError(msg || null)}
-            />
 
             <div className="text-center text-sm text-muted-foreground">
               <Link

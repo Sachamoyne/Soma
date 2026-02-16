@@ -43,8 +43,8 @@ export default async function AppLayout({
     redirect(nativeIOSRequest ? "/decks" : "/pricing");
   }
 
-  // RULE 3: Free user (null or "free") → email required for email/password signups only.
-  // OAuth users (Google, Apple) have verified emails by definition — skip the check.
+  // RULE 3: Free user (null or "free") → email confirmation required.
+  // OAuth users have verified emails by definition — skip the check.
   const isOAuthUser = user.app_metadata?.provider !== "email";
   if (!isOAuthUser && !user.email_confirmed_at) {
     redirect("/login");
