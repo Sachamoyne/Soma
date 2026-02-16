@@ -1,63 +1,109 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { isNativeApp } from "@/lib/native";
 
 /**
- * Intermediate page for iOS OAuth flow.
+ * OAuth callback page for iOS.
  *
- * SFSafariViewController (used by @capacitor/browser) cannot follow HTTP 302
- * redirects to custom URL schemes like soma://. After Supabase completes OAuth,
- * it redirects here (HTTPS). This page then triggers the soma:// deep link
- * which iOS intercepts, re-opening the app and passing the code to
- * NativeOAuthCallbackHandler.
+ * Two modes:
+ *
+ * 1. CAPACITOR WEBVIEW (Universal Link navigated the WebView here):
+ *    → Exchange the code directly, ensure profile, navigate to /decks.
+ *    → No redirect to soma://, no intermediate page.
+ *
+ * 2. REGULAR BROWSER (fallback if Universal Links didn't intercept):
+ *    → Try to redirect to soma:// custom scheme.
  */
-function NativeCallbackRedirect() {
+function NativeCallbackHandler() {
   const searchParams = useSearchParams();
-  const [showManualButton, setShowManualButton] = useState(false);
+  const router = useRouter();
+  const [status, setStatus] = useState("Connexion en cours...");
+  const processedRef = useRef(false);
 
-  const buildSchemeUrl = () => {
+  useEffect(() => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const code = searchParams.get("code");
     const errorParam = searchParams.get("error");
 
     if (errorParam) {
-      return "soma://auth/callback?error=" + encodeURIComponent(errorParam);
+      console.error("[NativeCallback] OAuth error:", errorParam);
+      setStatus("Erreur d'authentification.");
+      router.replace("/login?error=" + encodeURIComponent(errorParam));
+      return;
     }
-    if (code) {
-      return "soma://auth/callback?code=" + encodeURIComponent(code);
+
+    if (!code) {
+      console.error("[NativeCallback] No code in URL.");
+      setStatus("Erreur : code manquant.");
+      router.replace("/login");
+      return;
     }
-    // Fallback: pass through the full query string
-    const qs = searchParams.toString();
-    return "soma://auth/callback" + (qs ? "?" + qs : "");
+
+    // Mode 1: Inside Capacitor WebView → handle directly
+    if (isNativeApp()) {
+      console.log("[NativeCallback] Running inside Capacitor. Exchanging code directly...");
+      handleCapacitorOAuth(code);
+      return;
+    }
+
+    // Mode 2: Regular browser → try soma:// redirect
+    console.log("[NativeCallback] Not in Capacitor. Trying soma:// redirect...");
+    const schemeUrl = "soma://auth/callback?code=" + encodeURIComponent(code);
+    window.location.replace(schemeUrl);
+  }, [searchParams, router]);
+
+  const handleCapacitorOAuth = async (code: string) => {
+    try {
+      // Step 1: Close any open SFSafariViewController
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        void Browser.close();
+        console.log("[NativeCallback] Browser closed.");
+      } catch {
+        // Browser plugin might not be available
+      }
+
+      // Step 2: Exchange code for session
+      console.log("[NativeCallback] Exchanging code for session...");
+      setStatus("Authentification...");
+      const supabase = createClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error("[NativeCallback] exchangeCodeForSession error:", error);
+        setStatus("Erreur d'authentification.");
+        router.replace("/login");
+        return;
+      }
+      console.log("[NativeCallback] Session established.");
+
+      // Step 3: Ensure profile exists
+      console.log("[NativeCallback] Ensuring profile...");
+      setStatus("Préparation du compte...");
+      try {
+        await fetch("/api/auth/ensure-profile", { method: "POST" });
+      } catch (profileErr) {
+        console.warn("[NativeCallback] Profile ensure failed (non-blocking):", profileErr);
+      }
+
+      // Step 4: Navigate to /decks
+      console.log("[NativeCallback] Navigating to /decks.");
+      router.replace("/decks");
+    } catch (err) {
+      console.error("[NativeCallback] Unexpected error:", err);
+      setStatus("Erreur inattendue.");
+      router.replace("/login");
+    }
   };
 
-  const schemeUrl = buildSchemeUrl();
-
-  useEffect(() => {
-    // Try to redirect to the custom scheme
-    console.log("[NativeCallback] Redirecting to soma:// ...");
-    window.location.replace(schemeUrl);
-
-    // Show manual button as fallback after 1.5s
-    const timer = setTimeout(() => {
-      setShowManualButton(true);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [schemeUrl]);
-
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <p className="text-muted-foreground">Retour vers l&apos;application...</p>
-      {showManualButton && (
-        <a
-          href={schemeUrl}
-          className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground"
-        >
-          Ouvrir Soma
-        </a>
-      )}
+    <div className="flex min-h-screen items-center justify-center">
+      <p className="text-muted-foreground">{status}</p>
     </div>
   );
 }
@@ -67,11 +113,11 @@ export default function NativeCallbackPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Connexion en cours...</p>
         </div>
       }
     >
-      <NativeCallbackRedirect />
+      <NativeCallbackHandler />
     </Suspense>
   );
 }
