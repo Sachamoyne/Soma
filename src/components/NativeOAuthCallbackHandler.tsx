@@ -30,11 +30,25 @@ const App = registerPlugin<AppPlugin>("App");
 const DECKS_PATH = "/decks";
 
 function isOAuthCallbackUrl(parsed: URL): boolean {
-  return (
+  // Custom scheme: soma://auth/callback
+  if (
     parsed.protocol === "soma:" &&
     ((parsed.hostname === "auth" && parsed.pathname === "/callback") ||
       parsed.hostname === "auth-callback")
-  );
+  ) {
+    return true;
+  }
+
+  // Universal Link: https://soma-edu.com/auth/native-callback
+  if (
+    parsed.protocol === "https:" &&
+    parsed.hostname === "soma-edu.com" &&
+    parsed.pathname === "/auth/native-callback"
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function NativeOAuthCallbackHandler() {
