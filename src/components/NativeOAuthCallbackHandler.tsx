@@ -39,10 +39,10 @@ function isOAuthCallbackUrl(parsed: URL): boolean {
     return true;
   }
 
-  // Universal Link: https://soma-edu.com/auth/native-callback
+  // Universal Link: https://soma-edu.com/auth/native-callback or www
   if (
     parsed.protocol === "https:" &&
-    parsed.hostname === "soma-edu.com" &&
+    (parsed.hostname === "soma-edu.com" || parsed.hostname === "www.soma-edu.com") &&
     parsed.pathname === "/auth/native-callback"
   ) {
     return true;

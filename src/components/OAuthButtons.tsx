@@ -13,7 +13,7 @@ type OAuthProvider = "google" | "apple";
 // The page loads in SFSafariViewController, then redirects to soma://auth/callback
 // via JavaScript. iOS intercepts the custom scheme and fires appUrlOpen,
 // which NativeOAuthCallbackHandler processes.
-const IOS_OAUTH_REDIRECT_URL = "https://soma-edu.com/auth/native-callback";
+const IOS_OAUTH_REDIRECT_URL = "https://www.soma-edu.com/auth/native-callback";
 
 interface OAuthButtonsProps {
   loading?: boolean;
