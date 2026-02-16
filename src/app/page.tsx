@@ -31,12 +31,17 @@ export default function LandingPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (user) {
+        // Authenticated user → go straight to /decks (no landing page)
+        router.replace("/decks");
+        return;
+      }
       if (nativeIOS) {
-        router.replace(user ? "/decks" : "/login");
+        router.replace("/login");
         return;
       }
       if (active) {
-        setUserPresent(Boolean(user));
+        setUserPresent(false);
       }
     };
     fetchUser();

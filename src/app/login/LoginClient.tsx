@@ -39,7 +39,8 @@ export default function LoginClient() {
   const nativeIOS = isNativeIOS();
 
   useEffect(() => {
-    // If a valid session already exists, redirect away from /login
+    // If a valid session already exists, redirect away from /login.
+    // Access control is handled by (app)/layout.tsx — no need to duplicate here.
     let cancelled = false;
 
     async function checkSession() {
@@ -49,54 +50,12 @@ export default function LoginClient() {
           error: userError,
         } = await supabase.auth.getUser();
 
-        // Handle auth errors gracefully - don't show "loader failed"
         if (userError) {
-          console.log("[LoginPage] No active session or auth error:", userError.message);
+          console.log("[LoginPage] No active session:", userError.message);
           return;
         }
 
         if (!cancelled && user) {
-          // Get profile - subscription_status is the SINGLE SOURCE OF TRUTH
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("subscription_status")
-            .eq("id", user.id)
-            .single();
-
-          if (profileError && profileError.code !== "PGRST116") {
-            console.error("[LoginPage] Profile fetch error:", profileError);
-          }
-
-          if (!profile) {
-            return;
-          }
-
-          const subscriptionStatus = (profile as any)?.subscription_status as string | null;
-          console.log("[LOGIN/checkSession] subscription_status =", subscriptionStatus);
-
-          if (subscriptionStatus === "active") {
-            if (!user.email_confirmed_at) {
-              setError(t("auth.confirmEmailFirstWithSpam"));
-              return;
-            }
-            router.refresh();
-            router.replace(DECKS_PATH);
-            return;
-          }
-
-          if (subscriptionStatus === "pending_payment") {
-            router.refresh();
-            router.replace(DECKS_PATH);
-            return;
-          }
-
-          if (!user.email_confirmed_at) {
-            await supabase.auth.signOut();
-            setError(t("auth.confirmEmailFirst"));
-            return;
-          }
-
-          router.refresh();
           router.replace(DECKS_PATH);
         }
       } catch (error) {
@@ -109,7 +68,7 @@ export default function LoginClient() {
     return () => {
       cancelled = true;
     };
-  }, [nativeIOS, router, supabase, t]);
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

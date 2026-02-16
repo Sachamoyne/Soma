@@ -9,12 +9,6 @@ import { isNativeApp, isNativeIOS } from "@/lib/native";
 
 type OAuthProvider = "google" | "apple";
 
-// iOS: Supabase redirects to this HTTPS page after OAuth completes.
-// The page loads in SFSafariViewController, then redirects to soma://auth/callback
-// via JavaScript. iOS intercepts the custom scheme and fires appUrlOpen,
-// which NativeOAuthCallbackHandler processes.
-const IOS_OAUTH_REDIRECT_URL = "https://www.soma-edu.com/auth/native-callback";
-
 interface OAuthButtonsProps {
   loading?: boolean;
   disabled?: boolean;
@@ -33,17 +27,13 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
     onError("");
 
     try {
-      const platform = nativeIOS ? "ios" : "web";
-      console.log(`[OAuth] Starting ${provider} on ${platform}...`);
-
       const supabase = createClient();
 
       const redirectTo = nativeIOS
-        ? IOS_OAUTH_REDIRECT_URL
+        ? "soma://auth/callback"
         : `${window.location.origin}/auth/callback`;
 
-      console.log(`[OAuth] redirectTo: ${redirectTo}`);
-      console.log(`[OAuth] skipBrowserRedirect: ${nativeIOS}`);
+      console.log(`[OAuth] Starting ${provider}, redirectTo: ${redirectTo}, skipBrowserRedirect: ${nativeIOS}`);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -52,10 +42,6 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
           skipBrowserRedirect: nativeIOS,
         },
       });
-
-      console.log("[OAuth] signInWithOAuth result — error:", error);
-      console.log("[OAuth] signInWithOAuth result — data:", JSON.stringify(data));
-      console.log("[OAuth] signInWithOAuth result — data.url:", data?.url);
 
       if (error) {
         console.error(`[OAuth] ${provider} error:`, error.message);
@@ -66,29 +52,21 @@ export function OAuthButtons({ loading: externalLoading, disabled, onError }: OA
 
       if (nativeIOS) {
         if (!data?.url) {
-          console.error(`[OAuth] CRITICAL: data.url is missing for ${provider} on iOS. data =`, JSON.stringify(data));
+          console.error(`[OAuth] No URL returned for ${provider}`);
           onError(t("auth.unexpectedError"));
           setOauthLoading(false);
           return;
         }
 
-        if (!/^https?:\/\//i.test(data.url)) {
-          console.error(`[OAuth] Invalid URL returned:`, data.url);
-          onError(t("auth.unexpectedError"));
-          setOauthLoading(false);
-          return;
-        }
-
-        console.log(`[OAuth] Opening system browser with URL: ${data.url.substring(0, 100)}...`);
+        console.log(`[OAuth] Opening browser: ${data.url.substring(0, 80)}...`);
         await Browser.open({ url: data.url });
         setOauthLoading(false);
         return;
       }
 
-      // Web: Supabase handles the redirect automatically (skipBrowserRedirect is false)
-      console.log(`[OAuth] ${provider} redirect initiated (web)`);
+      // Web: Supabase handles redirect automatically
     } catch (err) {
-      console.error(`[OAuth] Unexpected error during ${provider}:`, err);
+      console.error(`[OAuth] Unexpected error:`, err);
       onError(t("auth.unexpectedError"));
       setOauthLoading(false);
     }
