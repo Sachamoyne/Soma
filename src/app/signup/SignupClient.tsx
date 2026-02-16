@@ -14,6 +14,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { mapAuthError } from "@/lib/auth-errors";
 import { isNativeIOS } from "@/lib/native";
+import { getEmailRedirectTo } from "@/lib/auth-callback";
 
 
 /**
@@ -35,6 +36,7 @@ export default function SignupClient() {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const nativeIOS = isNativeIOS();
+  const emailRedirectTo = getEmailRedirectTo();
 
   const planParam = searchParams.get("plan");
   const requestedPlan =
@@ -81,7 +83,7 @@ export default function SignupClient() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/login`,
+            emailRedirectTo,
             data: {
               plan_name: "free",
               onboarding_status: "active",
@@ -116,7 +118,7 @@ export default function SignupClient() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo,
           data: {
             plan_name: plan,
             onboarding_status: "pending_payment",

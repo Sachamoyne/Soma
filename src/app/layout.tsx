@@ -7,6 +7,7 @@ import { GoogleTagManagerNoscript } from "@/components/GoogleTagManagerNoscript"
 import { GoogleAnalyticsScript } from "@/components/GoogleAnalyticsScript";
 import { Analytics } from "@vercel/analytics/next";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { NativeAuthCallbackHandler } from "@/components/NativeAuthCallbackHandler";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -34,6 +35,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body className={geist.className}>
+        <NativeAuthCallbackHandler />
         <GoogleTagManagerNoscript />
         <GoogleAnalyticsScript />
         <OfflineBanner />

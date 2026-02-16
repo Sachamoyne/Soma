@@ -25,6 +25,7 @@ import { getSettings } from "@/lib/supabase-db";
 import type { Card as CardType, Deck, IntervalPreview } from "@/lib/db";
 import { Edit, Pause, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useCardTimer } from "@/hooks/useCardTimer";
 import { BasicCard } from "@/components/cards/BasicCard";
 import { ReversibleCard } from "@/components/cards/ReversibleCard";
 import { TypedCard } from "@/components/cards/TypedCard";
@@ -66,6 +67,7 @@ export function StudyCard({
   const pendingCards = useRef<Map<string, CardType>>(new Map());
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSubmitting = useRef(false);
+  const cardTimer = useCardTimer();
 
   // Derive currentCard safely
   const currentCard = queue[currentIndex] ?? null;
@@ -99,6 +101,13 @@ export function StudyCard({
     }
   }, [currentCard]);
 
+  // Reset card timer when the current card changes
+  useEffect(() => {
+    if (currentCard) {
+      cardTimer.reset();
+    }
+  }, [currentCard?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRate = useCallback(
     async (rating: "again" | "hard" | "good" | "easy") => {
       if (!currentCard) return;
@@ -112,12 +121,13 @@ export function StudyCard({
       isSubmitting.current = true;
       const cardId = currentCard.id;
       const previousState = currentCard.state;
+      const elapsedMs = cardTimer.getElapsed();
 
-      console.log("🔵 handleRate START", { cardId, rating, previousState });
+      console.log("🔵 handleRate START", { cardId, rating, previousState, elapsedMs });
 
       try {
         // Persist review FIRST - wait for completion
-        const updatedCard = await reviewCard(cardId, rating);
+        const updatedCard = await reviewCard(cardId, rating, elapsedMs);
         console.log("✅ reviewCard completed successfully");
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("soma-counts-updated"));
