@@ -9,9 +9,10 @@ import { isNativeApp, isNativeIOS } from "@/lib/native";
 
 type OAuthProvider = "google" | "apple";
 
-// iOS: redirect to an HTTPS intermediate page that triggers the soma:// deep link.
-// SFSafariViewController (used by @capacitor/browser) cannot navigate to custom
-// URL schemes directly, so we bounce through this HTTPS page first.
+// iOS: Supabase redirects to this HTTPS page after OAuth completes.
+// The page loads in SFSafariViewController, then redirects to soma://auth/callback
+// via JavaScript. iOS intercepts the custom scheme and fires appUrlOpen,
+// which NativeOAuthCallbackHandler processes.
 const IOS_OAUTH_REDIRECT_URL = "https://soma-edu.com/auth/native-callback";
 
 interface OAuthButtonsProps {
