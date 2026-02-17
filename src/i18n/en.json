@@ -54,10 +54,12 @@
     "aboutP2": "The product is designed as a quiet companion for serious learners. Every surface stays minimal so your attention stays on what matters."
   },
   "auth": {
-    "signIn": "Sign in to {appName}",
+    "signIn": "Login to {appName}",
     "signUp": "Sign up for {appName}",
     "email": "Email",
+    "emailPlaceholder": "Enter your email",
     "password": "Password",
+    "passwordPlaceholder": "Enter your password",
     "continue": "Continue",
     "createAccount": "Create account",
     "needAccount": "Need an account? Sign up",
@@ -74,6 +76,7 @@
     "accountCreatedCheckEmail": "Account created. Check your email then sign in.",
     "googleSignInError": "Error signing in with Google. Please try again.",
     "accountCreationError": "Error creating account.",
+    "webOnlySubscriptions": "Subscriptions are available on the web version.",
     "paymentConfirmed": "Payment confirmed!",
     "subscriptionActiveSignIn": "Your subscription is active. Sign in to access {appName}.",
     "confirmEmailFirst": "Please confirm your email before signing in. Check your inbox.",
@@ -83,7 +86,14 @@
     "profileCreating": "Your profile is being created. Please wait a moment and try again.",
     "unexpectedError": "An error occurred. Please try again.",
     "newToSoma": "New to Soma?",
-    "byCreatingAccount": "By creating an account, you agree to our"
+    "byCreatingAccount": "By creating an account, you agree to our",
+    "acceptTermsPrefix": "I accept the",
+    "andTermsConnector": "and the",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "ofApp": "of {appName}.",
+    "andOur": "and our",
+    "finalizingAuthentication": "Finalizing authentication..."
   },
   "pricing": {
     "title": "Pricing",

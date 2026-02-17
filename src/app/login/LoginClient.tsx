@@ -14,7 +14,6 @@ import { Playfair_Display } from "next/font/google";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { mapAuthError } from "@/lib/auth-errors";
 import { isNativeIOS } from "@/lib/native";
 
 
@@ -97,8 +96,7 @@ export default function LoginClient() {
           return;
         }
 
-        const authError = mapAuthError(signInError, "signin");
-        setError(authError.message);
+        setError(t("auth.unexpectedError"));
         return;
       }
 
@@ -169,8 +167,7 @@ export default function LoginClient() {
       router.push(DECKS_PATH);
     } catch (err) {
       console.error("[LoginPage] Unexpected error during login:", err);
-      const authError = mapAuthError(err, "signin");
-      setError(authError.message || t("auth.unexpectedError"));
+      setError(t("auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -221,7 +218,7 @@ export default function LoginClient() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -238,7 +235,7 @@ export default function LoginClient() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t("auth.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -299,16 +296,16 @@ export default function LoginClient() {
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground transition-colors"
               >
-                Politique de Confidentialit&eacute;
+                {t("auth.privacyPolicy")}
               </Link>
-              {" "}et nos{" "}
+              {" "}{t("auth.andOur")}{" "}
               <Link
                 href="/cgu-cgv"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground transition-colors"
               >
-                CGU/CGV
+                {t("auth.termsOfService")}
               </Link>
               .
             </p>

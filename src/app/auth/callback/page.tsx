@@ -8,8 +8,10 @@ import {
   consumeAuthCallbackUrl,
 } from "@/lib/auth-callback";
 import { isNativeApp } from "@/lib/native";
+import { useTranslation } from "@/i18n";
 
 export default function AuthCallbackPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const handledRef = useRef(false);
 
@@ -44,7 +46,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-      <p className="text-sm text-muted-foreground">Finalizing authentication...</p>
+      <p className="text-sm text-muted-foreground">{t("auth.finalizingAuthentication")}</p>
     </div>
   );
 }

@@ -12,7 +12,6 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { mapAuthError } from "@/lib/auth-errors";
 import { isNativeIOS } from "@/lib/native";
 import { getEmailRedirectTo } from "@/lib/auth-callback";
 
@@ -110,7 +109,7 @@ export default function SignupClient() {
       // PAID PLANS (starter / pro)
       // --------------------
       if (nativeIOS) {
-        setError("Subscriptions are available on the web version.");
+        setError(t("auth.webOnlySubscriptions"));
         return;
       }
 
@@ -153,9 +152,8 @@ export default function SignupClient() {
       }
 
       window.location.href = payload.url;
-    } catch (err: any) {
-      const mapped = mapAuthError(err, "signup");
-      setError(mapped.message || t("auth.accountCreationError"));
+    } catch {
+      setError(t("auth.accountCreationError"));
     } finally {
       setLoading(false);
     }
@@ -180,7 +178,7 @@ export default function SignupClient() {
               </h1>
               {!nativeIOS && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{plan}</span>
+                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{t(`pricing.${plan}`)}</span>
                 </p>
               )}
             </div>
@@ -193,6 +191,7 @@ export default function SignupClient() {
               </label>
               <Input
                 type="email"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -208,6 +207,7 @@ export default function SignupClient() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
+                  placeholder={t("auth.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -246,15 +246,15 @@ export default function SignupClient() {
                 className="mt-0.5"
               />
               <span>
-                J&apos;accepte la{" "}
+                {t("auth.acceptTermsPrefix")}{" "}
                 <Link href="/confidentialite" className="underline hover:text-foreground">
-                  Politique de Confidentialité
+                  {t("auth.privacyPolicy")}
                 </Link>{" "}
-                et les{" "}
+                {t("auth.andTermsConnector")}{" "}
                 <Link href="/cgu-cgv" className="underline hover:text-foreground">
-                  CGU/CGV
+                  {t("auth.termsOfService")}
                 </Link>{" "}
-                de {APP_NAME}.
+                {t("auth.ofApp", { appName: APP_NAME })}
               </span>
             </div>
 
@@ -264,10 +264,10 @@ export default function SignupClient() {
 
             <div className="text-center text-sm text-muted-foreground">
               <Link
-                href={nativeIOS ? "/login" : "/pricing"}
+                href="/login"
                 className="hover:text-foreground transition-colors"
               >
-                {nativeIOS ? t("auth.signIn") : t("auth.backToPlans")}
+                {t("auth.signIn", { appName: APP_NAME })}
               </Link>
             </div>
           </form>
