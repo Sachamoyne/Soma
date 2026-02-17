@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function PostCheckoutPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const checkoutSuccess = searchParams.get("checkout") === "success";
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   useEffect(() => {
+    const isSuccess =
+      new URLSearchParams(window.location.search).get("checkout") === "success";
+
+    setCheckoutSuccess(isSuccess);
+
     const timer = window.setTimeout(() => {
-      router.replace(checkoutSuccess ? "/login?checkout=success" : "/login");
+      router.replace(isSuccess ? "/login?checkout=success" : "/login");
     }, 1500);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [checkoutSuccess, router]);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
