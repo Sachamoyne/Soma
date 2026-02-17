@@ -23,7 +23,6 @@ export function RichCardInput({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
-  const bucketEnsuredRef = useRef(false);
   const initLoggedRef = useRef(false);
   const supabase = createClient();
 
@@ -35,42 +34,11 @@ export function RichCardInput({
     initLoggedRef.current = true;
   }
 
-  const ensureCardMediaBucket = useCallback(async () => {
-    if (bucketEnsuredRef.current) return true;
-
-    try {
-      const response = await fetch("/api/storage/ensure-card-media", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        console.error("[RICH CARD INPUT] ❌ Failed to ensure storage bucket", {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        // Do not block upload flow; Supabase will return the real error if bucket is missing.
-        return true;
-      }
-
-      bucketEnsuredRef.current = true;
-      return true;
-    } catch (error) {
-      console.error("[RICH CARD INPUT] ❌ Bucket ensure request failed:", error);
-      // Allow upload to proceed; this guard is best-effort only.
-      return true;
-    }
-  }, []);
-
   const uploadImage = async (file: File): Promise<string | null> => {
     let handledError = false;
 
     try {
       setIsUploading(true);
-
-      const bucketReady = await ensureCardMediaBucket();
-      if (!bucketReady) {
-        return null;
-      }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();

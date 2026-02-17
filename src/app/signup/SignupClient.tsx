@@ -14,6 +14,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isNativeIOS } from "@/lib/native";
 import { getEmailRedirectTo } from "@/lib/auth-callback";
+import { BACKEND_URL } from "@/lib/backend";
 
 
 /**
@@ -134,15 +135,27 @@ export default function SignupClient() {
         throw new Error("User not created");
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (!backendUrl) {
-        throw new Error("NEXT_PUBLIC_BACKEND_URL not configured");
+      // Checkout is now strictly authenticated server-side.
+      // We derive identity from the Supabase access token only.
+      let accessToken = data.session?.access_token ?? null;
+      if (!accessToken) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        accessToken = session?.access_token ?? null;
       }
 
-      const res = await fetch(`${backendUrl}/stripe/checkout`, {
+      if (!accessToken) {
+        throw new Error("Authenticated session required to start checkout");
+      }
+
+      const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, userId: user.id }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ plan }),
       });
 
       const payload = (await res.json()) as { url?: string; error?: string };
@@ -152,8 +165,14 @@ export default function SignupClient() {
       }
 
       window.location.href = payload.url;
-    } catch {
-      setError(t("auth.accountCreationError"));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unknown signup error";
+      if (message.includes("Authenticated session required")) {
+        setError("Please log in after email verification to continue checkout.");
+      } else {
+        setError(t("auth.accountCreationError"));
+      }
     } finally {
       setLoading(false);
     }

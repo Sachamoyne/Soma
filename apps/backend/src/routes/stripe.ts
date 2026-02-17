@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import Stripe from "stripe";
 import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
+import { getEnv } from "../env";
 
 // ============================================================================
 // LOCAL TYPE DEFINITIONS FOR SUPABASE TABLES
@@ -61,10 +62,8 @@ function getStripe(): Stripe {
     return stripeInstance;
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY environment variable is not set");
-  }
+  const env = getEnv();
+  const secretKey = env.STRIPE_SECRET_KEY;
 
   stripeInstance = new Stripe(secretKey);
 
@@ -73,96 +72,69 @@ function getStripe(): Stripe {
 
 /**
  * POST /stripe/checkout
- * Creates a Stripe Checkout Session for subscription.
- * Supports:
- * - Authenticated calls (Authorization header via requireAuth middleware)
- * - Unauthenticated calls if userId is provided (for paid onboarding before email confirmation)
+ * Creates a Stripe Checkout Session for the authenticated user.
  */
-router.post("/checkout", async (req: Request, res: Response) => {
+router.post("/checkout", requireAuth, async (req: Request, res: Response) => {
   try {
     console.log("[STRIPE/CHECKOUT] Request received");
 
-    // If requireAuth is enabled, userId is injected by middleware.
-    // Otherwise we allow passing userId explicitly for paid onboarding.
-    const authedUserId = (req as any).userId as string | undefined;
-    const bodyUserId = (req.body as { userId?: string } | undefined)?.userId;
-    const userId = authedUserId || bodyUserId;
+    const userId = (req as any).userId as string | undefined;
 
     if (!userId) {
       console.error("[STRIPE/CHECKOUT] No valid user token");
       return res.status(401).json({
-        error: "Unauthorized",
-        message: "Missing userId",
+        error: "UNAUTHORIZED",
+        message: "User must be authenticated",
       });
     }
 
-    // Extract and type the plan from request body
-    const { plan } = req.body as { plan?: Plan };
+    const body = req.body as { plan?: unknown } | undefined;
+    const rawPlan = body?.plan;
 
-    // Validate plan is provided and is either "starter" or "pro"
-    if (plan !== "starter" && plan !== "pro") {
+    if (rawPlan !== "starter" && rawPlan !== "pro") {
       return res.status(400).json({
         error: "INVALID_PLAN",
         message: "Plan must be 'starter' or 'pro'",
       });
     }
+    const plan: Plan = rawPlan;
 
-    // At this point, TypeScript knows plan is "starter" | "pro"
-    // Define price ID mapping with strict typing
+    const env = getEnv();
     const PRICE_IDS: Record<Plan, string | undefined> = {
-      starter: process.env.SOMA_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID,
-      pro: process.env.SOMA_PRO_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID,
+      starter: env.STRIPE_STARTER_PRICE_ID,
+      pro: env.STRIPE_PRO_PRICE_ID,
     };
 
-    // Access price_id after validation - TypeScript knows plan is Plan
     const priceId = PRICE_IDS[plan];
-
     if (!priceId) {
       console.error(`[STRIPE/CHECKOUT] Missing price_id for plan: ${plan}`);
       return res.status(500).json({
         error: "MISSING_PRICE_ID",
-        message: `Missing Stripe price_id for plan: ${plan}. Please configure SOMA_${plan.toUpperCase()}_PRICE_ID or STRIPE_${plan.toUpperCase()}_PRICE_ID environment variable.`,
+        message: `Missing Stripe price_id for plan: ${plan}`,
       });
     }
 
-    // Get frontend URL for success/cancel redirects
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (!frontendUrl) {
-      console.error("[STRIPE/CHECKOUT] Missing FRONTEND_URL");
-      return res.status(500).json({
-        error: "MISSING_CONFIGURATION",
-        message: "FRONTEND_URL environment variable is not set",
-      });
-    }
-
-    // Initialize Stripe
     const stripe = getStripe();
-
-    // Get or create Stripe customer for the user
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceKey) {
-      console.error("[STRIPE/CHECKOUT] Missing Supabase configuration");
-      return res.status(500).json({
-        error: "MISSING_CONFIGURATION",
-        message: "Supabase configuration not set",
-      });
-    }
-
-    const supabase = createSupabaseClient(supabaseUrl, serviceKey, {
+    const supabase = createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
 
-    // Get user profile to check for existing Stripe customer ID
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("email, stripe_customer_id, onboarding_status, subscription_status, plan_name")
       .eq("id", userId)
       .single();
+
+    if (profileError) {
+      console.error("[STRIPE/CHECKOUT] Profile lookup failed:", profileError);
+      return res.status(404).json({
+        error: "PROFILE_NOT_FOUND",
+        message: "Profile not found. Please retry after account provisioning.",
+      });
+    }
 
     // Prevent double payment if already active
     const onboardingStatus = (profile as any)?.onboarding_status as string | null | undefined;
@@ -205,8 +177,8 @@ router.post("/checkout", async (req: Request, res: Response) => {
         },
       ],
       allow_promotion_codes: true,
-      success_url: `${frontendUrl}/post-checkout`,
-      cancel_url: `${frontendUrl}/pricing`,
+      success_url: `${env.FRONTEND_URL}/post-checkout?checkout=success`,
+      cancel_url: `${env.FRONTEND_URL}/pricing`,
       subscription_data: {
         metadata: {
           supabase_user_id: userId,
@@ -254,27 +226,8 @@ router.post("/portal", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (!frontendUrl) {
-      console.error("[STRIPE/PORTAL] Missing FRONTEND_URL");
-      return res.status(500).json({
-        error: "MISSING_CONFIGURATION",
-        message: "FRONTEND_URL environment variable is not set",
-      });
-    }
-
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceKey) {
-      console.error("[STRIPE/PORTAL] Missing Supabase configuration");
-      return res.status(500).json({
-        error: "MISSING_CONFIGURATION",
-        message: "Supabase configuration not set",
-      });
-    }
-
-    const supabase = createSupabaseClient(supabaseUrl, serviceKey, {
+    const env = getEnv();
+    const supabase = createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -301,7 +254,7 @@ router.post("/portal", requireAuth, async (req: Request, res: Response) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${frontendUrl}/billing`,
+      return_url: `${env.FRONTEND_URL}/billing`,
     });
 
     if (!session.url) {
@@ -449,11 +402,8 @@ async function recordAffiliateConversion(
  */
 export async function handleStripeWebhook(req: Request, res: Response) {
   try {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      console.error("[STRIPE/WEBHOOK] Missing STRIPE_WEBHOOK_SECRET");
-      return res.status(500).send("Missing webhook configuration");
-    }
+    const env = getEnv();
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
 
     const stripe = getStripe();
     const signature = req.headers["stripe-signature"];
@@ -480,20 +430,9 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       return res.status(400).send("Missing supabase_user_id");
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) {
-      console.error("[STRIPE/WEBHOOK] Missing Supabase configuration");
-      return res.status(500).send("Missing Supabase configuration");
-    }
-
-    const supabase = createSupabaseClient(supabaseUrl, serviceKey, {
+    const supabase = createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-
-    // Get user email from Supabase auth for profile creation
-    const { data: authUser } = await supabase.auth.admin.getUserById(supabaseUserId);
-    const userEmail = authUser?.user?.email || session.customer_details?.email || "";
 
     // CRITICAL: Validate planName - must be starter or pro for paid checkout
     let finalPlan: Plan = "starter"; // Default fallback
@@ -520,67 +459,49 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
     console.log(`[STRIPE/WEBHOOK] Activating user ${supabaseUserId} with plan: ${finalPlan}`);
 
-    // Get existing profile to preserve important fields (stripe_customer_id, role)
-    const { data: existingProfileData } = await supabase
+    const { data: existingProfileData, error: profileLookupError } = await supabase
       .from("profiles")
       .select("stripe_customer_id, role, ai_cards_monthly_limit, ai_cards_used_current_month, ai_quota_reset_at")
       .eq("id", supabaseUserId)
       .single();
 
-    // Cast to typed interface (Supabase returns unknown without generated types)
-    const existingProfile = existingProfileData as Partial<Profile> | null;
+    if (profileLookupError || !existingProfileData) {
+      console.error("[STRIPE/WEBHOOK] Missing profile for user:", supabaseUserId, profileLookupError);
+      // Trigger-owned profile provisioning should have created this row.
+      // Return 500 so Stripe retries instead of silently losing activation.
+      return res.status(500).send("Profile not ready");
+    }
 
-    // Preserve privileged roles (founder/admin) - never overwrite them
-    const privilegedRoles = ["founder", "admin"];
-    const existingRole = existingProfile?.role;
-    const preserveRole = existingRole && privilegedRoles.includes(existingRole);
-
-    const quotaLimitByPlan: Record<Plan, number> = {
-      starter: 300,
-      pro: 1000,
-    };
-
-    const targetMonthlyLimit = quotaLimitByPlan[finalPlan];
-    const existingLimit = existingProfile?.ai_cards_monthly_limit ?? 0;
-    const nextMonthReset = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-    const shouldSetQuotaLimit = existingLimit < targetMonthlyLimit;
-
-    // CRITICAL: Use UPSERT to create/update profile.
-    // This ensures paid users always get the correct plan set.
-    // The webhook is the SINGLE SOURCE OF TRUTH for paid plan activation.
+    const existingProfile = existingProfileData as Partial<Profile>;
     const profileData: Record<string, unknown> = {
-      id: supabaseUserId,
-      email: userEmail,
-      role: preserveRole ? existingRole : "user",
       plan: finalPlan,
       plan_name: finalPlan,
       onboarding_status: "active",
       subscription_status: "active",
     };
 
-    if (shouldSetQuotaLimit) {
-      profileData.ai_cards_monthly_limit = targetMonthlyLimit;
-    }
-    if (existingProfile?.ai_cards_used_current_month !== null && existingProfile?.ai_cards_used_current_month !== undefined) {
+    if (
+      existingProfile.ai_cards_used_current_month !== null &&
+      existingProfile.ai_cards_used_current_month !== undefined
+    ) {
       profileData.ai_cards_used_current_month = existingProfile.ai_cards_used_current_month;
     }
-    if (!existingProfile?.ai_quota_reset_at) {
+    if (!existingProfile.ai_quota_reset_at) {
+      const nextMonthReset = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
       profileData.ai_quota_reset_at = nextMonthReset.toISOString();
     }
-    if (existingProfile?.stripe_customer_id) {
+    if (existingProfile.stripe_customer_id) {
       profileData.stripe_customer_id = existingProfile.stripe_customer_id;
     }
 
-    const { error: upsertError } = await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
-      .upsert(profileData as any, {
-        onConflict: "id",
-        ignoreDuplicates: false  // Force update even if exists
-      });
+      .update(profileData as any)
+      .eq("id", supabaseUserId);
 
-    if (upsertError) {
-      console.error("[STRIPE/WEBHOOK] Failed to upsert profile:", upsertError);
-      return res.status(500).send("Failed to upsert profile");
+    if (updateError) {
+      console.error("[STRIPE/WEBHOOK] Failed to update profile:", updateError);
+      return res.status(500).send("Failed to update profile");
     }
 
     console.log(`[STRIPE/WEBHOOK] Successfully activated user ${supabaseUserId} with plan ${finalPlan}`);

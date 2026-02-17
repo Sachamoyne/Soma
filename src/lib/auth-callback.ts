@@ -1,7 +1,7 @@
 import type { EmailOtpType, SupabaseClient } from "@supabase/supabase-js";
 import { isNativeApp } from "@/lib/native";
+import { getSiteUrl } from "@/lib/env";
 
-export const WEB_EMAIL_CALLBACK_URL = "https://soma-edu.com/auth/callback";
 export const IOS_EMAIL_CALLBACK_URL = "soma://auth/callback";
 
 const OTP_TYPES: ReadonlySet<EmailOtpType> = new Set([
@@ -22,7 +22,11 @@ type CallbackParams = {
 };
 
 export function getEmailRedirectTo(): string {
-  return isNativeApp() ? IOS_EMAIL_CALLBACK_URL : WEB_EMAIL_CALLBACK_URL;
+  if (isNativeApp()) {
+    return IOS_EMAIL_CALLBACK_URL;
+  }
+
+  return `${getSiteUrl()}/auth/callback`;
 }
 
 export function isAuthCallbackUrl(rawUrl: string): boolean {

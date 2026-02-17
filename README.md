@@ -33,16 +33,3 @@ Itérations rapides orientées produit
 Stabiliser l’expérience de révision
 Finaliser les performances (latence, navigation)
 Ouvrir progressivement à des utilisateurs externes (beta)
-
-## Deep links (iOS)
-
-Référence rapide:
-- `ios/DEEP_LINKS.md`
-
-Smoke test parsing (dans un composant client / console de dev):
-
-```ts
-import { runDeepLinkSmokeTest } from "@/lib/deepLinks";
-
-console.table(runDeepLinkSmokeTest());
-```

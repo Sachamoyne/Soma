@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getEnv } from "../env";
 
 /**
  * Middleware to authenticate requests using Supabase JWT token.
@@ -42,21 +43,11 @@ export async function requireAuth(
     }
 
     // Verify Supabase configuration
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const anonKey = process.env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !anonKey) {
-      console.error("[AUTH] Missing Supabase configuration");
-      res.status(500).json({
-        error: "Internal Server Error",
-        message: "Server configuration error",
-      });
-      return;
-    }
+    const env = getEnv();
 
     // Create Supabase client with ANON_KEY for JWT verification (ES256)
     // Service Role Key cannot properly verify ES256-signed JWTs
-    const supabaseAuth = createSupabaseClient(supabaseUrl, anonKey, {
+    const supabaseAuth = createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

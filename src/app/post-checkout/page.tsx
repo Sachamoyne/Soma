@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function PostCheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const checkoutSuccess = searchParams.get("checkout") === "success";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      router.replace("/login?paid=1");
+      router.replace(checkoutSuccess ? "/login?checkout=success" : "/login");
     }, 1500);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [router]);
+  }, [checkoutSuccess, router]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
@@ -26,7 +28,10 @@ export default function PostCheckoutPage() {
         </p>
         <p className="mt-6 text-xs text-white/50">
           Si la redirection ne se lance pas, cliquez sur{" "}
-          <Link href="/login?paid=1" className="underline hover:text-white">
+          <Link
+            href={checkoutSuccess ? "/login?checkout=success" : "/login"}
+            className="underline hover:text-white"
+          >
             Continuer
           </Link>
           .

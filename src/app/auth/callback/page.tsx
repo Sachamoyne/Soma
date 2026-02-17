@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
         console.error("[auth/callback] Failed to restore session:", result.error);
       }
 
-      // Best-effort profile provisioning for OAuth and email verification edge-cases.
+      // Best-effort profile readiness check.
       await fetch("/api/auth/ensure-profile", { method: "POST" }).catch(() => undefined);
 
       const {

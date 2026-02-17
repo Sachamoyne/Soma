@@ -1024,53 +1024,14 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
 
   let userProfile = profile;
   if (!userProfile) {
-    const { data: authUser } = await adminSupabase.auth.admin.getUserById(userId);
-    const email = authUser?.user?.email || null;
-
-    const { data: newProfile, error: createError } = await adminSupabase
-      .from("profiles")
-      .insert({
-        id: userId,
-        email: email || "",
-        role: "user",
-        plan: "free",
-        ai_cards_used_current_month: 0,
-        ai_cards_monthly_limit: 0,
-        ai_quota_reset_at: new Date(
-          new Date().getFullYear(),
-          new Date().getMonth() + 1,
-          1
-        ).toISOString(),
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      return {
-        canGenerate: false,
-        isFounderOrAdmin: false,
-        error: {
-          success: false,
-          error: "QUOTA_FREE_PLAN",
-          message:
-            "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
-          plan: "free",
-          status: 403,
-        },
-      };
-    }
-    userProfile = newProfile;
-  }
-
-  if (!userProfile) {
     return {
       canGenerate: false,
       isFounderOrAdmin: false,
       error: {
         success: false,
-        error: "INTERNAL_ERROR",
-        message: "Failed to initialize user profile",
-        status: 500,
+        error: "PROFILE_NOT_READY",
+        message: "Profile provisioning is still in progress. Please retry.",
+        status: 409,
       },
     };
   }

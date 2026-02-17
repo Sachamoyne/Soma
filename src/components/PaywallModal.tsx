@@ -114,7 +114,7 @@ export function PaywallModal({
           ) : isStarter ? (
             <>
               <Link
-                href={appHref("/api/checkout?plan=pro", isApp)}
+                href={appHref("/signup?plan=pro", isApp)}
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >

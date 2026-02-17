@@ -38,9 +38,15 @@ export default async function AppLayout({
     return <AppShellClient>{children}</AppShellClient>;
   }
 
-  // RULE 2: subscription_status === "pending_payment" → /pricing
+  // RULE 2: subscription_status === "pending_payment"
+  // - Web: keep pricing gate.
+  // - Native iOS: allow app access (subscriptions are web-only and gating here
+  //   can produce redirect loops on /decks).
   if (subscriptionStatus === "pending_payment") {
-    redirect(nativeIOSRequest ? "/decks" : "/pricing");
+    if (!nativeIOSRequest) {
+      redirect("/pricing");
+    }
+    return <AppShellClient>{children}</AppShellClient>;
   }
 
   // RULE 3: Free user (null or "free") → email confirmation required.
