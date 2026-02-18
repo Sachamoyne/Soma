@@ -17,6 +17,7 @@ export default function BillingPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [plan, setPlan] = useState<Plan>("free");
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -37,13 +38,14 @@ export default function BillingPage() {
         if (!user) {
           if (!cancelled) {
             setPlan("free");
+            setStripeCustomerId(null);
           }
           return;
         }
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("plan_name, plan")
+          .select("plan_name, plan, stripe_customer_id")
           .eq("id", user.id)
           .single();
 
@@ -59,6 +61,7 @@ export default function BillingPage() {
               : "free";
 
         setPlan(resolved);
+        setStripeCustomerId((profile as any)?.stripe_customer_id ?? null);
       } catch (e) {
         console.error("[billing] Failed to load plan:", e);
         if (!cancelled) {
@@ -82,6 +85,10 @@ export default function BillingPage() {
     try {
       if (isNativeIOS) {
         setError("Subscriptions are available on the web version.");
+        return;
+      }
+      if (plan === "free" || !stripeCustomerId) {
+        setError("Vous n’avez pas d’abonnement actif.");
         return;
       }
 
@@ -120,7 +127,7 @@ export default function BillingPage() {
     } finally {
       setOpeningPortal(false);
     }
-  }, [isNativeIOS, supabase, t]);
+  }, [isNativeIOS, plan, stripeCustomerId, supabase, t]);
 
   const handleStartCheckout = useCallback(async (targetPlan: "starter" | "pro") => {
     try {
@@ -168,6 +175,7 @@ export default function BillingPage() {
 
   const planLabel =
     plan === "pro" ? "Pro" : plan === "starter" ? "Starter" : t("pricing.free");
+  const canOpenPortal = plan !== "free" && Boolean(stripeCustomerId);
 
   return (
     <>
@@ -205,12 +213,19 @@ export default function BillingPage() {
                       {loadingCheckout === "pro" ? "Redirecting..." : plan === "pro" ? "Pro active" : "Upgrade to Pro"}
                     </Button>
                   </div>
-                  <Button onClick={handleOpenPortal} disabled={openingPortal} className="w-full sm:w-auto">
+                  <Button onClick={handleOpenPortal} disabled={openingPortal || !canOpenPortal} className="w-full sm:w-auto">
                     {openingPortal ? t("billing.openingPortal") : t("billing.manageSubscription")}
                   </Button>
-                  <p className="text-xs text-muted-foreground max-w-prose">
-                    {t("billing.portalHelp")}
-                  </p>
+                  {!canOpenPortal && (
+                    <p className="text-xs text-muted-foreground max-w-prose">
+                      Vous n’avez pas d’abonnement actif.
+                    </p>
+                  )}
+                  {canOpenPortal && (
+                    <p className="text-xs text-muted-foreground max-w-prose">
+                      {t("billing.portalHelp")}
+                    </p>
+                  )}
                 </div>
               )}
 
