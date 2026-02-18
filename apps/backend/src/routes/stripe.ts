@@ -189,8 +189,8 @@ router.post("/checkout", requireAuth, async (req: Request, res: Response) => {
         },
       ],
       allow_promotion_codes: true,
-      success_url: `${env.FRONTEND_URL}/post-checkout?checkout=success`,
-      cancel_url: `${env.FRONTEND_URL}/pricing`,
+      success_url: `${env.FRONTEND_URL}/billing?checkout=success`,
+      cancel_url: `${env.FRONTEND_URL}/billing`,
       subscription_data: {
         metadata: {
           supabase_user_id: userId,
