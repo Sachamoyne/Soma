@@ -177,10 +177,10 @@ router.post("/confirm", async (req: Request, res: Response) => {
       });
     }
 
-    if (!Array.isArray(cards) || cards.length === 0 || cards.length > 20) {
+    if (!Array.isArray(cards) || cards.length === 0 || cards.length > 50) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
-        message: "cards must be a non-empty array (max 20 items)",
+        message: "cards must be a non-empty array (max 50 items)",
       });
     }
 

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Trash2, Plus, Image as ImageIcon } from "lucide-react";
-import { createCard, type Deck, type VocabDirection, type LanguagesConfig } from "@/store/decks";
+import { type Deck, type VocabDirection, type LanguagesConfig } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
@@ -210,51 +210,39 @@ export function VocabularyImportDialog({
     return parts.join(" ");
   };
 
-  const generateCardsForEntry = async (entry: VocabularyEntry): Promise<number> => {
-    if (!entry.wordSource.trim() || !entry.wordTarget.trim()) {
-      return 0;
+  const buildAllCards = (validEntries: VocabularyEntry[]) => {
+    const allCards: { front: string; back: string; type: string; extra: Record<string, unknown> }[] = [];
+
+    for (const entry of validEntries) {
+      const extra: Record<string, unknown> = {
+        wordSource: entry.wordSource,
+        wordTarget: entry.wordTarget,
+      };
+      if (entry.gender) extra.gender = entry.gender;
+      if (entry.plural) extra.plural = entry.plural;
+      if (entry.note) extra.note = entry.note;
+      if (entry.example) extra.example = entry.example;
+
+      if (vocabDirection === "normal" || vocabDirection === "both") {
+        allCards.push({
+          front: entry.wordSource,
+          back: buildCardBack(entry, false),
+          type: "vocabulary",
+          extra,
+        });
+      }
+
+      if (vocabDirection === "reversed" || vocabDirection === "both") {
+        allCards.push({
+          front: entry.wordTarget,
+          back: buildCardBack(entry, true),
+          type: "vocabulary",
+          extra: { ...extra, reversed: true },
+        });
+      }
     }
 
-    let cardsCreated = 0;
-
-    // Build extra data for vocabulary cards
-    const extra: Record<string, unknown> = {
-      wordSource: entry.wordSource,
-      wordTarget: entry.wordTarget,
-    };
-    if (entry.gender) extra.gender = entry.gender;
-    if (entry.plural) extra.plural = entry.plural;
-    if (entry.note) extra.note = entry.note;
-    if (entry.example) extra.example = entry.example;
-
-    // Generate cards based on direction
-    if (vocabDirection === "normal" || vocabDirection === "both") {
-      // Normal: source → target
-      await createCard(
-        deck.id,
-        entry.wordSource,
-        buildCardBack(entry, false),
-        "vocabulary",
-        supabase,
-        extra
-      );
-      cardsCreated++;
-    }
-
-    if (vocabDirection === "reversed" || vocabDirection === "both") {
-      // Reversed: target → source
-      await createCard(
-        deck.id,
-        entry.wordTarget,
-        buildCardBack(entry, true),
-        "vocabulary",
-        supabase,
-        { ...extra, reversed: true }
-      );
-      cardsCreated++;
-    }
-
-    return cardsCreated;
+    return allCards;
   };
 
   const handleGenerateCards = async () => {
@@ -272,13 +260,37 @@ export function VocabularyImportDialog({
     setGeneratedCount(0);
 
     try {
-      let totalCards = 0;
+      const allCards = buildAllCards(validEntries);
 
-      for (const entry of validEntries) {
-        const count = await generateCardsForEntry(entry);
-        totalCards += count;
-        setGeneratedCount(totalCards);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No Supabase session. Please log in again.");
       }
+
+      // Use the same backend endpoint as "Generate with AI" so that
+      // ai_cards_used_current_month is properly incremented.
+      const response = await fetch(`${BACKEND_URL}/generate/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          deck_id: String(deck.id),
+          cards: allCards,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "QUOTA_FREE_PLAN" || data.error === "QUOTA_EXCEEDED") {
+          throw new Error(data.message || "AI card quota exceeded");
+        }
+        throw new Error(data.error || data.message || "Failed to save cards");
+      }
+
+      setGeneratedCount(allCards.length);
 
       // Success!
       onSuccess?.();

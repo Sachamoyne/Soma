@@ -1149,6 +1149,8 @@ export interface CardPreview {
   back: string;
   tags?: string[];
   difficulty?: number;
+  type?: string;
+  extra?: Record<string, unknown>;
 }
 
 export interface GeneratePreviewResult {
@@ -1465,9 +1467,10 @@ export async function confirmAndInsertCards(
     deck_id: deckId,
     front: card.front,
     back: card.back,
-    type: "basic" as const,
+    type: (card.type || "basic") as string,
     state: "new" as const,
     due_at: nowIso,
+    ...(card.extra ? { extra: card.extra } : {}),
   }));
 
   console.log("[confirmAndInsertCards] Inserting cards:", {
