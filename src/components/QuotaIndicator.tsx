@@ -9,7 +9,6 @@ interface QuotaInfo {
   used: number;
   limit: number;
   remaining: number;
-  reset_at: string;
 }
 
 export function QuotaIndicator() {
@@ -44,8 +43,8 @@ export function QuotaIndicator() {
     return null;
   }
 
-  // Only show for Starter and Pro plans
-  if (quota.plan === "free" || quota.limit === 0) {
+  // Only show for Starter plan (Pro is unlimited, Free has no AI)
+  if (quota.plan !== "starter") {
     return null;
   }
 
@@ -57,7 +56,7 @@ export function QuotaIndicator() {
     <div className="rounded-lg border bg-muted/50 p-3 text-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-muted-foreground">
-          AI Cards: {quota.used} / {quota.limit}
+          Cards: {quota.used} / {quota.limit}
         </span>
         <span
           className={`font-medium ${
@@ -83,15 +82,6 @@ export function QuotaIndicator() {
           style={{ width: `${Math.min(100, percentage)}%` }}
         />
       </div>
-      {quota.remaining === 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Quota resets on{" "}
-          {new Date(quota.reset_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}
-        </p>
-      )}
     </div>
   );
 }

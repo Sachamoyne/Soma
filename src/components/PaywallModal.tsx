@@ -25,14 +25,12 @@ export function PaywallModal({
   plan,
   used,
   limit,
-  remaining,
 }: PaywallModalProps) {
   const { t } = useTranslation();
   const isApp = useIsApp();
   const isNativeIOS = useIsNativeIOS();
 
   const isFreePlan = reason === "free_plan";
-  const isQuotaExceeded = reason === "quota_exceeded";
   const isStarter = plan === "starter";
 
   return (
@@ -44,7 +42,7 @@ export function PaywallModal({
               ? "Subscriptions unavailable"
               : isFreePlan
               ? "AI Generation Not Available"
-              : "Monthly Quota Reached"}
+              : "Card Limit Reached"}
           </DialogTitle>
           <DialogDescription>
             {isNativeIOS ? (
@@ -57,26 +55,25 @@ export function PaywallModal({
                   AI flashcard generation is not available on the free plan.
                 </p>
                 <p>
-                  Upgrade to Starter (300 AI cards/month) or Pro (1,000 AI
-                  cards/month) to unlock AI-powered flashcard generation.
+                  Upgrade to Starter (200 cards) or Pro (unlimited cards) to
+                  unlock AI-powered flashcard generation.
                 </p>
               </div>
             ) : isStarter ? (
               <div className="space-y-4">
                 <p>
-                  You&apos;ve used all {limit} AI cards for this month. Your quota
-                  will reset at the beginning of next month.
+                  You&apos;ve reached the limit of {limit} cards on the Starter
+                  plan ({used} cards).
                 </p>
                 <p>
-                  Upgrade to Pro for 1,000 AI cards per month and continue
-                  generating cards immediately.
+                  Upgrade to Pro for unlimited cards and continue creating
+                  flashcards.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <p>
-                  You&apos;ve used all {limit} AI cards for this month. Your quota
-                  will reset at the beginning of next month.
+                  You&apos;ve reached your card limit ({used} / {limit} cards).
                 </p>
               </div>
             )}
@@ -127,7 +124,7 @@ export function PaywallModal({
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >
-                Continue with Manual Creation
+                OK
               </Button>
             </>
           ) : (
@@ -136,7 +133,7 @@ export function PaywallModal({
               className="w-full"
               onClick={() => onOpenChange(false)}
             >
-              Continue with Manual Creation
+              OK
             </Button>
           )}
         </div>

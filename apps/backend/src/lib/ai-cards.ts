@@ -979,11 +979,18 @@ function getAdminSupabase() {
 /**
  * Check user quota and access rights
  */
+// Plan card limits: total cards per user (not monthly)
+const PLAN_CARD_LIMITS: Record<string, number> = {
+  starter: 200,
+  pro: Number.MAX_SAFE_INTEGER,
+};
+
 async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   canGenerate: boolean;
   isFounderOrAdmin: boolean;
   error?: any;
   profile?: any;
+  totalCards?: number;
 }> {
   const adminSupabase = getAdminSupabase();
   if (!adminSupabase) {
@@ -999,12 +1006,10 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
     };
   }
 
-  // Get user profile to check quota and role
+  // Get user profile to check plan and role
   const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
-    .select(
-      "plan, role, ai_cards_used_current_month, ai_cards_monthly_limit, ai_quota_reset_at"
-    )
+    .select("plan, role")
     .eq("id", userId)
     .single();
 
@@ -1022,8 +1027,7 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
     };
   }
 
-  let userProfile = profile;
-  if (!userProfile) {
+  if (!profile) {
     return {
       canGenerate: false,
       isFounderOrAdmin: false,
@@ -1037,111 +1041,82 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   }
 
   const plan: "starter" | "pro" | "free" =
-    userProfile.plan === "starter" || userProfile.plan === "pro"
-      ? userProfile.plan
+    profile.plan === "starter" || profile.plan === "pro"
+      ? profile.plan
       : "free";
-  const role = userProfile.role || "user";
-  const used = userProfile.ai_cards_used_current_month || 0;
-  const limit = userProfile.ai_cards_monthly_limit || 0;
-  const planMonthlyLimits: Record<"starter" | "pro", number> = {
-    starter: 300,
-    pro: 1000,
-  };
-  const targetLimit =
-    plan === "starter" || plan === "pro" ? planMonthlyLimits[plan] : 0;
-  const shouldUpdateLimit =
-    (plan === "starter" || plan === "pro") && limit < targetLimit;
+  const role = profile.role || "user";
 
   const isPremium = plan === "starter" || plan === "pro";
   const isFounderOrAdmin = role === "founder" || role === "admin";
   const hasAIAccess = isPremium || isFounderOrAdmin;
 
-  if (shouldUpdateLimit && !isFounderOrAdmin) {
-    const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-    const { error: updateError } = await adminSupabase
-      .from("profiles")
-      .update({
-        ai_cards_monthly_limit: targetLimit,
-        ai_quota_reset_at: userProfile.ai_quota_reset_at || nextMonth.toISOString(),
-      })
-      .eq("id", userId);
-
-    if (!updateError) {
-      userProfile.ai_cards_monthly_limit = targetLimit;
-      userProfile.ai_quota_reset_at =
-        userProfile.ai_quota_reset_at || nextMonth.toISOString();
-    }
-  }
-
-  // Check if quota needs reset
-  if (!isFounderOrAdmin) {
-    const resetAt = new Date(userProfile.ai_quota_reset_at);
-    const now = new Date();
-    if (resetAt <= now) {
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const { error: resetError } = await adminSupabase
-        .from("profiles")
-        .update({
-          ai_cards_used_current_month: 0,
-          ai_quota_reset_at: nextMonth.toISOString(),
-        })
-        .eq("id", userId);
-
-      if (!resetError) {
-        userProfile.ai_cards_used_current_month = 0;
-        userProfile.ai_quota_reset_at = nextMonth.toISOString();
-      }
-    }
-  }
-
-  // Check access
-  let canGenerate = false;
+  // Free plan: no AI access
   if (!hasAIAccess) {
-    canGenerate = false;
-  } else if (isFounderOrAdmin) {
-    canGenerate = true;
-  } else if (used + cardCount <= limit) {
-    canGenerate = true;
+    return {
+      canGenerate: false,
+      isFounderOrAdmin: false,
+      error: {
+        success: false,
+        error: "QUOTA_FREE_PLAN",
+        message:
+          "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
+        plan: "free",
+        status: 403,
+      },
+    };
   }
 
-  if (!canGenerate) {
-    if (!hasAIAccess) {
-      return {
-        canGenerate: false,
-        isFounderOrAdmin: false,
-        error: {
-          success: false,
-          error: "QUOTA_FREE_PLAN",
-          message:
-            "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
-          plan: "free",
-          status: 403,
-        },
-      };
-    } else if (!isFounderOrAdmin) {
-      const remaining = Math.max(0, limit - used);
-      return {
-        canGenerate: false,
-        isFounderOrAdmin: false,
-        error: {
-          success: false,
-          error: "QUOTA_EXCEEDED",
-          message:
-            plan === "starter"
-              ? "You've reached your monthly limit of 300 AI cards. Upgrade to Pro for 1,000 cards/month."
-              : "You've reached your monthly limit of 1,000 AI cards. Your quota will reset at the beginning of next month.",
-          plan: plan,
-          used: used,
-          limit: limit,
-          remaining: remaining,
-          reset_at: userProfile.ai_quota_reset_at,
-          status: 403,
-        },
-      };
-    }
+  // Founders/admins: unlimited
+  if (isFounderOrAdmin) {
+    return { canGenerate: true, isFounderOrAdmin, profile };
   }
 
-  return { canGenerate: true, isFounderOrAdmin, profile: userProfile };
+  // Count total cards for this user
+  const { count: totalCards, error: countError } = await adminSupabase
+    .from("cards")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (countError) {
+    console.error("[ai-cards] Card count failed:", countError);
+    return {
+      canGenerate: false,
+      isFounderOrAdmin: false,
+      error: {
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "Failed to count cards",
+        status: 500,
+      },
+    };
+  }
+
+  const currentCount = totalCards || 0;
+  const limit = PLAN_CARD_LIMITS[plan];
+  const remaining = Math.max(0, limit - currentCount);
+
+  if (currentCount + cardCount > limit) {
+    return {
+      canGenerate: false,
+      isFounderOrAdmin: false,
+      totalCards: currentCount,
+      error: {
+        success: false,
+        error: "QUOTA_EXCEEDED",
+        message:
+          plan === "starter"
+            ? `You've reached the limit of ${limit} cards on the Starter plan. Upgrade to Pro for unlimited cards.`
+            : "Card limit reached.",
+        plan: plan,
+        used: currentCount,
+        limit: limit,
+        remaining: remaining,
+        status: 403,
+      },
+    };
+  }
+
+  return { canGenerate: true, isFounderOrAdmin, profile, totalCards: currentCount };
 }
 
 export interface CardPreview {
@@ -1499,17 +1474,7 @@ export async function confirmAndInsertCards(
     insertedIds: insertedCards?.map(c => c.id),
   });
 
-  // Increment quota ONLY after successful insertion
-  if (!quotaCheck.isFounderOrAdmin && quotaCheck.profile) {
-    const actualCardCount = insertedCards?.length || 0;
-    await adminSupabase
-      .from("profiles")
-      .update({
-        ai_cards_used_current_month:
-          (quotaCheck.profile.ai_cards_used_current_month || 0) + actualCardCount,
-      })
-      .eq("id", userId);
-  }
+  // Card count is now tracked dynamically (total cards in DB), no increment needed.
 
   return {
     success: true,
