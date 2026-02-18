@@ -6,7 +6,7 @@
 -- - Pro: illimité, 7,99€/mois
 -- - Free: pas de limite de cartes manuelles, pas d'accès IA
 --
--- ANCIEN MODÈLE: cartes IA par mois (starter=300, pro=1000)
+-- ANCIEN MODÈLE: cartes IA par mois (starter/pro sur des quotas mensuels)
 -- NOUVEAU MODÈLE: nombre total de cartes par utilisateur
 -- ============================================================================
 
@@ -82,7 +82,7 @@ BEGIN
     WHEN 'starter' THEN
       NEW.ai_cards_monthly_limit := 200;
     WHEN 'pro' THEN
-      NEW.ai_cards_monthly_limit := 999999;
+      NEW.ai_cards_monthly_limit := 2147483647;
     ELSE
       NEW.ai_cards_monthly_limit := COALESCE(NEW.ai_cards_monthly_limit, 0);
   END CASE;
@@ -98,7 +98,7 @@ $$;
 UPDATE public.profiles
 SET ai_cards_monthly_limit = CASE plan
     WHEN 'starter' THEN 200
-    WHEN 'pro' THEN 999999
+    WHEN 'pro' THEN 2147483647
     ELSE 0
   END
 WHERE plan IN ('starter', 'pro', 'free');

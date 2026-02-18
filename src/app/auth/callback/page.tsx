@@ -36,7 +36,16 @@ export default function AuthCallbackPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const target = buildPostAuthRedirectPath(isNativeApp(), Boolean(user));
+      const parsed = new URL(callbackUrl);
+      const checkoutPlan = parsed.searchParams.get("checkout_plan");
+      const shouldStartCheckout =
+        !isNativeApp() &&
+        Boolean(user) &&
+        (checkoutPlan === "starter" || checkoutPlan === "pro");
+
+      const target = shouldStartCheckout
+        ? `/pricing?checkout_plan=${checkoutPlan}`
+        : buildPostAuthRedirectPath(isNativeApp(), Boolean(user));
       router.replace(target);
       router.refresh();
     };

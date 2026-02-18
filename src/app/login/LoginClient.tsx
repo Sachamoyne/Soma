@@ -35,6 +35,11 @@ export default function LoginClient() {
 
   // Check for checkout=success in URL (user just paid)
   const checkoutSuccess = searchParams.get("checkout") === "success";
+  const checkoutPlanParam = searchParams.get("plan");
+  const checkoutPlan =
+    checkoutPlanParam === "starter" || checkoutPlanParam === "pro"
+      ? checkoutPlanParam
+      : null;
   const nativeIOS = isNativeIOS();
 
   useEffect(() => {
@@ -55,6 +60,10 @@ export default function LoginClient() {
         }
 
         if (!cancelled && user) {
+          if (!nativeIOS && checkoutPlan) {
+            router.replace(`/pricing?checkout_plan=${checkoutPlan}`);
+            return;
+          }
           router.replace(DECKS_PATH);
         }
       } catch (error) {
@@ -67,7 +76,7 @@ export default function LoginClient() {
     return () => {
       cancelled = true;
     };
-  }, [router, supabase]);
+  }, [checkoutPlan, nativeIOS, router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -160,6 +169,12 @@ export default function LoginClient() {
       if (!user.email_confirmed_at) {
         await supabase.auth.signOut();
         setError(t("auth.confirmEmailFirst"));
+        return;
+      }
+
+      if (!nativeIOS && checkoutPlan) {
+        router.refresh();
+        router.push(`/pricing?checkout_plan=${checkoutPlan}`);
         return;
       }
 

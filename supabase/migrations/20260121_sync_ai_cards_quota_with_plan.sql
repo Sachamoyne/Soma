@@ -8,8 +8,8 @@
 -- SOLUTION:
 -- Trigger BEFORE INSERT OR UPDATE qui force ai_cards_monthly_limit selon le plan:
 -- - free    -> 0
--- - starter -> 300
--- - pro     -> 1000
+-- - starter -> 200
+-- - pro     -> unlimited (INT sentinel)
 -- ============================================================================
 
 -- 1) Creer la fonction qui synchronise le quota avec le plan
@@ -26,9 +26,9 @@ BEGIN
     WHEN 'free' THEN
       NEW.ai_cards_monthly_limit := 0;
     WHEN 'starter' THEN
-      NEW.ai_cards_monthly_limit := 300;
+      NEW.ai_cards_monthly_limit := 200;
     WHEN 'pro' THEN
-      NEW.ai_cards_monthly_limit := 1000;
+      NEW.ai_cards_monthly_limit := 2147483647;
     ELSE
       -- Fallback: si plan invalide, garder la valeur existante ou 0
       NEW.ai_cards_monthly_limit := COALESCE(NEW.ai_cards_monthly_limit, 0);
@@ -63,8 +63,8 @@ CREATE TRIGGER sync_ai_cards_quota_trigger
 UPDATE public.profiles
 SET
   ai_cards_monthly_limit = CASE plan
-    WHEN 'starter' THEN 300
-    WHEN 'pro' THEN 1000
+    WHEN 'starter' THEN 200
+    WHEN 'pro' THEN 2147483647
     ELSE 0
   END
 WHERE
@@ -73,7 +73,7 @@ WHERE
 
 -- 5) Ajouter un commentaire pour la documentation
 COMMENT ON FUNCTION public.sync_ai_cards_quota_with_plan() IS
-  'Synchronise automatiquement ai_cards_monthly_limit avec le plan: free=0, starter=300, pro=1000';
+  'Synchronise automatiquement ai_cards_monthly_limit avec le plan: free=0, starter=200, pro=unlimited (INT sentinel)';
 
 -- 6) Verification: afficher les profils avec leur quota apres correction
 -- (cette requete sera visible dans les logs de migration)

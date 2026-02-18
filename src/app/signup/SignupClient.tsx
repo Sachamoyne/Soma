@@ -16,19 +16,11 @@ import { isNativeIOS } from "@/lib/native";
 import { getEmailRedirectTo } from "@/lib/auth-callback";
 import { BACKEND_URL } from "@/lib/backend";
 
-
 /**
  * Single entry point: /signup?plan=free|starter|pro
  *
- * FREE:
- * - onboarding_status = active
- * - email confirmation REQUIRED
- * - no Stripe
- *
- * PAID (starter / pro):
- * - onboarding_status = pending_payment
- * - immediate Stripe checkout
- * - email confirmation NON-blocking
+ * Signup always creates a FREE account.
+ * Paid plans are assigned only by Stripe webhooks after confirmed payment.
  */
 export default function SignupClient() {
   const { t } = useTranslation();
@@ -36,7 +28,6 @@ export default function SignupClient() {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const nativeIOS = isNativeIOS();
-  const emailRedirectTo = getEmailRedirectTo();
 
   const planParam = searchParams.get("plan");
   const requestedPlan =
@@ -61,6 +52,47 @@ export default function SignupClient() {
     }
   }, [nativeIOS, requestedPlan, router]);
 
+  const buildPaidEmailRedirect = (selectedPlan: "starter" | "pro"): string => {
+    const base = getEmailRedirectTo();
+    const separator = base.includes("?") ? "&" : "?";
+    return `${base}${separator}checkout_plan=${selectedPlan}`;
+  };
+
+  const startCheckout = async (
+    selectedPlan: "starter" | "pro",
+    initialAccessToken?: string | null
+  ): Promise<boolean> => {
+    let accessToken = initialAccessToken ?? null;
+
+    if (!accessToken) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      accessToken = session?.access_token ?? null;
+    }
+
+    if (!accessToken) {
+      return false;
+    }
+
+    const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ plan: selectedPlan }),
+    });
+
+    const payload = (await res.json()) as { url?: string; error?: string };
+    if (!res.ok || !payload.url) {
+      throw new Error(payload.error || "Stripe checkout failed");
+    }
+
+    window.location.href = payload.url;
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!plan) return;
@@ -75,9 +107,13 @@ export default function SignupClient() {
         return;
       }
 
-      // --------------------
-      // FREE PLAN
-      // --------------------
+      const isPaidSignup = plan === "starter" || plan === "pro";
+      const emailRedirectTo = isPaidSignup
+        ? buildPaidEmailRedirect(plan)
+        : getEmailRedirectTo();
+
+      // Signup always provisions a free profile. Paid plan activation
+      // happens strictly in Stripe webhook after confirmed payment.
       if (plan === "free") {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -120,8 +156,8 @@ export default function SignupClient() {
         options: {
           emailRedirectTo,
           data: {
-            plan_name: plan,
-            onboarding_status: "pending_payment",
+            plan_name: "free",
+            onboarding_status: "active",
           },
         },
       });
@@ -135,44 +171,13 @@ export default function SignupClient() {
         throw new Error("User not created");
       }
 
-      // Checkout is now strictly authenticated server-side.
-      // We derive identity from the Supabase access token only.
-      let accessToken = data.session?.access_token ?? null;
-      if (!accessToken) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        accessToken = session?.access_token ?? null;
+      const checkoutStarted = await startCheckout(plan, data.session?.access_token ?? null);
+      if (!checkoutStarted) {
+        router.replace(`/login?plan=${plan}`);
+        router.refresh();
       }
-
-      if (!accessToken) {
-        throw new Error("Authenticated session required to start checkout");
-      }
-
-      const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ plan }),
-      });
-
-      const payload = (await res.json()) as { url?: string; error?: string };
-
-      if (!res.ok || !payload.url) {
-        throw new Error(payload.error || "Stripe checkout failed");
-      }
-
-      window.location.href = payload.url;
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unknown signup error";
-      if (message.includes("Authenticated session required")) {
-        setError("Please log in after email verification to continue checkout.");
-      } else {
-        setError(t("auth.accountCreationError"));
-      }
+      setError(t("auth.accountCreationError"));
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { PLAN_LIMITS, getPlanLimit, serializePlanLimit } from "@/lib/plan-limits";
 
-// Plan card limits: total cards per user
-const PLAN_CARD_LIMITS: Record<string, number> = {
-  free: 0, // no AI access, but unlimited manual cards
-  starter: 200,
-  pro: 999999,
-};
+const SERIALIZED_UNLIMITED_LIMIT = serializePlanLimit(PLAN_LIMITS.pro);
 
 export async function GET() {
   try {
@@ -58,8 +54,8 @@ export async function GET() {
         plan,
         role,
         used: 0,
-        limit: 999999,
-        remaining: 999999,
+        limit: SERIALIZED_UNLIMITED_LIMIT,
+        remaining: SERIALIZED_UNLIMITED_LIMIT,
         has_ai_access: true,
         profile_ready: true,
       });
@@ -79,15 +75,17 @@ export async function GET() {
     }
 
     const used = totalCards || 0;
-    const limit = PLAN_CARD_LIMITS[plan] || 0;
+    const limit = getPlanLimit(plan);
+    const serializedLimit = serializePlanLimit(limit);
     const remaining = Math.max(0, limit - used);
+    const serializedRemaining = serializePlanLimit(remaining);
 
     return NextResponse.json({
       plan,
       role,
       used,
-      limit,
-      remaining,
+      limit: serializedLimit,
+      remaining: serializedRemaining,
       has_ai_access: hasAIAccess,
       profile_ready: true,
     });

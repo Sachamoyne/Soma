@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { getPlanLimit } from "./plan-limits";
 
 const MAX_TEXT_LENGTH = 20000;
 const MAX_PDF_ANALYSIS_LENGTH = 8000;
@@ -979,12 +980,6 @@ function getAdminSupabase() {
 /**
  * Check user quota and access rights
  */
-// Plan card limits: total cards per user (not monthly)
-const PLAN_CARD_LIMITS: Record<string, number> = {
-  starter: 200,
-  pro: Number.MAX_SAFE_INTEGER,
-};
-
 async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   canGenerate: boolean;
   isFounderOrAdmin: boolean;
@@ -1092,7 +1087,7 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   }
 
   const currentCount = totalCards || 0;
-  const limit = PLAN_CARD_LIMITS[plan];
+  const limit = getPlanLimit(plan);
   const remaining = Math.max(0, limit - currentCount);
 
   if (currentCount + cardCount > limit) {

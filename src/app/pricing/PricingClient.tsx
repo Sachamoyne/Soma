@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Playfair_Display } from "next/font/google";
@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 import { NativeIOSSubscriptionsBlocked } from "@/components/NativeIOSSubscriptionsBlocked";
+import { BACKEND_URL } from "@/lib/backend";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -26,6 +27,48 @@ export default function PricingClient() {
   const [currentPlan, setCurrentPlan] = useState<"free" | "starter" | "pro">("free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
+  const autoCheckoutTriggeredRef = useRef(false);
+
+  const checkoutPlanParam = searchParams.get("checkout_plan");
+  const checkoutPlanFromQuery =
+    checkoutPlanParam === "starter" || checkoutPlanParam === "pro"
+      ? checkoutPlanParam
+      : null;
+
+  const startCheckout = useCallback(async (plan: "starter" | "pro") => {
+    setLoadingCheckout(plan);
+    try {
+      let accessToken: string | null = null;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      accessToken = session?.access_token ?? null;
+
+      if (!accessToken) {
+        throw new Error("Authenticated session required to start checkout");
+      }
+
+      const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ plan }),
+      });
+
+      const payload = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !payload.url) {
+        throw new Error(payload.error || "Stripe checkout failed");
+      }
+
+      window.location.href = payload.url;
+    } catch (error) {
+      console.error("[pricing] Failed to start checkout:", error);
+    } finally {
+      setLoadingCheckout(null);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     if (nativeIOS) return;
@@ -73,15 +116,34 @@ export default function PricingClient() {
     };
   }, [nativeIOS, supabase]);
 
+  useEffect(() => {
+    if (nativeIOS) return;
+    if (!userId) return;
+    if (!checkoutPlanFromQuery) return;
+    if (autoCheckoutTriggeredRef.current) return;
+
+    const alreadyActiveOnPlan =
+      currentPlan === checkoutPlanFromQuery && subscriptionStatus === "active";
+    if (alreadyActiveOnPlan) {
+      return;
+    }
+
+    autoCheckoutTriggeredRef.current = true;
+    void startCheckout(checkoutPlanFromQuery);
+  }, [checkoutPlanFromQuery, currentPlan, nativeIOS, startCheckout, subscriptionStatus, userId]);
+
   if (nativeIOS) {
     return <NativeIOSSubscriptionsBlocked continueHref="/decks" />;
   }
 
-  // All CTA go to /signup?plan=...
   const handleSubscribeClick = (plan: "starter" | "pro") => {
     const isAlreadyOnPlan = userId && currentPlan === plan && subscriptionStatus === "active";
     if (isAlreadyOnPlan) return;
-    router.push(`/signup?plan=${plan}`);
+    if (!userId) {
+      router.push(`/signup?plan=${plan}`);
+      return;
+    }
+    void startCheckout(plan);
   };
 
   return (

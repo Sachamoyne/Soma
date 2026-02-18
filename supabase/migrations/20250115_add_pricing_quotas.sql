@@ -16,8 +16,8 @@ SET
   plan = COALESCE(plan, 'free'),
   ai_cards_used_current_month = COALESCE(ai_cards_used_current_month, 0),
   ai_cards_monthly_limit = CASE 
-    WHEN plan = 'starter' THEN 300
-    WHEN plan = 'pro' THEN 1000
+    WHEN plan = 'starter' THEN 200
+    WHEN plan = 'pro' THEN 2147483647
     ELSE 0
   END
 WHERE ai_quota_reset_at IS NULL OR ai_cards_monthly_limit IS NULL;
@@ -115,5 +115,5 @@ CREATE INDEX IF NOT EXISTS idx_profiles_quota_reset ON profiles(ai_quota_reset_a
 -- Step 6: Add comment for documentation
 COMMENT ON COLUMN profiles.plan IS 'Subscription plan: free, starter, or pro';
 COMMENT ON COLUMN profiles.ai_cards_used_current_month IS 'Number of AI-generated cards used in current month';
-COMMENT ON COLUMN profiles.ai_cards_monthly_limit IS 'Monthly limit for AI-generated cards (0 for free, 300 for starter, 1000 for pro)';
+COMMENT ON COLUMN profiles.ai_cards_monthly_limit IS 'Monthly limit for AI-generated cards (0 for free, 200 for starter, unlimited for pro via INT sentinel)';
 COMMENT ON COLUMN profiles.ai_quota_reset_at IS 'Timestamp when quota resets (start of next month)';
