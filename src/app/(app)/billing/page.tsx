@@ -18,6 +18,7 @@ export default function BillingPage() {
 
   const [plan, setPlan] = useState<Plan>("free");
   const [loadingPlan, setLoadingPlan] = useState(true);
+  const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,6 +122,50 @@ export default function BillingPage() {
     }
   }, [isNativeIOS, supabase, t]);
 
+  const handleStartCheckout = useCallback(async (targetPlan: "starter" | "pro") => {
+    try {
+      if (isNativeIOS) {
+        setError("Subscriptions are available on the web version.");
+        return;
+      }
+
+      setLoadingCheckout(targetPlan);
+      setError(null);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError(t("billing.authError"));
+        return;
+      }
+
+      const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan: targetPlan }),
+      });
+
+      const payload = (await res.json()) as { url?: string; error?: string; message?: string };
+
+      if (!res.ok || !payload.url) {
+        setError(payload.error || payload.message || "Unable to start Stripe checkout.");
+        return;
+      }
+
+      window.location.href = payload.url;
+    } catch (e) {
+      console.error("[billing] Failed to start Stripe checkout:", e);
+      setError("Unable to start Stripe checkout.");
+    } finally {
+      setLoadingCheckout(null);
+    }
+  }, [isNativeIOS, supabase, t]);
+
   const planLabel =
     plan === "pro" ? "Pro" : plan === "starter" ? "Starter" : t("pricing.free");
 
@@ -144,6 +189,22 @@ export default function BillingPage() {
                 </p>
               ) : (
                 <div className="space-y-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      onClick={() => void handleStartCheckout("starter")}
+                      disabled={loadingCheckout !== null || plan === "starter"}
+                      className="w-full sm:w-auto"
+                    >
+                      {loadingCheckout === "starter" ? "Redirecting..." : plan === "starter" ? "Starter active" : "Upgrade to Starter"}
+                    </Button>
+                    <Button
+                      onClick={() => void handleStartCheckout("pro")}
+                      disabled={loadingCheckout !== null || plan === "pro"}
+                      className="w-full sm:w-auto"
+                    >
+                      {loadingCheckout === "pro" ? "Redirecting..." : plan === "pro" ? "Pro active" : "Upgrade to Pro"}
+                    </Button>
+                  </div>
                   <Button onClick={handleOpenPortal} disabled={openingPortal} className="w-full sm:w-auto">
                     {openingPortal ? t("billing.openingPortal") : t("billing.manageSubscription")}
                   </Button>

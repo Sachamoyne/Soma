@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Playfair_Display } from "next/font/google";
@@ -12,7 +12,6 @@ import { createClient } from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 import { NativeIOSSubscriptionsBlocked } from "@/components/NativeIOSSubscriptionsBlocked";
-import { BACKEND_URL } from "@/lib/backend";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
@@ -22,104 +21,25 @@ export default function PricingClient() {
   const supabase = useMemo(() => createClient(), []);
   const nativeIOS = useIsNativeIOS();
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<"free" | "starter" | "pro">("free");
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
-  const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
-
-  const startCheckout = useCallback(async (plan: "starter" | "pro") => {
-    setLoadingCheckout(plan);
-    try {
-      let accessToken: string | null = null;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      accessToken = session?.access_token ?? null;
-
-      if (!accessToken) {
-        throw new Error("Authenticated session required to start checkout");
-      }
-
-      const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ plan }),
-      });
-
-      const payload = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !payload.url) {
-        throw new Error(payload.error || "Stripe checkout failed");
-      }
-
-      window.location.href = payload.url;
-    } catch (error) {
-      console.error("[pricing] Failed to start checkout:", error);
-    } finally {
-      setLoadingCheckout(null);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    if (nativeIOS) return;
-    let cancelled = false;
-
-    async function loadUserAndPlan() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (cancelled) return;
-        setUserId(user?.id ?? null);
-
-        if (!user) return;
-
-        // Pull current subscription plan from profile (webhook updates plan_name)
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("plan_name, subscription_status, plan")
-          .eq("id", user.id)
-          .single();
-
-        if (cancelled) return;
-
-        const planName = (profile as any)?.plan_name as string | null | undefined;
-        const planFallback = (profile as any)?.plan as string | null | undefined;
-        const resolved =
-          planName === "starter" || planName === "pro" || planName === "free"
-            ? planName
-            : planFallback === "starter" || planFallback === "pro" || planFallback === "free"
-              ? planFallback
-              : "free";
-
-        setCurrentPlan(resolved as "free" | "starter" | "pro");
-        setSubscriptionStatus((profile as any)?.subscription_status ?? null);
-      } catch (e) {
-        console.error("[pricing] Failed to load user/profile:", e);
-      }
-    }
-
-    void loadUserAndPlan();
-    return () => {
-      cancelled = true;
-    };
-  }, [nativeIOS, supabase]);
+  const [redirecting, setRedirecting] = useState(false);
 
   if (nativeIOS) {
     return <NativeIOSSubscriptionsBlocked continueHref="/decks" />;
   }
 
-  const handleSubscribeClick = (plan: "starter" | "pro") => {
-    const isAlreadyOnPlan = userId && currentPlan === plan && subscriptionStatus === "active";
-    if (isAlreadyOnPlan) return;
-    if (!userId) {
-      router.push(`/signup?intent=${plan}`);
-      return;
+  const handlePaidPlanClick = async () => {
+    try {
+      setRedirecting(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      router.push(user ? "/billing" : "/signup");
+    } catch (e) {
+      console.error("[pricing] Failed to resolve auth state:", e);
+      router.push("/signup");
+    } finally {
+      setRedirecting(false);
     }
-    void startCheckout(plan);
   };
 
   return (
@@ -196,15 +116,11 @@ export default function PricingClient() {
               <li>{t("pricing.starterFeature3")}</li>
             </ul>
             <button
-              onClick={() => handleSubscribeClick("starter")}
-              disabled={Boolean(userId && currentPlan === "starter" && subscriptionStatus === "active") || loadingCheckout !== null}
-              className={`mt-6 rounded-lg border border-border px-4 py-2 text-sm font-medium transition ${
-                userId && currentPlan === "starter" && subscriptionStatus === "active"
-                  ? "cursor-not-allowed opacity-50"
-                  : "hover:bg-muted"
-              }`}
+              onClick={() => void handlePaidPlanClick()}
+              disabled={redirecting}
+              className="mt-6 rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted"
             >
-              {loadingCheckout === "starter" ? "…" : t("pricing.subscribe")}
+              {redirecting ? "..." : t("pricing.subscribe")}
             </button>
           </div>
 
@@ -229,15 +145,11 @@ export default function PricingClient() {
               <li>{t("pricing.proFeature3")}</li>
             </ul>
             <button
-              onClick={() => handleSubscribeClick("pro")}
-              disabled={Boolean(userId && currentPlan === "pro" && subscriptionStatus === "active") || loadingCheckout !== null}
-              className={`mt-6 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                userId && currentPlan === "pro" && subscriptionStatus === "active"
-                  ? "cursor-not-allowed bg-foreground/50 text-white dark:text-black opacity-50"
-                  : "bg-foreground text-white dark:text-black hover:bg-foreground/90"
-              }`}
+              onClick={() => void handlePaidPlanClick()}
+              disabled={redirecting}
+              className="mt-6 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:bg-foreground/90 dark:text-black"
             >
-              {loadingCheckout === "pro" ? "…" : t("pricing.subscribe")}
+              {redirecting ? "..." : t("pricing.subscribe")}
             </button>
           </div>
 

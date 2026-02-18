@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import Link from "next/link";
@@ -15,7 +15,6 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isNativeIOS } from "@/lib/native";
-import { BACKEND_URL } from "@/lib/backend";
 
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
@@ -34,49 +33,9 @@ export default function LoginClient() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  // Check for checkout=success in URL (user just paid)
+  // Check for checkout=success in URL (user just paid).
   const checkoutSuccess = searchParams.get("checkout") === "success";
-  const intentParam = searchParams.get("intent");
-  const intent =
-    intentParam === "starter" || intentParam === "pro"
-      ? intentParam
-      : null;
   const nativeIOS = isNativeIOS();
-
-  const startCheckout = useCallback(async (selectedPlan: "starter" | "pro"): Promise<boolean> => {
-    let accessToken: string | null = null;
-    for (let i = 0; i < 5; i++) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      accessToken = session?.access_token ?? null;
-      if (accessToken) {
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-
-    if (!accessToken) {
-      return false;
-    }
-
-    const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ plan: selectedPlan }),
-    });
-
-    const payload = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok || !payload.url) {
-      throw new Error(payload.error || "Stripe checkout failed");
-    }
-
-    window.location.href = payload.url;
-    return true;
-  }, [supabase]);
 
   useEffect(() => {
     // If a valid session already exists, redirect away from /login.
@@ -96,12 +55,6 @@ export default function LoginClient() {
         }
 
         if (!cancelled && user) {
-          if (!nativeIOS && intent) {
-            const checkoutStarted = await startCheckout(intent);
-            if (checkoutStarted) {
-              return;
-            }
-          }
           router.replace(DECKS_PATH);
         }
       } catch (error) {
@@ -114,7 +67,7 @@ export default function LoginClient() {
     return () => {
       cancelled = true;
     };
-  }, [intent, nativeIOS, router, startCheckout, supabase]);
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -191,27 +144,6 @@ export default function LoginClient() {
       if (!user.email_confirmed_at) {
         await supabase.auth.signOut();
         setError(t("auth.confirmEmailFirst"));
-        return;
-      }
-
-      if (!nativeIOS && intent) {
-        const checkoutStarted = await startCheckout(intent);
-        if (!checkoutStarted) {
-          setError("Session not ready. Please try again.");
-          return;
-        }
-        return;
-      }
-
-      if (subscriptionStatus === "active") {
-        router.refresh();
-        router.push(DECKS_PATH);
-        return;
-      }
-
-      if (subscriptionStatus === "pending_payment") {
-        router.refresh();
-        router.push(DECKS_PATH);
         return;
       }
 

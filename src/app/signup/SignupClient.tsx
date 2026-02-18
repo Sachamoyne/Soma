@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,28 +12,11 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { isNativeIOS } from "@/lib/native";
 
-/**
- * Single entry point: /signup?intent=starter|pro
- *
- * Signup always creates a FREE account.
- * Intent is only used for post-signup redirect to login.
- */
 export default function SignupClient() {
   const { t } = useTranslation();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
-  const nativeIOS = isNativeIOS();
-
-  const intentParam = searchParams.get("intent");
-  const intent =
-    !nativeIOS && (intentParam === "starter" || intentParam === "pro")
-      ? intentParam
-      : null;
-  const planParam = searchParams.get("plan");
-  const displayPlan = intent ?? (planParam === "free" ? "free" : null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,11 +39,8 @@ export default function SignupClient() {
         return;
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-      const emailRedirectTo = intent
-        ? `${baseUrl}/login?intent=${intent}`
-        : `${baseUrl}/login`;
-      console.log("emailRedirectTo:", emailRedirectTo);
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const emailRedirectTo = `${baseUrl.replace(/\/$/, "")}/login`;
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -79,9 +59,8 @@ export default function SignupClient() {
         throw new Error("User not created");
       }
 
-      const loginRedirect = intent ? `/login?intent=${intent}` : "/login";
       setSuccess(t("auth.accountCreatedCheckEmail"));
-      router.replace(loginRedirect);
+      router.replace("/login");
       router.refresh();
     } catch (err) {
       setError(t("auth.accountCreationError"));
@@ -108,11 +87,6 @@ export default function SignupClient() {
               <h1 className="text-2xl font-medium text-foreground font-serif">
                 {t("auth.createYourAccount")}
               </h1>
-              {!nativeIOS && displayPlan && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{t(`pricing.${displayPlan}`)}</span>
-                </p>
-              )}
             </div>
           </div>
 
