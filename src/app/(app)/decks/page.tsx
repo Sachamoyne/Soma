@@ -154,6 +154,7 @@ export default function DecksPage() {
         onNewDeck={() => setDialogOpen(true)}
         showImport
         onImport={() => setImportDialogOpen(true)}
+        importLabel={t("import.importAnkiDeck")}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -386,6 +387,7 @@ export default function DecksPage() {
         onOpenChange={setImportDialogOpen}
         initialDeckId={null}
         onSuccess={handleImportSuccess}
+        ankiOnly
       />
     </>
   );

@@ -60,6 +60,7 @@ interface ImportDialogProps {
   onOpenChange: (open: boolean) => void;
   initialDeckId?: string | null;
   onSuccess?: () => void;
+  ankiOnly?: boolean;
 }
 
 type Step = "file" | "extract" | "review-text" | "review-cards" | "importing-anki";
@@ -69,6 +70,7 @@ export function ImportDialog({
   onOpenChange,
   initialDeckId = null,
   onSuccess,
+  ankiOnly = false,
 }: ImportDialogProps) {
   const [step, setStep] = useState<Step>("file");
   const [file, setFile] = useState<File | null>(null);
@@ -105,6 +107,11 @@ export function ImportDialog({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      if (ankiOnly && !selectedFile.name.toLowerCase().endsWith(".apkg")) {
+        setFile(null);
+        setExtractionError("Please select an Anki (.apkg) file.");
+        return;
+      }
       setFile(selectedFile);
       setExtractionError(null);
     }
@@ -304,6 +311,11 @@ export function ImportDialog({
   const handleExtract = async () => {
     if (!file) return;
 
+    if (ankiOnly && !file.name.toLowerCase().endsWith(".apkg")) {
+      setExtractionError("Please select an Anki (.apkg) file.");
+      return;
+    }
+
     // Check if this is an Anki file
     if (file.name.endsWith(".apkg")) {
       await handleImportAnki();
@@ -487,7 +499,7 @@ export function ImportDialog({
             {step === "importing-anki" && "Importing Anki Deck..."}
           </DialogTitle>
           <DialogDescription>
-            {step === "file" && "Upload a PDF, image, or Anki (.apkg) file"}
+            {step === "file" && (ankiOnly ? "Upload an Anki (.apkg) file" : "Upload a PDF, image, or Anki (.apkg) file")}
             {step === "extract" && "Please wait while we extract text from your document"}
             {step === "review-text" && "Review the extracted text, then generate cards"}
             {step === "review-cards" && "Select and edit cards to add to your deck"}
@@ -503,7 +515,7 @@ export function ImportDialog({
                 <Input
                   id="file"
                   type="file"
-                  accept=".pdf,image/*,.apkg"
+                  accept={ankiOnly ? ".apkg" : ".pdf,image/*,.apkg"}
                   onChange={handleFileSelect}
                   ref={fileInputRef}
                   className="cursor-pointer"
@@ -671,10 +683,14 @@ export function ImportDialog({
               </Button>
               <Button
                 onClick={handleExtract}
-                disabled={!file || (!initialDeckId && !selectedDeckId && !file?.name.endsWith(".apkg"))}
+                disabled={
+                  ankiOnly
+                    ? !file
+                    : !file || (!initialDeckId && !selectedDeckId && !file?.name.endsWith(".apkg"))
+                }
               >
                 <Upload className="mr-2 h-4 w-4" />
-                {file?.name.endsWith(".apkg") ? "Import Anki Deck" : "Extract Text"}
+                {ankiOnly || file?.name.endsWith(".apkg") ? "Import Anki Deck" : "Extract Text"}
               </Button>
             </>
           )}

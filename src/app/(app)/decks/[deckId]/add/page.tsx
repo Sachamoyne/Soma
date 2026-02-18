@@ -188,7 +188,7 @@ export default function AddCardsPage() {
             </div>
             <div className="flex gap-2">
               {/* Vocabulary import button for languages mode */}
-              {deckMode === "languages" && deck && (
+              {creationMode === "ai" && deckMode === "languages" && deck && (
                 <Button variant="outline" onClick={() => setVocabImportDialogOpen(true)}>
                   <Camera className="mr-2 h-4 w-4" />
                   {t("vocabularyImport.title")}

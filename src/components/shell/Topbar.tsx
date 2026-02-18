@@ -12,6 +12,7 @@ interface TopbarProps {
   onNewDeck?: () => void;
   showImport?: boolean;
   onImport?: () => void;
+  importLabel?: string;
   actions?: React.ReactNode;
 }
 
@@ -21,11 +22,13 @@ export function Topbar({
   onNewDeck,
   showImport,
   onImport,
+  importLabel,
   actions,
 }: TopbarProps) {
   const { t } = useTranslation();
   const { toggle } = useSidebar();
   const isNative = useIsNative();
+  const resolvedImportLabel = importLabel || t("decks.import");
 
   return (
     <div
@@ -60,7 +63,7 @@ export function Topbar({
             variant="outline"
             size="icon"
             onClick={onImport}
-            aria-label={t("decks.import")}
+            aria-label={resolvedImportLabel}
             className="shrink-0"
           >
             <Upload className="h-4 w-4" />
@@ -74,7 +77,7 @@ export function Topbar({
         {showImport && onImport && (
           <Button variant="outline" onClick={onImport}>
             <Upload className="h-4 w-4" />
-            {t("decks.import")}
+            {resolvedImportLabel}
           </Button>
         )}
         {showNewDeck && onNewDeck && (
