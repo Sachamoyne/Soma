@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isNativeIOS } from "@/lib/native";
+import { BACKEND_URL } from "@/lib/backend";
 
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
@@ -35,12 +36,47 @@ export default function LoginClient() {
 
   // Check for checkout=success in URL (user just paid)
   const checkoutSuccess = searchParams.get("checkout") === "success";
-  const checkoutPlanParam = searchParams.get("plan");
-  const checkoutPlan =
-    checkoutPlanParam === "starter" || checkoutPlanParam === "pro"
-      ? checkoutPlanParam
+  const intentParam = searchParams.get("intent");
+  const intent =
+    intentParam === "starter" || intentParam === "pro"
+      ? intentParam
       : null;
   const nativeIOS = isNativeIOS();
+
+  const startCheckout = useCallback(async (selectedPlan: "starter" | "pro"): Promise<boolean> => {
+    let accessToken: string | null = null;
+    for (let i = 0; i < 5; i++) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      accessToken = session?.access_token ?? null;
+      if (accessToken) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    if (!accessToken) {
+      return false;
+    }
+
+    const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ plan: selectedPlan }),
+    });
+
+    const payload = (await res.json()) as { url?: string; error?: string };
+    if (!res.ok || !payload.url) {
+      throw new Error(payload.error || "Stripe checkout failed");
+    }
+
+    window.location.href = payload.url;
+    return true;
+  }, [supabase]);
 
   useEffect(() => {
     // If a valid session already exists, redirect away from /login.
@@ -60,9 +96,11 @@ export default function LoginClient() {
         }
 
         if (!cancelled && user) {
-          if (!nativeIOS && checkoutPlan) {
-            router.replace(`/pricing?checkout_plan=${checkoutPlan}`);
-            return;
+          if (!nativeIOS && intent) {
+            const checkoutStarted = await startCheckout(intent);
+            if (checkoutStarted) {
+              return;
+            }
           }
           router.replace(DECKS_PATH);
         }
@@ -76,7 +114,7 @@ export default function LoginClient() {
     return () => {
       cancelled = true;
     };
-  }, [checkoutPlan, nativeIOS, router, supabase]);
+  }, [intent, nativeIOS, router, startCheckout, supabase]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -150,11 +188,22 @@ export default function LoginClient() {
       const subscriptionStatus = (profile as any)?.subscription_status as string | null;
       console.log("[LOGIN/handleSubmit] subscription_status =", subscriptionStatus);
 
-      if (subscriptionStatus === "active") {
-        if (!user.email_confirmed_at) {
-          setError(t("auth.confirmEmailFirstWithSpam"));
+      if (!user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        setError(t("auth.confirmEmailFirst"));
+        return;
+      }
+
+      if (!nativeIOS && intent) {
+        const checkoutStarted = await startCheckout(intent);
+        if (!checkoutStarted) {
+          setError("Session not ready. Please try again.");
           return;
         }
+        return;
+      }
+
+      if (subscriptionStatus === "active") {
         router.refresh();
         router.push(DECKS_PATH);
         return;
@@ -163,18 +212,6 @@ export default function LoginClient() {
       if (subscriptionStatus === "pending_payment") {
         router.refresh();
         router.push(DECKS_PATH);
-        return;
-      }
-
-      if (!user.email_confirmed_at) {
-        await supabase.auth.signOut();
-        setError(t("auth.confirmEmailFirst"));
-        return;
-      }
-
-      if (!nativeIOS && checkoutPlan) {
-        router.refresh();
-        router.push(`/pricing?checkout_plan=${checkoutPlan}`);
         return;
       }
 
@@ -296,7 +333,7 @@ export default function LoginClient() {
             <div className="text-center text-sm text-muted-foreground">
               {t("auth.newToSoma")}{" "}
               <Link
-                href={nativeIOS ? "/signup?plan=free" : "/signup"}
+                href="/signup"
                 className="text-foreground underline hover:text-foreground/80 transition-colors"
               >
                 {t("auth.createAccount")}

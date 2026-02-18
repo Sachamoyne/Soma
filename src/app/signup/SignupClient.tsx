@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -14,13 +14,12 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isNativeIOS } from "@/lib/native";
 import { getEmailRedirectTo } from "@/lib/auth-callback";
-import { BACKEND_URL } from "@/lib/backend";
 
 /**
- * Single entry point: /signup?plan=free|starter|pro
+ * Single entry point: /signup?intent=starter|pro
  *
  * Signup always creates a FREE account.
- * Paid plans are assigned only by Stripe webhooks after confirmed payment.
+ * Intent is only used for post-signup redirect to login.
  */
 export default function SignupClient() {
   const { t } = useTranslation();
@@ -29,12 +28,13 @@ export default function SignupClient() {
   const supabase = useMemo(() => createClient(), []);
   const nativeIOS = isNativeIOS();
 
-  const planParam = searchParams.get("plan");
-  const requestedPlan =
-    planParam === "free" || planParam === "starter" || planParam === "pro"
-      ? planParam
+  const intentParam = searchParams.get("intent");
+  const intent =
+    !nativeIOS && (intentParam === "starter" || intentParam === "pro")
+      ? intentParam
       : null;
-  const plan = nativeIOS ? "free" : requestedPlan;
+  const planParam = searchParams.get("plan");
+  const displayPlan = intent ?? (planParam === "free" ? "free" : null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,58 +44,8 @@ export default function SignupClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Guard: signup must always have a valid plan
-  useEffect(() => {
-    if (!requestedPlan || (nativeIOS && requestedPlan !== "free")) {
-      router.replace(nativeIOS ? "/signup?plan=free" : "/pricing");
-      router.refresh();
-    }
-  }, [nativeIOS, requestedPlan, router]);
-
-  const buildPaidEmailRedirect = (selectedPlan: "starter" | "pro"): string => {
-    const base = getEmailRedirectTo();
-    const separator = base.includes("?") ? "&" : "?";
-    return `${base}${separator}checkout_plan=${selectedPlan}`;
-  };
-
-  const startCheckout = async (
-    selectedPlan: "starter" | "pro",
-    initialAccessToken?: string | null
-  ): Promise<boolean> => {
-    let accessToken = initialAccessToken ?? null;
-
-    if (!accessToken) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      accessToken = session?.access_token ?? null;
-    }
-
-    if (!accessToken) {
-      return false;
-    }
-
-    const res = await fetch(`${BACKEND_URL}/stripe/checkout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ plan: selectedPlan }),
-    });
-
-    const payload = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok || !payload.url) {
-      throw new Error(payload.error || "Stripe checkout failed");
-    }
-
-    window.location.href = payload.url;
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!plan) return;
 
     setLoading(true);
     setError(null);
@@ -107,58 +57,11 @@ export default function SignupClient() {
         return;
       }
 
-      const isPaidSignup = plan === "starter" || plan === "pro";
-      const emailRedirectTo = isPaidSignup
-        ? buildPaidEmailRedirect(plan)
-        : getEmailRedirectTo();
-
-      // Signup always provisions a free profile. Paid plan activation
-      // happens strictly in Stripe webhook after confirmed payment.
-      if (plan === "free") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo,
-            data: {
-              plan_name: "free",
-              onboarding_status: "active",
-            },
-          },
-        });
-
-        if (signUpError) {
-          throw signUpError;
-        }
-
-        const user = data.user;
-        if (!user) {
-          throw new Error("User not created");
-        }
-
-        setSuccess(t("auth.accountCreatedCheckEmail"));
-        router.replace("/login");
-        router.refresh();
-        return;
-      }
-
-      // --------------------
-      // PAID PLANS (starter / pro)
-      // --------------------
-      if (nativeIOS) {
-        setError(t("auth.webOnlySubscriptions"));
-        return;
-      }
-
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo,
-          data: {
-            plan_name: "free",
-            onboarding_status: "active",
-          },
+          emailRedirectTo: getEmailRedirectTo(),
         },
       });
 
@@ -171,19 +74,16 @@ export default function SignupClient() {
         throw new Error("User not created");
       }
 
-      const checkoutStarted = await startCheckout(plan, data.session?.access_token ?? null);
-      if (!checkoutStarted) {
-        router.replace(`/login?plan=${plan}`);
-        router.refresh();
-      }
+      const loginRedirect = intent ? `/login?intent=${intent}` : "/login";
+      setSuccess(t("auth.accountCreatedCheckEmail"));
+      router.replace(loginRedirect);
+      router.refresh();
     } catch (err) {
       setError(t("auth.accountCreationError"));
     } finally {
       setLoading(false);
     }
   };
-
-  if (!plan) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -203,9 +103,9 @@ export default function SignupClient() {
               <h1 className="text-2xl font-medium text-foreground font-serif">
                 {t("auth.createYourAccount")}
               </h1>
-              {!nativeIOS && (
+              {!nativeIOS && displayPlan && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{t(`pricing.${plan}`)}</span>
+                  {t("auth.planLabel")} : <span className="text-foreground font-medium">{t(`pricing.${displayPlan}`)}</span>
                 </p>
               )}
             </div>

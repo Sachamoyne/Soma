@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Playfair_Display } from "next/font/google";
 import { APP_NAME } from "@/lib/brand";
 import { useTranslation } from "@/i18n";
@@ -19,7 +19,6 @@ const playfair = Playfair_Display({ subsets: ["latin"] });
 export default function PricingClient() {
   const { t } = useTranslation();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const nativeIOS = useIsNativeIOS();
 
@@ -27,13 +26,6 @@ export default function PricingClient() {
   const [currentPlan, setCurrentPlan] = useState<"free" | "starter" | "pro">("free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [loadingCheckout, setLoadingCheckout] = useState<"starter" | "pro" | null>(null);
-  const autoCheckoutTriggeredRef = useRef(false);
-
-  const checkoutPlanParam = searchParams.get("checkout_plan");
-  const checkoutPlanFromQuery =
-    checkoutPlanParam === "starter" || checkoutPlanParam === "pro"
-      ? checkoutPlanParam
-      : null;
 
   const startCheckout = useCallback(async (plan: "starter" | "pro") => {
     setLoadingCheckout(plan);
@@ -116,22 +108,6 @@ export default function PricingClient() {
     };
   }, [nativeIOS, supabase]);
 
-  useEffect(() => {
-    if (nativeIOS) return;
-    if (!userId) return;
-    if (!checkoutPlanFromQuery) return;
-    if (autoCheckoutTriggeredRef.current) return;
-
-    const alreadyActiveOnPlan =
-      currentPlan === checkoutPlanFromQuery && subscriptionStatus === "active";
-    if (alreadyActiveOnPlan) {
-      return;
-    }
-
-    autoCheckoutTriggeredRef.current = true;
-    void startCheckout(checkoutPlanFromQuery);
-  }, [checkoutPlanFromQuery, currentPlan, nativeIOS, startCheckout, subscriptionStatus, userId]);
-
   if (nativeIOS) {
     return <NativeIOSSubscriptionsBlocked continueHref="/decks" />;
   }
@@ -140,7 +116,7 @@ export default function PricingClient() {
     const isAlreadyOnPlan = userId && currentPlan === plan && subscriptionStatus === "active";
     if (isAlreadyOnPlan) return;
     if (!userId) {
-      router.push(`/signup?plan=${plan}`);
+      router.push(`/signup?intent=${plan}`);
       return;
     }
     void startCheckout(plan);
@@ -195,7 +171,7 @@ export default function PricingClient() {
               <li>{t("pricing.freeFeature3")}</li>
             </ul>
             <Link
-              href="/signup?plan=free"
+              href="/signup"
               className="mt-6 block rounded-lg border border-border bg-background px-4 py-2 text-center text-sm font-medium text-foreground transition hover:bg-muted"
             >
               {t("pricing.getStarted")}
