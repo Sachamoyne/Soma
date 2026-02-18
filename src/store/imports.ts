@@ -318,31 +318,41 @@ export async function persistGeneratedCards(
   selectedCards: CardProposal[]
 ): Promise<void> {
   const supabase = createClient();
+
+  // Get Supabase session for auth token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error("No Supabase session. Please log in again.");
+  }
+
+  // Use the same backend endpoint as "Generate with AI" so that
+  // ai_cards_used_current_month is properly incremented and quota is enforced.
+  const response = await fetch(`${BACKEND_URL}/generate/confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      deck_id: String(deckId),
+      cards: selectedCards,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    if (data.error === "QUOTA_FREE_PLAN" || data.error === "QUOTA_EXCEEDED") {
+      throw new Error(data.message || "AI card quota exceeded");
+    }
+    throw new Error(data.error || data.message || "Failed to save cards");
+  }
+
+  // Insert generated_cards records for import tracking
   const userId = await getCurrentUserId();
-
-  // Insert cards
-  const cardsToInsert = selectedCards.map((proposal) => ({
-    user_id: userId,
-    deck_id: deckId,
-    front: proposal.front,
-    back: proposal.back,
-    state: "new" as const,
-    suspended: false,
-    interval_days: 0,
-    ease: 2.50,
-    reps: 0,
-    lapses: 0,
-    learning_step_index: 0,
-    due_at: new Date().toISOString(),
-  }));
-
-  const { error: cardsError } = await supabase
-    .from("cards")
-    .insert(cardsToInsert);
-
-  if (cardsError) throw cardsError;
-
-  // Insert generated_cards records
   const generatedToInsert = selectedCards.map((proposal) => ({
     user_id: userId,
     import_id: importId,
@@ -356,11 +366,4 @@ export async function persistGeneratedCards(
     .insert(generatedToInsert);
 
   if (genError) throw genError;
-
-  // Update deck's updated_at
-  await supabase
-    .from("decks")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", deckId)
-    .eq("user_id", userId);
 }
