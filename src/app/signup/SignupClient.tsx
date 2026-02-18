@@ -13,7 +13,6 @@ import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isNativeIOS } from "@/lib/native";
-import { getEmailRedirectTo } from "@/lib/auth-callback";
 
 /**
  * Single entry point: /signup?intent=starter|pro
@@ -57,11 +56,17 @@ export default function SignupClient() {
         return;
       }
 
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      const emailRedirectTo = intent
+        ? `${baseUrl}/login?intent=${intent}`
+        : `${baseUrl}/login`;
+      console.log("emailRedirectTo:", emailRedirectTo);
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: getEmailRedirectTo(),
+          emailRedirectTo,
         },
       });
 
