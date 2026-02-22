@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import { Topbar } from "@/components/shell/Topbar";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { getSettings, updateSettings, type Settings } from "@/store/settings";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut } from "lucide-react";
+import { LogOut, Trash2, AlertTriangle } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 import { IOSPaywall } from "@/components/IOSPaywall";
@@ -21,6 +21,104 @@ const DEFAULT_SETTINGS: Partial<Settings> = {
   reviewOrder: "mixed",
 };
 
+// ─── Delete-account confirmation modal ───────────────────────────────────────
+
+interface DeleteModalProps {
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+  error: string | null;
+}
+
+function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModalProps) {
+  // Trap focus and close on Escape
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !deleting) onCancel();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [deleting, onCancel]);
+
+  return (
+    /* Backdrop */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !deleting) onCancel();
+      }}
+    >
+      {/* Dialog */}
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-title"
+        aria-describedby="delete-desc"
+        className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl space-y-5"
+      >
+        {/* Icon + title */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+          </div>
+          <h2 id="delete-title" className="text-lg font-semibold">
+            Supprimer mon compte ?
+          </h2>
+          <p id="delete-desc" className="text-sm text-muted-foreground leading-relaxed">
+            Cette action est <strong>irréversible</strong>. Toutes vos données
+            seront définitivement supprimées : decks, cartes, statistiques et
+            paramètres.
+          </p>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={deleting}
+            onClick={onConfirm}
+          >
+            {deleting ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Suppression en cours…
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Oui, supprimer définitivement
+              </>
+            )}
+          </Button>
+          <Button
+            ref={cancelRef}
+            variant="outline"
+            className="w-full"
+            disabled={deleting}
+            onClick={onCancel}
+          >
+            Annuler
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings page ────────────────────────────────────────────────────────────
+
 export default function SettingsPage() {
   const { t } = useTranslation();
   const isNativeIOS = useIsNativeIOS();
@@ -28,6 +126,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useAppRouter();
   const supabase = createClient();
 
@@ -67,6 +168,35 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Error logging out:", error);
       setLoggingOut(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    console.log("[Settings] Requesting account deletion...");
+
+    try {
+      const response = await fetch("/api/delete-account", { method: "POST" });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? `Server error (${response.status})`);
+      }
+
+      console.log("[Settings] Account deleted. Signing out...");
+
+      // Sign out locally (session is already invalidated server-side)
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (err) {
+      console.error("[Settings] Delete account error:", err);
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue. Réessaie."
+      );
+      setDeleting(false);
     }
   };
 
@@ -180,7 +310,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* Actions row */}
+          {/* Actions row (logout + save) */}
           <div className="flex justify-between items-center">
             <Button
               variant="outline"
@@ -196,6 +326,34 @@ export default function SettingsPage() {
             </Button>
           </div>
 
+          {/* Danger zone */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Zone dangereuse
+            </p>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Supprimer mon compte</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Suppression permanente de votre compte et de toutes vos
+                  données. Cette action est irréversible.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteModal(true);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer mon compte
+              </Button>
+            </div>
+          </div>
+
           <div className="text-xs text-muted-foreground">
             <Link href="/privacy" className="underline hover:text-foreground">
               Privacy Policy
@@ -204,6 +362,18 @@ export default function SettingsPage() {
 
         </div>
       </div>
+
+      {/* Confirmation modal */}
+      {showDeleteModal && (
+        <DeleteAccountModal
+          onConfirm={handleDeleteAccount}
+          onCancel={() => {
+            if (!deleting) setShowDeleteModal(false);
+          }}
+          deleting={deleting}
+          error={deleteError}
+        />
+      )}
     </>
   );
 }
