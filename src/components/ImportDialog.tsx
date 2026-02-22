@@ -13,8 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Upload, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, FileText, Loader2 } from "lucide-react";
 import { listDecks, type Deck } from "@/store/decks";
 import { createImport, generateCards, persistGeneratedCards, type GenerateCardsResult, type CardProposal } from "@/store/imports";
 import { GeneratedCardRow } from "@/components/GeneratedCardRow";
@@ -24,7 +23,6 @@ import { BACKEND_URL } from "@/lib/backend";
 
 // Import dynamique pour éviter les erreurs SSR
 let pdfjsLib: any = null;
-let Tesseract: any = null;
 
 if (typeof window !== "undefined") {
   import("pdfjs-dist").then(async (pdfjs) => {
@@ -34,7 +32,7 @@ if (typeof window !== "undefined") {
     // Try .mjs first (newer versions), fallback to .js
     const workerMjs = "/pdf.worker.min.mjs";
     const workerJs = "/pdf.worker.min.js";
-    
+
     // Check which file exists and set workerSrc accordingly
     try {
       const response = await fetch(workerMjs, { method: "HEAD" });
@@ -49,9 +47,6 @@ if (typeof window !== "undefined") {
     }
     // Keep disableWorker = true for safety, but workerSrc must be set to avoid runtime error
     pdfjsLib.disableWorker = true;
-  });
-  import("tesseract.js").then((tesseract) => {
-    Tesseract = tesseract;
   });
 }
 
@@ -138,22 +133,6 @@ export function ImportDialog({
     }
 
     return fullText.trim();
-  };
-
-  const extractTextFromImage = async (file: File): Promise<{ text: string; confidence: number }> => {
-    if (!Tesseract) {
-      throw new Error("Tesseract.js not loaded");
-    }
-
-    const { data } = await Tesseract.recognize(file, "fra+eng", {
-      logger: (m: any) => {
-        if (m.status === "recognizing text") {
-          setExtractionProgress(m.progress * 100);
-        }
-      },
-    });
-
-    return { text: data.text, confidence: data.confidence / 100 };
   };
 
   const completeAnkiImport = async (finalProgress?: { total?: number; imported?: number }) => {
@@ -337,16 +316,11 @@ export function ImportDialog({
       const extractionPromise = (async () => {
         let text = "";
         let pageCount: number | undefined;
-        let ocrConfidence: number | undefined;
 
         if (file.type === "application/pdf") {
           text = await extractTextFromPDF(file, pageRange);
           const [start, end] = pageRange.split("-").map(Number);
           pageCount = end - start + 1;
-        } else if (file.type.startsWith("image/")) {
-          const result = await extractTextFromImage(file);
-          text = result.text;
-          ocrConfidence = result.confidence;
         } else {
           throw new Error("Unsupported file type");
         }
@@ -360,10 +334,10 @@ export function ImportDialog({
         const importDoc = await createImport(
           selectedDeckId,
           file.name,
-          file.type === "application/pdf" ? "pdf" : "image",
+          "pdf",
           text,
           pageCount,
-          ocrConfidence
+          undefined
         );
 
         importIdRef.current = importDoc.id;
@@ -499,7 +473,7 @@ export function ImportDialog({
             {step === "importing-anki" && "Importing Anki Deck..."}
           </DialogTitle>
           <DialogDescription>
-            {step === "file" && (ankiOnly ? "Upload an Anki (.apkg) file" : "Upload a PDF, image, or Anki (.apkg) file")}
+            {step === "file" && (ankiOnly ? "Upload an Anki (.apkg) file" : "Upload a PDF or Anki (.apkg) file")}
             {step === "extract" && "Please wait while we extract text from your document"}
             {step === "review-text" && "Review the extracted text, then generate cards"}
             {step === "review-cards" && "Select and edit cards to add to your deck"}
@@ -515,18 +489,14 @@ export function ImportDialog({
                 <Input
                   id="file"
                   type="file"
-                  accept={ankiOnly ? ".apkg" : ".pdf,image/*,.apkg"}
+                  accept={ankiOnly ? ".apkg" : ".pdf,.apkg"}
                   onChange={handleFileSelect}
                   ref={fileInputRef}
                   className="cursor-pointer"
                 />
                 {file && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {file.type === "application/pdf" ? (
-                      <FileText className="h-4 w-4" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4" />
-                    )}
+                    <FileText className="h-4 w-4" />
                     {file.name}
                   </div>
                 )}

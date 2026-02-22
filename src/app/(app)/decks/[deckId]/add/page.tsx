@@ -22,6 +22,7 @@ import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
 import { AICardGenerator } from "@/components/AICardGenerator";
 import { useTranslation } from "@/i18n";
 import { Camera } from "lucide-react";
+import { useIsNative } from "@/hooks/useIsNative";
 
 type CreationMode = "manual" | "ai";
 
@@ -49,6 +50,7 @@ export default function AddCardsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [vocabImportDialogOpen, setVocabImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const isNative = useIsNative();
 
   // Check if current type is property (needs special form)
   const isPropertyType = cardType === "property";
@@ -179,16 +181,17 @@ export default function AddCardsPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header with title and mode toggle */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between min-h-[56px]">
             <div>
               <h2 className="text-2xl font-semibold">{t("addCards.title")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {t("addCards.subtitle")}
               </p>
             </div>
-            <div className="flex gap-2">
-              {/* Vocabulary import button for languages mode */}
-              {creationMode === "ai" && deckMode === "languages" && deck && (
+            {/* Import buttons — only visible in AI mode; reserved space prevents header reflow */}
+            <div className="flex gap-2 shrink-0">
+              {/* Vocabulary import — hidden on iOS native (image/* triggers Take Photo crash) */}
+              {!isNative && creationMode === "ai" && deckMode === "languages" && deck && (
                 <Button variant="outline" onClick={() => setVocabImportDialogOpen(true)}>
                   <Camera className="mr-2 h-4 w-4" />
                   {t("vocabularyImport.title")}

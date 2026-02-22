@@ -7,6 +7,7 @@ import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { usePathname } from "next/navigation";
 import { useIsNative } from "@/hooks/useIsNative";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { OfflineFallback } from "@/components/OfflineFallback";
 
@@ -67,6 +68,8 @@ export default function AppShellClient({
 function NativeAppLayout({ children }: { children: React.ReactNode }) {
   // Register for iOS push notifications (no-op if permission denied or on web)
   usePushNotifications();
+  // Initialize RevenueCat and sync subscription plan (no-op on web)
+  useRevenueCat();
 
   // Add native-ios class to body + detect iOS keyboard via visualViewport
   useEffect(() => {

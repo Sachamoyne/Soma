@@ -39,7 +39,9 @@ export function PaywallModal({
         <DialogHeader>
           <DialogTitle>
             {isNativeIOS
-              ? "Subscriptions unavailable"
+              ? isFreePlan
+                ? "Fonctionnalité réservée aux abonnés"
+                : "Limite atteinte"
               : isFreePlan
               ? "AI Generation Not Available"
               : "Card Limit Reached"}
@@ -47,7 +49,11 @@ export function PaywallModal({
           <DialogDescription>
             {isNativeIOS ? (
               <div className="space-y-4">
-                <p>Subscriptions are available on the web version.</p>
+                <p>
+                  {isFreePlan
+                    ? "La génération IA nécessite un abonnement Starter ou Pro."
+                    : `Tu as atteint la limite de ${limit} cartes sur le plan Starter.`}
+                </p>
               </div>
             ) : isFreePlan ? (
               <div className="space-y-4">
@@ -82,9 +88,11 @@ export function PaywallModal({
         <div className="flex flex-col gap-3 pt-4">
           {isNativeIOS ? (
             <>
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                Subscriptions are unavailable in the iOS app.
-              </div>
+              <Link href="/billing" className="w-full" onClick={() => onOpenChange(false)}>
+                <Button className="w-full">
+                  {isFreePlan ? "Voir les abonnements" : "Passer à Pro"}
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 className="w-full"

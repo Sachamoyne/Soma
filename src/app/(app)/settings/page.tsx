@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LogOut } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
-import { Browser } from "@capacitor/browser";
+import { IOSPaywall } from "@/components/IOSPaywall";
 
 const DEFAULT_SETTINGS: Partial<Settings> = {
   newCardsPerDay: 20,
@@ -35,10 +35,7 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         const loaded = await getSettings();
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          ...loaded,
-        });
+        setSettings({ ...DEFAULT_SETTINGS, ...loaded });
       } catch (error) {
         console.error("Error loading settings:", error);
       } finally {
@@ -55,11 +52,7 @@ export default function SettingsPage() {
       await updateSettings(settings);
       console.log("Settings saved successfully");
     } catch (error) {
-      console.error("Error saving settings:", {
-        error,
-        message: (error as Error)?.message,
-        settingsPayload: settings,
-      });
+      console.error("Error saving settings:", error);
     } finally {
       setSaving(false);
     }
@@ -74,14 +67,6 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Error logging out:", error);
       setLoggingOut(false);
-    }
-  };
-
-  const handleOpenWebsite = async () => {
-    if (isNativeIOS) {
-      await Browser.open({ url: "https://soma-edu.com/billing?source=ios_app" });
-    } else {
-      window.location.href = "https://soma-edu.com/billing?source=ios_app";
     }
   };
 
@@ -101,8 +86,10 @@ export default function SettingsPage() {
   return (
     <>
       <Topbar title={t("settings.title")} />
-      <div className="flex-1 overflow-y-auto p-10">
+      <div className="flex-1 overflow-y-auto p-6 sm:p-10">
         <div className="mx-auto max-w-4xl space-y-8">
+
+          {/* Daily limits */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{t("settings.dailyLimits")}</CardTitle>
@@ -147,6 +134,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Study order */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{t("settings.study")}</CardTitle>
@@ -176,22 +164,23 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* iOS in-app subscription paywall */}
           {isNativeIOS && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Upgrade your plan</CardTitle>
+                <CardTitle className="text-lg">Abonnement</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Manage or upgrade your subscription on the web version.
-                </p>
-                <Button type="button" variant="outline" onClick={handleOpenWebsite}>
-                  Open website
-                </Button>
+              <CardContent>
+                <IOSPaywall
+                  onSuccess={(plan) => {
+                    console.log("[Settings] Subscription activated:", plan);
+                  }}
+                />
               </CardContent>
             </Card>
           )}
 
+          {/* Actions row */}
           <div className="flex justify-between items-center">
             <Button
               variant="outline"
@@ -212,6 +201,7 @@ export default function SettingsPage() {
               Privacy Policy
             </Link>
           </div>
+
         </div>
       </div>
     </>
