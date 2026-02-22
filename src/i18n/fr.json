@@ -100,8 +100,8 @@
     "subtitle": "Des offres simples et adaptees aux etudiants. Choisissez la clarte et la concentration.",
     "free": "Gratuit",
     "starter": "Starter",
-    "starter": "Starter",
     "pro": "Pro",
+    "upgrade": "Passer a un plan superieur",
     "organization": "Organisation",
     "custom": "Sur mesure",
     "perMonth": "/mois",
@@ -139,7 +139,14 @@
     "loadError": "Impossible de charger votre plan.",
     "authError": "Session invalide. Veuillez vous reconnecter.",
     "portalError": "Impossible d'ouvrir le portail Stripe.",
-    "appModeNotice": "La gestion de l'abonnement est disponible sur le web."
+    "appModeNotice": "La gestion de l'abonnement est disponible sur le web.",
+    "subscriptionTitle": "Abonnement",
+    "redirecting": "Redirection en cours...",
+    "starterActive": "Starter actif",
+    "upgradeToStarter": "Passer a Starter",
+    "proActive": "Pro actif",
+    "upgradeToPro": "Passer a Pro",
+    "noActiveSubscription": "Vous n'avez pas d'abonnement actif."
   },
   "dashboard": {
     "title": "Statistiques",
@@ -179,7 +186,19 @@
     "deckSpecificSettings": "Parametres specifiques a ce paquet",
     "inheritFromGlobal": "Les parametres non personnalises heritent automatiquement des parametres globaux.",
     "resetToGlobal": "Reinitialiser aux parametres globaux",
-    "resetConfirm": "Etes-vous sur de vouloir reinitialiser tous les parametres de ce paquet aux valeurs globales ?"
+    "resetConfirm": "Etes-vous sur de vouloir reinitialiser tous les parametres de ce paquet aux valeurs globales ?",
+    "subscription": "Abonnement",
+    "privacyPolicy": "Politique de confidentialite",
+    "dangerZone": {
+      "title": "Zone dangereuse",
+      "deleteAccount": "Supprimer mon compte",
+      "deleteDesc": "Suppression permanente de votre compte et de toutes vos donnees. Cette action est irreversible.",
+      "confirmTitle": "Supprimer mon compte ?",
+      "confirmDesc": "Cette action est irreversible. Toutes vos donnees seront definitivement supprimees : decks, cartes, statistiques et parametres.",
+      "deleting": "Suppression en cours...",
+      "confirmButton": "Oui, supprimer definitivement",
+      "errorDefault": "Une erreur est survenue. Reessaie."
+    }
   },
   "decks": {
     "title": "Paquets",
@@ -511,5 +530,44 @@
     "learnMore": "Pour en savoir plus, consultez notre",
     "accept": "Accepter",
     "reject": "Refuser"
+  },
+  "paywall": {
+    "currentPlan": "Plan actuel",
+    "perMonth": "/mois",
+    "starterFallbackDesc": "200 cartes generees par IA / mois",
+    "proFallbackDesc": "Cartes illimitees generees par IA",
+    "planFree": "Gratuit",
+    "chooseStarter": "Choisir Starter",
+    "choosePro": "Choisir Pro",
+    "upgradeToPro": "Passer a Pro",
+    "purchasing": "Achat en cours...",
+    "restore": "Restaurer mes achats",
+    "restoring": "Restauration...",
+    "alreadyPro": "Tu es sur le plan Pro. Generation de cartes illimitee.",
+    "legal": "Les abonnements se renouvellent automatiquement. Annulable a tout moment via Reglages iOS -> Apple ID -> Abonnements.",
+    "retry": "Reessayer",
+    "loadError": "Impossible de charger les abonnements. Verifie ta connexion.",
+    "purchaseError": "L'achat a echoue. Reessaie ou contacte le support.",
+    "restoreError": "La restauration a echoue. Reessaie.",
+    "noRestoredPurchases": "Aucun achat trouve a restaurer.",
+    "activatedTemplate": "Abonnement {label} active !",
+    "restoredTemplate": "Abonnement {label} restaure !",
+    "modal": {
+      "iosFreePlanTitle": "Fonctionnalite reservee aux abonnes",
+      "iosQuotaTitle": "Limite atteinte",
+      "webFreePlanTitle": "Generation IA non disponible",
+      "webQuotaTitle": "Limite de cartes atteinte",
+      "iosFreePlanDesc": "La generation IA necessite un abonnement Starter ou Pro.",
+      "iosStarterLimitDesc": "Tu as atteint la limite de {limit} cartes sur le plan Starter.",
+      "webFreePlanDesc1": "La generation IA n'est pas disponible sur le plan gratuit.",
+      "webFreePlanDesc2": "Passez a Starter (200 cartes) ou Pro (cartes illimitees) pour debloquer la generation IA.",
+      "webStarterLimitDesc1": "Vous avez atteint la limite de {limit} cartes sur le plan Starter ({used} cartes).",
+      "webStarterLimitDesc2": "Passez a Pro pour des cartes illimitees.",
+      "webProLimitDesc": "Vous avez atteint votre limite de cartes ({used} / {limit} cartes).",
+      "viewSubscriptions": "Voir les abonnements",
+      "upgradeToPro": "Passer a Pro",
+      "continueManual": "Continuer sans abonnement",
+      "viewPlans": "Voir les plans"
+    }
   }
 }

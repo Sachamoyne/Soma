@@ -40,47 +40,34 @@ export function PaywallModal({
           <DialogTitle>
             {isNativeIOS
               ? isFreePlan
-                ? "Fonctionnalité réservée aux abonnés"
-                : "Limite atteinte"
+                ? t("paywall.modal.iosFreePlanTitle")
+                : t("paywall.modal.iosQuotaTitle")
               : isFreePlan
-              ? "AI Generation Not Available"
-              : "Card Limit Reached"}
+              ? t("paywall.modal.webFreePlanTitle")
+              : t("paywall.modal.webQuotaTitle")}
           </DialogTitle>
           <DialogDescription>
             {isNativeIOS ? (
               <div className="space-y-4">
                 <p>
                   {isFreePlan
-                    ? "La génération IA nécessite un abonnement Starter ou Pro."
-                    : `Tu as atteint la limite de ${limit} cartes sur le plan Starter.`}
+                    ? t("paywall.modal.iosFreePlanDesc")
+                    : t("paywall.modal.iosStarterLimitDesc", { limit: limit ?? 0 })}
                 </p>
               </div>
             ) : isFreePlan ? (
               <div className="space-y-4">
-                <p>
-                  AI flashcard generation is not available on the free plan.
-                </p>
-                <p>
-                  Upgrade to Starter (200 cards) or Pro (unlimited cards) to
-                  unlock AI-powered flashcard generation.
-                </p>
+                <p>{t("paywall.modal.webFreePlanDesc1")}</p>
+                <p>{t("paywall.modal.webFreePlanDesc2")}</p>
               </div>
             ) : isStarter ? (
               <div className="space-y-4">
-                <p>
-                  You&apos;ve reached the limit of {limit} cards on the Starter
-                  plan ({used} cards).
-                </p>
-                <p>
-                  Upgrade to Pro for unlimited cards and continue creating
-                  flashcards.
-                </p>
+                <p>{t("paywall.modal.webStarterLimitDesc1", { limit: limit ?? 0, used: used ?? 0 })}</p>
+                <p>{t("paywall.modal.webStarterLimitDesc2")}</p>
               </div>
             ) : (
               <div className="space-y-4">
-                <p>
-                  You&apos;ve reached your card limit ({used} / {limit} cards).
-                </p>
+                <p>{t("paywall.modal.webProLimitDesc", { used: used ?? 0, limit: limit ?? 0 })}</p>
               </div>
             )}
           </DialogDescription>
@@ -90,7 +77,7 @@ export function PaywallModal({
             <>
               <Link href="/billing" className="w-full" onClick={() => onOpenChange(false)}>
                 <Button className="w-full">
-                  {isFreePlan ? "Voir les abonnements" : "Passer à Pro"}
+                  {isFreePlan ? t("paywall.modal.viewSubscriptions") : t("paywall.modal.upgradeToPro")}
                 </Button>
               </Link>
               <Button
@@ -98,14 +85,14 @@ export function PaywallModal({
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >
-                Continue with Manual Creation
+                {t("paywall.modal.continueManual")}
               </Button>
             </>
           ) : isFreePlan ? (
             <>
               <Link href={appHref("/pricing", isApp)} className="w-full">
                 <Button className="w-full" onClick={() => onOpenChange(false)}>
-                  View Plans
+                  {t("paywall.modal.viewPlans")}
                 </Button>
               </Link>
               <Button
@@ -113,7 +100,7 @@ export function PaywallModal({
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >
-                Continue with Manual Creation
+                {t("paywall.modal.continueManual")}
               </Button>
             </>
           ) : isStarter ? (
@@ -132,7 +119,7 @@ export function PaywallModal({
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >
-                OK
+                {t("common.close")}
               </Button>
             </>
           ) : (
@@ -141,7 +128,7 @@ export function PaywallModal({
               className="w-full"
               onClick={() => onOpenChange(false)}
             >
-              OK
+              {t("common.close")}
             </Button>
           )}
         </div>

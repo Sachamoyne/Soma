@@ -71,7 +71,7 @@ function WebBillingSection() {
   const handleOpenPortal = useCallback(async () => {
     try {
       if (plan === "free" || !stripeCustomerId) {
-        setError("Vous n'avez pas d'abonnement actif.");
+        setError(t("billing.noActiveSubscription"));
         return;
       }
       setOpeningPortal(true);
@@ -152,10 +152,10 @@ function WebBillingSection() {
               className="w-full sm:w-auto"
             >
               {loadingCheckout === "starter"
-                ? "Redirecting..."
+                ? t("billing.redirecting")
                 : plan === "starter"
-                ? "Starter active"
-                : "Upgrade to Starter"}
+                ? t("billing.starterActive")
+                : t("billing.upgradeToStarter")}
             </Button>
             <Button
               onClick={() => void handleStartCheckout("pro")}
@@ -163,10 +163,10 @@ function WebBillingSection() {
               className="w-full sm:w-auto"
             >
               {loadingCheckout === "pro"
-                ? "Redirecting..."
+                ? t("billing.redirecting")
                 : plan === "pro"
-                ? "Pro active"
-                : "Upgrade to Pro"}
+                ? t("billing.proActive")
+                : t("billing.upgradeToPro")}
             </Button>
           </div>
           <Button
@@ -178,7 +178,7 @@ function WebBillingSection() {
           </Button>
           {!canOpenPortal && (
             <p className="text-xs text-muted-foreground max-w-prose">
-              Vous n&apos;avez pas d&apos;abonnement actif.
+              {t("billing.noActiveSubscription")}
             </p>
           )}
           {canOpenPortal && (
@@ -197,10 +197,11 @@ function WebBillingSection() {
 // ─── iOS billing (RevenueCat via IOSPaywall) ─────────────────────────────────
 
 function IOSBillingSection() {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Abonnement</CardTitle>
+        <CardTitle className="text-lg">{t("billing.subscriptionTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <IOSPaywall

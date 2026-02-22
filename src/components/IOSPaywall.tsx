@@ -23,6 +23,7 @@ import {
   type RCPlan,
 } from "@/services/revenuecat";
 import { isNativeIOS } from "@/lib/native";
+import { useTranslation } from "@/i18n";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ interface IOSPaywallProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
+  const { t } = useTranslation();
+
   // Guard: never render on web
   if (!isNativeIOS()) return null;
 
@@ -86,7 +89,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       setState("ready");
     } catch (err) {
       console.error("[IOSPaywall] Load error:", err);
-      setError("Impossible de charger les abonnements. Vérifie ta connexion.");
+      setError(t("paywall.loadError"));
       setState("error");
     }
   }
@@ -108,7 +111,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       setCurrentPlan(newPlan);
 
       const label = newPlan === "pro" ? "Pro" : "Starter";
-      setSuccessMsg(`Abonnement ${label} activé !`);
+      setSuccessMsg(t("paywall.activatedTemplate", { label }));
       setState("success");
       onSuccess?.(newPlan);
     } catch (err: any) {
@@ -122,7 +125,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         setState("ready");
       } else {
         console.error("[IOSPaywall] Purchase error:", err);
-        setError("L'achat a échoué. Réessaie ou contacte le support.");
+        setError(t("paywall.purchaseError"));
         setState("error");
       }
     }
@@ -145,17 +148,17 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       setCurrentPlan(restoredPlan);
 
       if (restoredPlan === "free") {
-        setSuccessMsg("Aucun achat trouvé à restaurer.");
+        setSuccessMsg(t("paywall.noRestoredPurchases"));
         setState("ready");
       } else {
         const label = restoredPlan === "pro" ? "Pro" : "Starter";
-        setSuccessMsg(`Abonnement ${label} restauré !`);
+        setSuccessMsg(t("paywall.restoredTemplate", { label }));
         setState("success");
         onSuccess?.(restoredPlan);
       }
     } catch (err) {
       console.error("[IOSPaywall] Restore error:", err);
-      setError("La restauration a échoué. Réessaie.");
+      setError(t("paywall.restoreError"));
       setState("error");
     }
   }
@@ -179,7 +182,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       ? "Pro"
       : currentPlan === "starter"
       ? "Starter"
-      : "Gratuit";
+      : t("paywall.planFree");
 
   // ── JSX ─────────────────────────────────────────────────────────────────────
 
@@ -187,7 +190,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     <div className="space-y-4">
       {/* Current plan badge */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Plan actuel :</span>
+        <span className="text-muted-foreground">{t("paywall.currentPlan")} :</span>
         <span className="font-semibold">{planLabel}</span>
         {isBusy && (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
@@ -211,7 +214,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               className="mt-1.5 text-xs underline underline-offset-2"
               onClick={() => void loadData()}
             >
-              Réessayer
+              {t("paywall.retry")}
             </button>
           )}
         </div>
@@ -242,7 +245,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      200 cartes générées par IA / mois
+                      {t("paywall.starterFallbackDesc")}
                     </p>
                   )}
                 </div>
@@ -251,7 +254,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                     <span className="text-sm font-semibold">
                       {starterPkg.product.priceString}
                     </span>
-                    <span className="text-xs text-muted-foreground"> /mois</span>
+                    <span className="text-xs text-muted-foreground"> {t("paywall.perMonth")}</span>
                   </div>
                 )}
               </div>
@@ -265,10 +268,10 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                 {state === "purchasing" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Achat en cours…
+                    {t("paywall.purchasing")}
                   </>
                 ) : (
-                  "Choisir Starter"
+                  t("paywall.chooseStarter")
                 )}
               </Button>
             </div>
@@ -290,7 +293,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Cartes illimitées générées par IA
+                    {t("paywall.proFallbackDesc")}
                   </p>
                 )}
               </div>
@@ -299,7 +302,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                   <span className="text-sm font-semibold">
                     {proPkg.product.priceString}
                   </span>
-                  <span className="text-xs text-muted-foreground"> /mois</span>
+                  <span className="text-xs text-muted-foreground"> {t("paywall.perMonth")}</span>
                 </div>
               )}
             </div>
@@ -312,12 +315,12 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               {state === "purchasing" ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Achat en cours…
+                  {t("paywall.purchasing")}
                 </>
               ) : currentPlan === "starter" ? (
-                "Passer à Pro"
+                t("paywall.upgradeToPro")
               ) : (
-                "Choisir Pro"
+                t("paywall.choosePro")
               )}
             </Button>
           </div>
@@ -333,17 +336,16 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             {state === "restoring" ? (
               <>
                 <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                Restauration…
+                {t("paywall.restoring")}
               </>
             ) : (
-              "Restaurer mes achats"
+              t("paywall.restore")
             )}
           </Button>
 
           {/* Legal disclaimer — required by App Store */}
           <p className="px-2 text-center text-[10px] leading-relaxed text-muted-foreground">
-            Les abonnements se renouvellent automatiquement. Annulable à tout
-            moment via Réglages iOS → Apple ID → Abonnements.
+            {t("paywall.legal")}
           </p>
         </div>
       )}
@@ -351,7 +353,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       {/* Already on Pro */}
       {state !== "loading" && currentPlan === "pro" && (
         <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
-          Tu es sur le plan Pro. Génération de cartes illimitée.
+          {t("paywall.alreadyPro")}
         </div>
       )}
     </div>

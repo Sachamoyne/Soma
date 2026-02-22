@@ -31,6 +31,7 @@ interface DeleteModalProps {
 }
 
 function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModalProps) {
+  const { t } = useTranslation();
   // Trap focus and close on Escape
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -66,12 +67,10 @@ function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModa
             <AlertTriangle className="h-6 w-6 text-destructive" />
           </div>
           <h2 id="delete-title" className="text-lg font-semibold">
-            Supprimer mon compte ?
+            {t("settings.dangerZone.confirmTitle")}
           </h2>
           <p id="delete-desc" className="text-sm text-muted-foreground leading-relaxed">
-            Cette action est <strong>irréversible</strong>. Toutes vos données
-            seront définitivement supprimées : decks, cartes, statistiques et
-            paramètres.
+            {t("settings.dangerZone.confirmDesc")}
           </p>
         </div>
 
@@ -93,12 +92,12 @@ function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModa
             {deleting ? (
               <>
                 <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Suppression en cours…
+                {t("settings.dangerZone.deleting")}
               </>
             ) : (
               <>
                 <Trash2 className="mr-2 h-4 w-4" />
-                Oui, supprimer définitivement
+                {t("settings.dangerZone.confirmButton")}
               </>
             )}
           </Button>
@@ -109,7 +108,7 @@ function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModa
             disabled={deleting}
             onClick={onCancel}
           >
-            Annuler
+            {t("common.cancel")}
           </Button>
         </div>
       </div>
@@ -194,7 +193,7 @@ export default function SettingsPage() {
       setDeleteError(
         err instanceof Error
           ? err.message
-          : "Une erreur est survenue. Réessaie."
+          : t("settings.dangerZone.errorDefault")
       );
       setDeleting(false);
     }
@@ -298,7 +297,7 @@ export default function SettingsPage() {
           {isNativeIOS && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Abonnement</CardTitle>
+                <CardTitle className="text-lg">{t("settings.subscription")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <IOSPaywall
@@ -329,14 +328,13 @@ export default function SettingsPage() {
           {/* Danger zone */}
           <div className="space-y-3">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Zone dangereuse
+              {t("settings.dangerZone.title")}
             </p>
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
               <div>
-                <p className="text-sm font-medium">Supprimer mon compte</p>
+                <p className="text-sm font-medium">{t("settings.dangerZone.deleteAccount")}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Suppression permanente de votre compte et de toutes vos
-                  données. Cette action est irréversible.
+                  {t("settings.dangerZone.deleteDesc")}
                 </p>
               </div>
               <Button
@@ -349,14 +347,14 @@ export default function SettingsPage() {
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Supprimer mon compte
+                {t("settings.dangerZone.deleteAccount")}
               </Button>
             </div>
           </div>
 
           <div className="text-xs text-muted-foreground">
             <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy Policy
+              {t("settings.privacyPolicy")}
             </Link>
           </div>
 

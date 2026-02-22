@@ -100,8 +100,8 @@
     "subtitle": "Simple, student-friendly plans. Choose clarity and focus, not noise.",
     "free": "Free",
     "starter": "Starter",
-    "starter": "Starter",
     "pro": "Pro",
+    "upgrade": "Upgrade plan",
     "organization": "Organization",
     "custom": "Custom",
     "perMonth": "/month",
@@ -139,7 +139,14 @@
     "loadError": "Unable to load your plan.",
     "authError": "Invalid session. Please sign in again.",
     "portalError": "Unable to open the Stripe portal.",
-    "appModeNotice": "Subscription management is available on the web."
+    "appModeNotice": "Subscription management is available on the web.",
+    "subscriptionTitle": "Subscription",
+    "redirecting": "Redirecting...",
+    "starterActive": "Starter active",
+    "upgradeToStarter": "Upgrade to Starter",
+    "proActive": "Pro active",
+    "upgradeToPro": "Upgrade to Pro",
+    "noActiveSubscription": "You have no active subscription."
   },
   "dashboard": {
     "title": "Statistics",
@@ -179,7 +186,19 @@
     "deckSpecificSettings": "Deck-specific settings",
     "inheritFromGlobal": "Settings not customized will automatically inherit from global settings.",
     "resetToGlobal": "Reset to global settings",
-    "resetConfirm": "Are you sure you want to reset all settings for this deck to global values?"
+    "resetConfirm": "Are you sure you want to reset all settings for this deck to global values?",
+    "subscription": "Subscription",
+    "privacyPolicy": "Privacy Policy",
+    "dangerZone": {
+      "title": "Danger zone",
+      "deleteAccount": "Delete my account",
+      "deleteDesc": "Permanent deletion of your account and all your data. This action is irreversible.",
+      "confirmTitle": "Delete my account?",
+      "confirmDesc": "This action is irreversible. All your data will be permanently deleted: decks, cards, statistics and settings.",
+      "deleting": "Deleting...",
+      "confirmButton": "Yes, delete permanently",
+      "errorDefault": "An error occurred. Please try again."
+    }
   },
   "decks": {
     "title": "Decks",
@@ -511,5 +530,44 @@
     "learnMore": "To learn more, see our",
     "accept": "Accept",
     "reject": "Reject"
+  },
+  "paywall": {
+    "currentPlan": "Current plan",
+    "perMonth": "/month",
+    "starterFallbackDesc": "200 AI-generated cards/month",
+    "proFallbackDesc": "Unlimited AI-generated cards",
+    "planFree": "Free",
+    "chooseStarter": "Choose Starter",
+    "choosePro": "Choose Pro",
+    "upgradeToPro": "Upgrade to Pro",
+    "purchasing": "Purchasing...",
+    "restore": "Restore purchases",
+    "restoring": "Restoring...",
+    "alreadyPro": "You're on the Pro plan. Unlimited card generation.",
+    "legal": "Subscriptions renew automatically. Cancel anytime via iOS Settings -> Apple ID -> Subscriptions.",
+    "retry": "Retry",
+    "loadError": "Unable to load subscriptions. Check your connection.",
+    "purchaseError": "Purchase failed. Try again or contact support.",
+    "restoreError": "Restore failed. Please try again.",
+    "noRestoredPurchases": "No purchases found to restore.",
+    "activatedTemplate": "{label} subscription activated!",
+    "restoredTemplate": "{label} subscription restored!",
+    "modal": {
+      "iosFreePlanTitle": "Subscriber-only feature",
+      "iosQuotaTitle": "Limit reached",
+      "webFreePlanTitle": "AI Generation Not Available",
+      "webQuotaTitle": "Card Limit Reached",
+      "iosFreePlanDesc": "AI generation requires a Starter or Pro subscription.",
+      "iosStarterLimitDesc": "You've reached the {limit}-card limit on the Starter plan.",
+      "webFreePlanDesc1": "AI flashcard generation is not available on the free plan.",
+      "webFreePlanDesc2": "Upgrade to Starter (200 cards) or Pro (unlimited cards) to unlock AI-powered flashcard generation.",
+      "webStarterLimitDesc1": "You've reached the limit of {limit} cards on the Starter plan ({used} cards).",
+      "webStarterLimitDesc2": "Upgrade to Pro for unlimited cards and continue creating flashcards.",
+      "webProLimitDesc": "You've reached your card limit ({used} / {limit} cards).",
+      "viewSubscriptions": "View subscriptions",
+      "upgradeToPro": "Upgrade to Pro",
+      "continueManual": "Continue without subscription",
+      "viewPlans": "View plans"
+    }
   }
 }
