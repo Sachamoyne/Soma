@@ -228,34 +228,39 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         </div>
       )}
 
-      {/* Plans — shown when ready/success/error and not already Pro */}
-      {state !== "loading" && currentPlan !== "pro" && (
+      {/* No offerings — shown after a successful load with no products */}
+      {state === "ready" && !offering && currentPlan !== "pro" && (
+        <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+          {t("paywall.noOfferings")}
+        </div>
+      )}
+
+      {/* Plans — shown when offering is available and not already Pro */}
+      {state !== "loading" && offering && currentPlan !== "pro" && (
         <div className="space-y-3">
           {/* ── Starter (only if currently free) ── */}
           {currentPlan === "free" && (
             <div className="rounded-xl border bg-card p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm leading-tight">
-                    {starterPkg?.product.title ?? "Starter"}
-                  </p>
-                  {starterPkg?.product.description ? (
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                      {starterPkg.product.description}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("paywall.starterFallbackDesc")}
-                    </p>
-                  )}
-                </div>
-                {starterPkg?.product.priceString && (
-                  <div className="shrink-0 text-right">
-                    <span className="text-sm font-semibold">
-                      {starterPkg.product.priceString}
+              <div>
+                <p className="font-semibold text-sm leading-tight">
+                  {starterPkg?.product.title ?? "Starter"}
+                </p>
+                {starterPkg && (
+                  <p className="mt-0.5 text-sm font-semibold">
+                    {starterPkg.product.priceString}
+                    <span className="ml-0.5 font-normal text-xs text-muted-foreground">
+                      {t("paywall.perMonth")}
                     </span>
-                    <span className="text-xs text-muted-foreground"> {t("paywall.perMonth")}</span>
-                  </div>
+                  </p>
+                )}
+                {starterPkg?.product.description ? (
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    {starterPkg.product.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t("paywall.starterFallbackDesc")}
+                  </p>
                 )}
               </div>
               <Button
@@ -279,31 +284,29 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
           {/* ── Pro ── */}
           <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <p className="font-semibold text-sm leading-tight">
-                    {proPkg?.product.title ?? "Pro"}
-                  </p>
-                </div>
-                {proPkg?.product.description ? (
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                    {proPkg.product.description}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("paywall.proFallbackDesc")}
-                  </p>
-                )}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <p className="font-semibold text-sm leading-tight">
+                  {proPkg?.product.title ?? "Pro"}
+                </p>
               </div>
-              {proPkg?.product.priceString && (
-                <div className="shrink-0 text-right">
-                  <span className="text-sm font-semibold">
-                    {proPkg.product.priceString}
+              {proPkg && (
+                <p className="mt-0.5 text-sm font-semibold">
+                  {proPkg.product.priceString}
+                  <span className="ml-0.5 font-normal text-xs text-muted-foreground">
+                    {t("paywall.perMonth")}
                   </span>
-                  <span className="text-xs text-muted-foreground"> {t("paywall.perMonth")}</span>
-                </div>
+                </p>
+              )}
+              {proPkg?.product.description ? (
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  {proPkg.product.description}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("paywall.proFallbackDesc")}
+                </p>
               )}
             </div>
             <Button

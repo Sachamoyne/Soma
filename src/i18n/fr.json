@@ -106,7 +106,7 @@
     "custom": "Sur mesure",
     "perMonth": "/mois",
     "freePrice": "0€",
-    "starterPrice": "2,49€",
+    "starterPrice": "2,99€",
     "proPrice": "7,99€",
     "freeDesc": "Outils d'etude essentiels.",
     "starterDesc": "Jusqu'a 200 flashcards avec generation IA",
@@ -552,6 +552,7 @@
     "noRestoredPurchases": "Aucun achat trouve a restaurer.",
     "activatedTemplate": "Abonnement {label} active !",
     "restoredTemplate": "Abonnement {label} restaure !",
+    "noOfferings": "Aucune offre disponible pour le moment. Verifie ta connexion.",
     "modal": {
       "iosFreePlanTitle": "Fonctionnalite reservee aux abonnes",
       "iosQuotaTitle": "Limite atteinte",

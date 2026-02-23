@@ -106,7 +106,7 @@
     "custom": "Custom",
     "perMonth": "/month",
     "freePrice": "0€",
-    "starterPrice": "2,49€",
+    "starterPrice": "2,99€",
     "proPrice": "7,99€",
     "freeDesc": "Essential study tools.",
     "starterDesc": "Up to 200 flashcards with AI generation",
@@ -552,6 +552,7 @@
     "noRestoredPurchases": "No purchases found to restore.",
     "activatedTemplate": "{label} subscription activated!",
     "restoredTemplate": "{label} subscription restored!",
+    "noOfferings": "No offers available at the moment. Check your connection.",
     "modal": {
       "iosFreePlanTitle": "Subscriber-only feature",
       "iosQuotaTitle": "Limit reached",
