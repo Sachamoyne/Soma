@@ -337,7 +337,7 @@ export function VocabularyImportDialog({
                 <Input
                   id="vocab-file"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
                   onChange={handleFileSelect}
                   ref={fileInputRef}
                   className="cursor-pointer"
