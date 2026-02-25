@@ -66,17 +66,23 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       setError(null);
       console.log("[IOSPaywall] Loading plan and offerings...");
 
-      const { checkUserSubscription, getOfferings } = await import(
-        "@/services/revenuecat"
-      );
+      const { getOfferings } = await import("@/services/revenuecat");
 
-      const [plan, offeringData] = await Promise.all([
-        checkUserSubscription(),
+      const [quotaRes, offeringData] = await Promise.all([
+        fetch("/api/quota"),
         getOfferings(),
       ]);
 
+      // Read plan from Supabase (source of truth — covers both Stripe and RC subscriptions)
+      let plan: RCPlan = "free";
+      if (quotaRes.ok) {
+        const data = await quotaRes.json();
+        const p = data.plan as string;
+        if (p === "starter" || p === "pro") plan = p;
+      }
+
       console.log(
-        "[IOSPaywall] Plan:",
+        "[IOSPaywall] Plan (Supabase):",
         plan,
         "| Offering:",
         offeringData?.identifier ?? "none",
