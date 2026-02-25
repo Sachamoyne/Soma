@@ -74,7 +74,8 @@ app.use("/pdf", requireAuth, pdfRouter);
 app.use("/generate", requireAuth, generateRouter);
 app.use("/languages", requireAuth, languagesRouter);
 
-app.listen(env.PORT, () => {
-  console.log(`[BACKEND] Server running on port ${env.PORT}`);
+const PORT = parseInt(process.env.PORT ?? "3000", 10);
+app.listen(PORT, () => {
+  console.log(`[BACKEND] Server running on port ${PORT}`);
   console.log(`[BACKEND] Environment: ${env.NODE_ENV || "development"}`);
 });

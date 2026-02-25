@@ -489,7 +489,7 @@ export function ImportDialog({
                 <Input
                   id="file"
                   type="file"
-                  accept=".apkg"
+                  accept={ankiOnly ? ".apkg,application/octet-stream" : ".pdf,.apkg"}
                   onChange={handleFileSelect}
                   ref={fileInputRef}
                   className="cursor-pointer"
