@@ -102,7 +102,7 @@ export function ImportDialog({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (ankiOnly && !selectedFile.name.toLowerCase().endsWith(".apkg")) {
+      if (!selectedFile.name.toLowerCase().endsWith(".apkg")) {
         setFile(null);
         setExtractionError("Please select an Anki (.apkg) file.");
         return;
@@ -290,7 +290,7 @@ export function ImportDialog({
   const handleExtract = async () => {
     if (!file) return;
 
-    if (ankiOnly && !file.name.toLowerCase().endsWith(".apkg")) {
+    if (!file.name.toLowerCase().endsWith(".apkg")) {
       setExtractionError("Please select an Anki (.apkg) file.");
       return;
     }
@@ -489,7 +489,7 @@ export function ImportDialog({
                 <Input
                   id="file"
                   type="file"
-                  accept={ankiOnly ? ".apkg" : ".pdf,.apkg"}
+                  accept=".apkg"
                   onChange={handleFileSelect}
                   ref={fileInputRef}
                   className="cursor-pointer"
