@@ -544,6 +544,7 @@
     "restore": "Restaurer mes achats",
     "restoring": "Restauration...",
     "alreadyPro": "Tu es sur le plan Pro. Generation de cartes illimitee.",
+    "manageSubscription": "Gerer mon abonnement",
     "legal": "Les abonnements se renouvellent automatiquement. Annulable a tout moment via Reglages iOS -> Apple ID -> Abonnements.",
     "retry": "Reessayer",
     "loadError": "Impossible de charger les abonnements. Verifie ta connexion.",

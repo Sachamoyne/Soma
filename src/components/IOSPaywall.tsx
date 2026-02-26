@@ -3,19 +3,21 @@
 /**
  * IOSPaywall — RevenueCat in-app purchase UI for iOS only.
  *
- * - Fetches live offerings (title, description, priceString) from RevenueCat
+ * Source of truth: RevenueCat CustomerInfo (read directly via SDK).
+ * Supabase is a mirror, synced in background after every RC read.
+ *
+ * - Reads current plan from RevenueCat (not Supabase) → eliminates race condition
+ * - Refreshes on foreground resume (visibilitychange) → picks up external changes
  * - Handles purchase of Starter and Pro packages
  * - Handles restore purchases (required by App Store guidelines)
- * - Syncs the resulting plan to Supabase via /api/revenuecat/sync-plan
+ * - Shows "Manage subscription" button for paid plans (opens App Store)
+ * - Syncs plan to Supabase in background via /api/revenuecat/sync-plan
  * - Never renders on web (returns null if not native iOS)
- *
- * Usage:
- *   <IOSPaywall onSuccess={(plan) => console.log("now on plan:", plan)} />
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import {
   RC_PACKAGE_STARTER,
   RC_PACKAGE_PRO,
@@ -45,62 +47,87 @@ interface IOSPaywallProps {
 export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   const { t } = useTranslation();
 
-  // Guard: never render on web
-  if (!isNativeIOS()) return null;
-
+  // ALL hooks must be called before any conditional return (React rules of hooks).
   const [state, setState] = useState<PaywallState>("loading");
   const [currentPlan, setCurrentPlan] = useState<RCPlan>("free");
   const [offering, setOffering] = useState<RCOffering | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
+  // Initial load
   useEffect(() => {
+    if (!isNativeIOS()) return;
     void loadData();
   }, []);
 
-  // ── Data loading ────────────────────────────────────────────────────────────
+  // Refresh on foreground resume — picks up subscription changes made outside
+  // the app (e.g. user managed subscription in iOS Settings / App Store).
+  useEffect(() => {
+    if (!isNativeIOS()) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadData();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  // Guard: never render on web (all hooks above are already no-ops on web)
+  if (!isNativeIOS()) return null;
+
+  // ── Data loading ─────────────────────────────────────────────────────────────
+  //
+  // Source of truth: RevenueCat CustomerInfo (real-time from Apple).
+  // checkUserSubscription() internally calls waitForConfigured(), so it will
+  // wait for useRevenueCat's initRevenueCat() to complete if needed.
 
   async function loadData() {
+    if (loadingRef.current) return; // prevent concurrent calls
+    loadingRef.current = true;
+
     try {
       setState("loading");
       setError(null);
-      console.log("[IOSPaywall] Loading plan and offerings...");
 
-      const { getOfferings } = await import("@/services/revenuecat");
+      const { getOfferings, checkUserSubscription } = await import(
+        "@/services/revenuecat"
+      );
 
-      const [quotaRes, offeringData] = await Promise.all([
-        fetch("/api/quota"),
+      // Read from RevenueCat directly — eliminates Supabase race condition
+      const [rcPlan, offeringData] = await Promise.all([
+        checkUserSubscription(),
         getOfferings(),
       ]);
 
-      // Read plan from Supabase (source of truth — covers both Stripe and RC subscriptions)
-      let plan: RCPlan = "free";
-      if (quotaRes.ok) {
-        const data = await quotaRes.json();
-        const p = data.plan as string;
-        if (p === "starter" || p === "pro") plan = p;
-      }
-
       console.log(
-        "[IOSPaywall] Plan (Supabase):",
-        plan,
+        "[IOSPaywall] RC plan:",
+        rcPlan,
         "| Offering:",
         offeringData?.identifier ?? "none",
         "| Packages:",
         offeringData?.availablePackages.map((p) => p.identifier) ?? []
       );
 
-      setCurrentPlan(plan);
+      setCurrentPlan(rcPlan);
       setOffering(offeringData);
       setState("ready");
+
+      // Sync to Supabase in background (non-blocking)
+      void syncPlan(rcPlan);
     } catch (err) {
       console.error("[IOSPaywall] Load error:", err);
       setError(t("paywall.loadError"));
       setState("error");
+    } finally {
+      loadingRef.current = false;
     }
   }
 
-  // ── Purchase ────────────────────────────────────────────────────────────────
+  // ── Purchase ─────────────────────────────────────────────────────────────────
 
   async function handlePurchase(packageIdentifier: string) {
     try {
@@ -137,7 +164,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     }
   }
 
-  // ── Restore ─────────────────────────────────────────────────────────────────
+  // ── Restore ──────────────────────────────────────────────────────────────────
 
   async function handleRestore() {
     try {
@@ -169,7 +196,17 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     }
   }
 
-  // ── Render helpers ──────────────────────────────────────────────────────────
+  // ── Manage subscription ──────────────────────────────────────────────────────
+  //
+  // Opens iOS App Store subscription management.
+  // Capacitor's WKWebView delegates non-HTTP/HTTPS URLs to UIApplication.openURL,
+  // which opens the App Store on the subscriptions page.
+
+  function handleManageSubscription() {
+    window.open("itms-apps://apps.apple.com/account/subscriptions", "_system");
+  }
+
+  // ── Render helpers ────────────────────────────────────────────────────────────
 
   const starterPkg = offering?.availablePackages.find(
     (p) => p.identifier === RC_PACKAGE_STARTER
@@ -190,7 +227,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       ? "Starter"
       : t("paywall.planFree");
 
-  // ── JSX ─────────────────────────────────────────────────────────────────────
+  // ── JSX ───────────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
@@ -234,17 +271,28 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         </div>
       )}
 
-      {/* No offerings — shown after a successful load with no products */}
-      {state === "ready" && !offering && currentPlan !== "pro" && (
-        <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
-          {t("paywall.noOfferings")}
+      {/* ── Pro plan: show managed state ── */}
+      {state !== "loading" && currentPlan === "pro" && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+            {t("paywall.alreadyPro")}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground"
+            onClick={handleManageSubscription}
+          >
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            {t("paywall.manageSubscription")}
+          </Button>
         </div>
       )}
 
-      {/* Plans — shown when offering is available and not already Pro */}
+      {/* ── Upgrade options: shown for free and starter plans ── */}
       {state !== "loading" && offering && currentPlan !== "pro" && (
         <div className="space-y-3">
-          {/* ── Starter (only if currently free) ── */}
+          {/* Starter — only shown when currently free */}
           {currentPlan === "free" && (
             <div className="rounded-xl border bg-card p-4 space-y-3">
               <div>
@@ -288,7 +336,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             </div>
           )}
 
-          {/* ── Pro ── */}
+          {/* Pro */}
           <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
             <div>
               <div className="flex items-center gap-1.5">
@@ -334,7 +382,20 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             </Button>
           </div>
 
-          {/* Restore purchases */}
+          {/* Manage subscription — for Starter plan (already paying) */}
+          {currentPlan === "starter" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground"
+              onClick={handleManageSubscription}
+            >
+              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+              {t("paywall.manageSubscription")}
+            </Button>
+          )}
+
+          {/* Restore purchases — required by App Store guidelines */}
           <Button
             variant="ghost"
             size="sm"
@@ -359,17 +420,24 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         </div>
       )}
 
-      {/* Already on Pro */}
-      {state !== "loading" && currentPlan === "pro" && (
-        <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
-          {t("paywall.alreadyPro")}
-        </div>
-      )}
+      {/* No offerings available (RC configured but no products returned) */}
+      {state === "ready" &&
+        !offering &&
+        currentPlan !== "pro" &&
+        currentPlan !== "starter" && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+            {t("paywall.noOfferings")}
+          </div>
+        )}
     </div>
   );
 }
 
 // ─── Supabase sync (module-level, not a hook) ─────────────────────────────────
+//
+// Syncs the RC-determined plan to Supabase so server-side features (quotas,
+// AI card limits) reflect the current subscription. Non-blocking — UI never
+// waits for this.
 
 async function syncPlan(plan: RCPlan): Promise<void> {
   try {

@@ -544,6 +544,7 @@
     "restore": "Restore purchases",
     "restoring": "Restoring...",
     "alreadyPro": "You're on the Pro plan. Unlimited card generation.",
+    "manageSubscription": "Manage subscription",
     "legal": "Subscriptions renew automatically. Cancel anytime via iOS Settings -> Apple ID -> Subscriptions.",
     "retry": "Retry",
     "loadError": "Unable to load subscriptions. Check your connection.",
