@@ -116,6 +116,17 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       setOffering(offeringData);
       setState("ready");
 
+      // If no offering came back (RC returned null), schedule one more silent
+      // retry after 5 s. StoreKit sometimes needs extra time to warm up,
+      // especially in sandbox / first launch. The RC service already does a
+      // 2 s internal retry; this gives an additional chance at the UI level.
+      if (!offeringData) {
+        console.warn("[IOSPaywall] No offering — scheduling auto-retry in 5 s");
+        setTimeout(() => {
+          if (!loadingRef.current) void loadData();
+        }, 5000);
+      }
+
       // Sync to Supabase in background (non-blocking)
       void syncPlan(rcPlan);
     } catch (err) {
@@ -425,8 +436,16 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         !offering &&
         currentPlan !== "pro" &&
         currentPlan !== "starter" && (
-          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
-            {t("paywall.noOfferings")}
+          <div className="space-y-2">
+            <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+              {t("paywall.noOfferings")}
+            </div>
+            <button
+              className="w-full text-xs underline underline-offset-2 text-muted-foreground py-1"
+              onClick={() => void loadData()}
+            >
+              {t("paywall.retry")}
+            </button>
           </div>
         )}
     </div>

@@ -112,13 +112,20 @@ export async function initRevenueCat(userId: string): Promise<void> {
   try {
     const { Purchases, LOG_LEVEL } = await import("@revenuecat/purchases-capacitor");
 
+    // Log a masked key so we can confirm the correct key is injected in production.
+    const maskedKey =
+      RC_IOS_API_KEY.length > 8
+        ? RC_IOS_API_KEY.slice(0, 4) + "…" + RC_IOS_API_KEY.slice(-4)
+        : "(too short)";
+    console.log("[RC] Initializing. Key:", maskedKey, "| User:", userId);
+
     await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
     await Purchases.configure({ apiKey: RC_IOS_API_KEY, appUserID: userId });
 
     _isConfigured = true;
     _resolveConfigured?.();
 
-    console.log("[RC] Initialized. User:", userId);
+    console.log("[RC] Initialized successfully. User:", userId);
   } catch (error) {
     console.error("[RC] Failed to initialize:", error);
   }
@@ -134,13 +141,48 @@ export async function getOfferings(): Promise<RCOffering | null> {
   try {
     await waitForConfigured();
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
-    const result = await Purchases.getOfferings();
+
+    let result = await Purchases.getOfferings();
+
+    // Log the full offerings response for diagnostics.
+    console.log("[RC] getOfferings response:", {
+      current: result.current?.identifier ?? null,
+      allOfferings: Object.keys(result.all ?? {}),
+      currentPackages:
+        result.current?.availablePackages?.map((p: any) => p.identifier) ?? [],
+    });
+
+    // If current is null, wait 2 s and retry once. This handles timing issues
+    // where StoreKit hasn't finished loading products on the first call.
+    if (!result.current) {
+      console.warn("[RC] No current offering — retrying in 2 s…");
+      await new Promise<void>((r) => setTimeout(r, 2000));
+      result = await Purchases.getOfferings();
+      console.log("[RC] getOfferings retry response:", {
+        current: result.current?.identifier ?? null,
+        allOfferings: Object.keys(result.all ?? {}),
+        currentPackages:
+          result.current?.availablePackages?.map((p: any) => p.identifier) ?? [],
+      });
+    }
+
     const current = result.current;
 
     if (!current) {
-      console.warn("[RC] No current offering available");
+      console.warn(
+        "[RC] Still no current offering after retry.",
+        "All offerings in RC dashboard:",
+        Object.keys(result.all ?? {})
+      );
       return null;
     }
+
+    console.log(
+      "[RC] Current offering:",
+      current.identifier,
+      "| Packages:",
+      current.availablePackages.map((p: any) => p.identifier)
+    );
 
     return {
       identifier: current.identifier,
