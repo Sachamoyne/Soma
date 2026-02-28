@@ -5,12 +5,16 @@
  * Use isNativeIOS() before calling any function in non-guarded contexts.
  *
  * Entitlements (must match RevenueCat dashboard):
- *   "starter"  → Starter plan
- *   "pro"      → Pro plan
+ *   "Starter"  → Starter plan
+ *   "Pro"      → Pro plan
  *
  * Package identifiers (default offering):
- *   "$rc_monthly"  → Starter
- *   "pro_monthly"  → Pro
+ *   "$rc_monthly"  → Starter  ← verify against [RC] Package identifiers log
+ *   "pro_monthly"  → Pro      ← verify against [RC] Package identifiers log
+ *
+ * Offering resolution order:
+ *   1. offerings.current   (RC "Current" flag)
+ *   2. offerings.all["default"]  (name-based fallback if Current not set)
  */
 
 import { isNativeIOS } from "@/lib/native";
@@ -144,50 +148,66 @@ export async function getOfferings(): Promise<RCOffering | null> {
 
     let result = await Purchases.getOfferings();
 
-    // Log the full offerings response for diagnostics.
-    console.log("[RC] getOfferings response:", {
-      current: result.current?.identifier ?? null,
-      allOfferings: Object.keys(result.all ?? {}),
-      currentPackages:
-        result.current?.availablePackages?.map((p: any) => p.identifier) ?? [],
-    });
+    // ── Attempt 1 log ─────────────────────────────────────────────────────────
+    console.log("[RC] Offerings:", result.current ?? null);
+    console.log("[RC] Current:", result.current?.identifier ?? null);
+    console.log(
+      "[RC] Package identifiers:",
+      result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
+    );
+    console.log("[RC] All offering keys:", Object.keys(result.all ?? {}));
 
-    // If current is null, wait 2 s and retry once. This handles timing issues
-    // where StoreKit hasn't finished loading products on the first call.
+    // If current is null, wait 2 s and retry once (StoreKit cold-start timing).
     if (!result.current) {
-      console.warn("[RC] No current offering — retrying in 2 s…");
+      console.warn("[RC] offerings.current is null — retrying in 2 s…");
       await new Promise<void>((r) => setTimeout(r, 2000));
       result = await Purchases.getOfferings();
-      console.log("[RC] getOfferings retry response:", {
-        current: result.current?.identifier ?? null,
-        allOfferings: Object.keys(result.all ?? {}),
-        currentPackages:
-          result.current?.availablePackages?.map((p: any) => p.identifier) ?? [],
-      });
+
+      // ── Attempt 2 log ───────────────────────────────────────────────────────
+      console.log("[RC] Retry — Offerings:", result.current ?? null);
+      console.log("[RC] Retry — Current:", result.current?.identifier ?? null);
+      console.log(
+        "[RC] Retry — Package identifiers:",
+        result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
+      );
+      console.log("[RC] Retry — All offering keys:", Object.keys(result.all ?? {}));
     }
 
-    const current = result.current;
+    // ── Resolve offering: current → all["default"] → null ───────────────────
+    //
+    // offerings.current is set only when an offering is flagged "Current" in the
+    // RevenueCat dashboard.  If the "default" offering exists but isn't flagged,
+    // current is null even though packages are configured.  Fall back by name.
+    let resolved: any = result.current;
 
-    if (!current) {
+    if (!resolved && result.all?.["default"]) {
+      resolved = result.all["default"];
       console.warn(
-        "[RC] Still no current offering after retry.",
-        "All offerings in RC dashboard:",
+        '[RC] offerings.current is null — falling back to offerings.all["default"].',
+        "Identifier:", resolved.identifier,
+        "| Packages:", resolved.availablePackages?.map((p: any) => p.identifier) ?? []
+      );
+    }
+
+    if (!resolved) {
+      console.warn(
+        "[RC] No offering resolved. All available offering keys:",
         Object.keys(result.all ?? {})
       );
       return null;
     }
 
     console.log(
-      "[RC] Current offering:",
-      current.identifier,
+      "[RC] Resolved offering:",
+      resolved.identifier,
       "| Packages:",
-      current.availablePackages.map((p: any) => p.identifier)
+      resolved.availablePackages?.map((p: any) => p.identifier) ?? []
     );
 
     return {
-      identifier: current.identifier,
-      serverDescription: current.serverDescription,
-      availablePackages: current.availablePackages.map((pkg: any) => ({
+      identifier: resolved.identifier,
+      serverDescription: resolved.serverDescription,
+      availablePackages: (resolved.availablePackages ?? []).map((pkg: any) => ({
         identifier: pkg.identifier,
         packageType: pkg.packageType,
         product: {
@@ -217,10 +237,20 @@ export async function purchasePackage(packageIdentifier: string): Promise<RCPlan
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
 
   const result = await Purchases.getOfferings();
-  const current = result.current;
+  // Mirror the same resolution logic as getOfferings(): current → all["default"].
+  const current = result.current ?? result.all?.["default"] ?? null;
   if (!current) throw new Error("[RC] No offerings available");
 
-  const pkg = current.availablePackages.find(
+  console.log(
+    "[RC] purchasePackage — offering:",
+    current.identifier,
+    "| looking for package:",
+    packageIdentifier,
+    "| available:",
+    current.availablePackages?.map((p: any) => p.identifier) ?? []
+  );
+
+  const pkg = current.availablePackages?.find(
     (p: any) => p.identifier === packageIdentifier
   );
   if (!pkg) throw new Error(`[RC] Package not found: ${packageIdentifier}`);
