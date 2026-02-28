@@ -6,12 +6,15 @@
  * Never renders on web (returns null if not native iOS).
  *
  * State design — three independent concerns, never a single global machine:
- *   rcLoading   : RC background fetch; never hides plan cards
  *   purchasing  : which plan button is mid-purchase ("starter" | "pro" | null)
  *   restoring   : restore button in progress
+ *   error       : set ONLY by purchase/restore failures, never by background RC fetch
  *
- * This means plans are ALWAYS visible from mount, and only the clicked button
- * ever shows a spinner / gets disabled.
+ * Background RC fetch (loadData) is fully silent:
+ *   - No spinner shown at mount
+ *   - No error/retry shown if offerings are null or RC times out
+ *   - Fallback plans are always visible; real plans replace them if RC responds
+ * Spinner next to plan badge appears ONLY during an active purchase or restore.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -36,7 +39,7 @@ const FALLBACK_PLANS = [
     id: "starter" as const,
     pkgId: RC_PACKAGE_STARTER,
     title: "Soma Starter",
-    priceString: "€2.49",
+    priceString: "€2.99",
     description: "Access up to 200 AI-generated flashcards per month.",
   },
   {
@@ -62,7 +65,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // ── State — three independent axes, never a single machine ─────────────────
   const [currentPlan, setCurrentPlan] = useState<RCPlan>("free");
   const [offering, setOffering]       = useState<RCOffering | null>(null);
-  const [rcLoading, setRcLoading]     = useState(false);   // background only
   const [purchasing, setPurchasing]   = useState<"starter" | "pro" | null>(null);
   const [restoring, setRestoring]     = useState(false);
   const [error, setError]             = useState<string | null>(null);
@@ -92,13 +94,14 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
   // ── RC background fetch ───────────────────────────────────────────────────
   //
-  // setRcLoading(true/false) is the ONLY loading state touched here.
-  // Plans remain visible throughout — this never blanks the UI.
+  // Fully silent: no state changes that affect the visible UI before or after.
+  // Plans (fallback or real) are always visible regardless of this fetch.
+  // Errors here are logged only — never surfaced to the user.
 
   async function loadData() {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    setRcLoading(true);
+    // Clear any previous purchase/restore error so a manual retry feels clean.
     setError(null);
 
     try {
@@ -133,10 +136,10 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
       void syncPlan(rcPlan);
     } catch (err) {
+      // Silent fail — RC errors during background fetch do not surface to the user.
+      // Fallback plans remain visible; the user can tap Retry in the fallback section.
       console.error("[IOSPaywall] loadData error:", err);
-      setError(t("paywall.loadError"));
     } finally {
-      setRcLoading(false);
       loadingRef.current = false;
     }
   }
@@ -248,7 +251,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">{t("paywall.currentPlan")} :</span>
         <span className="font-semibold">{planLabel}</span>
-        {rcLoading && (
+        {(purchasing !== null || restoring) && (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         )}
       </div>
