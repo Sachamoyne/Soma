@@ -539,22 +539,16 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             </Button>
           </div>
 
-          {/* Restore — still functional; doesn't require offerings */}
+          {/* Restore — still functional; doesn't require offerings.
+               state is always "ready" here (usingFallback requires it),
+               so no spinner branch needed — restoring immediately exits this block. */}
           <Button
             variant="ghost"
             size="sm"
             className="w-full text-xs text-muted-foreground"
-            disabled={isBusy}
             onClick={() => void handleRestore()}
           >
-            {state === "restoring" ? (
-              <>
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                {t("paywall.restoring")}
-              </>
-            ) : (
-              t("paywall.restore")
-            )}
+            {t("paywall.restore")}
           </Button>
 
           {/* Legal disclaimer — required by App Store */}
