@@ -77,6 +77,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const loadingRef = useRef(false);
+  const autoRetriedRef = useRef(false); // ensures the 5 s auto-retry fires at most once
 
   // Initial load
   useEffect(() => {
@@ -144,11 +145,16 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       // especially in sandbox / first launch. The RC service already does a
       // 2 s internal retry; this gives an additional chance at the UI level.
       if (!offeringData) {
-        console.warn("[IOSPaywall] No offering — scheduling auto-retry in 5 s");
         console.warn("[RC] Using fallback mock offerings");
-        setTimeout(() => {
-          if (!loadingRef.current) void loadData();
-        }, 5000);
+        // Auto-retry fires at most ONCE (guard via autoRetriedRef).
+        // Without this guard every failed load reschedules itself → infinite loop.
+        if (!autoRetriedRef.current) {
+          autoRetriedRef.current = true;
+          console.warn("[IOSPaywall] No offering — scheduling one-time auto-retry in 5 s");
+          setTimeout(() => {
+            if (!loadingRef.current) void loadData();
+          }, 5000);
+        }
       }
 
       // Sync to Supabase in background (non-blocking)
@@ -505,7 +511,8 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               size="sm"
               variant="outline"
               className="w-full"
-              disabled
+              disabled={isBusy}
+              onClick={() => void handlePurchase(RC_PACKAGE_STARTER)}
             >
               {t("paywall.chooseStarter")}
             </Button>
@@ -533,7 +540,8 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             <Button
               size="sm"
               className="w-full"
-              disabled
+              disabled={isBusy}
+              onClick={() => void handlePurchase(RC_PACKAGE_PRO)}
             >
               {t("paywall.choosePro")}
             </Button>
