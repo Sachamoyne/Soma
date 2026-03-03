@@ -17,7 +17,7 @@
  * Spinner next to plan badge appears ONLY during an active purchase or restore.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import {
@@ -59,6 +59,10 @@ interface IOSPaywallProps {
   onSuccess?: (plan: RCPlan) => void;
 }
 
+// ─── Debug panel flag ────────────────────────────────────────────────────────
+// Set DEBUG_IAP_UI = false before production release.
+const DEBUG_IAP_UI = true;
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
@@ -76,7 +80,19 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   const loadingRef     = useRef(false);
   const autoRetriedRef = useRef(false);
 
+  // ── Debug log (always declared; no-op when DEBUG_IAP_UI = false) ────────────
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const addLog = useCallback((msg: string) => {
+    if (!DEBUG_IAP_UI) return;
+    const ts = new Date().toLocaleTimeString("en-US", { hour12: false });
+    setDebugLogs((prev) => [...prev.slice(-14), `${ts} ${msg}`]);
+  }, []);
+
   // ── Effects ─────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    addLog("mounted ✓");
+  }, [addLog]);
 
   useEffect(() => {
     if (!isNativeIOS()) return;
@@ -104,6 +120,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   async function loadData() {
     if (loadingRef.current) return;
     loadingRef.current = true;
+    addLog("loadData start");
     // Clear any previous purchase/restore error so a manual retry feels clean.
     setError(null);
 
@@ -123,6 +140,8 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         "| packages:", offeringData?.availablePackages.map((p) => p.identifier) ?? []
       );
 
+      addLog(`plan:${rcPlan} | off:${offeringData?.identifier ?? "null"}`);
+
       setCurrentPlan(rcPlan);
       setOffering(offeringData);
 
@@ -138,10 +157,11 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       }
 
       void syncPlan(rcPlan);
-    } catch (err) {
+    } catch (err: any) {
       // Silent fail — RC errors during background fetch do not surface to the user.
       // Fallback plans remain visible; the user can tap Retry in the fallback section.
       console.error("[IOSPaywall] loadData error:", err);
+      addLog(`loadData err: ${err?.message ?? String(err)}`);
     } finally {
       loadingRef.current = false;
     }
@@ -152,31 +172,49 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // Only the clicked plan's button is disabled/spinning.
   // The rest of the UI is never touched.
 
-  async function handlePurchase(packageIdentifier: string, planId: "starter" | "pro") {
+  async function handlePurchase(productId: string, planId: "starter" | "pro") {
+    // ── Absolute first log — confirms button tap reached JS ──────────────────
+    console.log("[IAP BUTTON TAPPED] planId:", planId, "| productId:", productId);
+    addLog(`TAP ${planId}`);
+
     setPurchaseAttempted(true);
     setPurchasing(planId);
     setError(null);
     setSuccessMsg(null);
-    console.log("[IOSPaywall] Starting purchase:", packageIdentifier);
 
     try {
+      console.log("[IAP] Importing revenuecat service...");
+      addLog("importing RC...");
       const { purchasePackage } = await import("@/services/revenuecat");
-      const newPlan = await purchasePackage(packageIdentifier);
+      console.log("[IAP] revenuecat service imported ✓ Calling purchasePackage...");
+      addLog("RC imported ✓ calling purchase...");
 
-      console.log("[IOSPaywall] Purchase success → plan:", newPlan);
+      const newPlan = await purchasePackage(productId);
+
+      console.log("[IAP] Purchase success → plan:", newPlan);
+      addLog(`success → ${newPlan}`);
       void syncPlan(newPlan);
       setCurrentPlan(newPlan);
       const label = newPlan === "pro" ? "Pro" : "Starter";
       setSuccessMsg(t("paywall.activatedTemplate", { label }));
       onSuccess?.(newPlan);
     } catch (err: any) {
+      // Log EVERYTHING before deciding how to handle the error
+      console.error("[IAP] Purchase threw. code:", err?.code, "| message:", err?.message);
+      console.error("[IAP] underlyingErrorMessage:", err?.underlyingErrorMessage);
+      console.error("[IAP] full error JSON:", JSON.stringify(err));
+      addLog(`err code:${err?.code ?? "?"} ${String(err?.message ?? "").slice(0, 40)}`);
+
       const cancelled =
         err?.code === "PURCHASE_CANCELLED" ||
-        String(err?.message ?? "").toLowerCase().includes("cancel");
+        err?.code === 1 ||
+        String(err?.message ?? "").toLowerCase().includes("cancel") ||
+        String(err?.underlyingErrorMessage ?? "").toLowerCase().includes("cancel");
+
       if (cancelled) {
-        console.log("[IOSPaywall] Purchase cancelled by user");
+        console.log("[IAP] Purchase cancelled by user");
+        addLog("cancelled by user");
       } else {
-        console.error("[IOSPaywall] Purchase error:", err);
         setError(t("paywall.purchaseError"));
       }
     } finally {
@@ -250,6 +288,22 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
   return (
     <div className="space-y-4">
+
+      {/* ── On-screen debug panel (remove before release: set DEBUG_IAP_UI = false) ── */}
+      {DEBUG_IAP_UI && (
+        <div className="rounded border border-green-500/40 bg-black/85 p-2 font-mono text-[10px] text-green-400">
+          <div className="mb-1 font-bold text-green-300">IAP Debug ← set DEBUG_IAP_UI=false to hide</div>
+          {debugLogs.length === 0 ? (
+            <div className="text-green-600">waiting for events...</div>
+          ) : (
+            <div className="max-h-28 space-y-0.5 overflow-y-auto">
+              {debugLogs.map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Current plan + discrete RC loading indicator */}
       <div className="flex items-center gap-2 text-sm">

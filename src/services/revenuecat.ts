@@ -39,18 +39,22 @@ const RC_OFFERING_TARGET = "default_v3";
 // A 10-second timeout prevents indefinite hangs if init never completes.
 
 let _isConfigured = false;
+let _initFailed = false;
 let _resolveConfigured: (() => void) | null = null;
-const _configuredPromise: Promise<void> = new Promise<void>((resolve) => {
+let _rejectConfigured: ((err: Error) => void) | null = null;
+const _configuredPromise: Promise<void> = new Promise<void>((resolve, reject) => {
   _resolveConfigured = resolve;
+  _rejectConfigured = reject;
 });
 
 function waitForConfigured(timeoutMs = 10_000): Promise<void> {
   if (_isConfigured) return Promise.resolve();
+  if (_initFailed) return Promise.reject(new Error("[RC] SDK initialization previously failed — cannot purchase."));
   return Promise.race([
     _configuredPromise,
     new Promise<void>((_, reject) =>
       setTimeout(
-        () => reject(new Error("[RC] Init timeout — Purchases not configured yet")),
+        () => reject(new Error("[RC] Init timeout — Purchases not configured after " + timeoutMs + "ms")),
         timeoutMs
       )
     ),
@@ -143,22 +147,29 @@ function planFromProductIdentifier(productId: string): RCPlan | null {
  * No-op on web.
  */
 export async function initRevenueCat(userId: string): Promise<void> {
-  if (!isNativeIOS()) return;
+  console.log("[RC] initRevenueCat called. isNativeIOS:", isNativeIOS(), "| userId:", userId);
+
+  if (!isNativeIOS()) {
+    console.log("[RC] Not native iOS — skipping init.");
+    return;
+  }
 
   if (!RC_IOS_API_KEY || RC_IOS_API_KEY === "appl_REPLACE_ME") {
-    console.error("[RC] NEXT_PUBLIC_REVENUECAT_IOS_KEY is not set.");
+    const err = new Error("[RC] NEXT_PUBLIC_REVENUECAT_IOS_KEY is not set.");
+    console.error(err.message);
+    _initFailed = true;
+    _rejectConfigured?.(err);
     return;
   }
 
   try {
     const { Purchases, LOG_LEVEL } = await import("@revenuecat/purchases-capacitor");
 
-    // Log a masked key so we can confirm the correct key is injected in production.
     const maskedKey =
       RC_IOS_API_KEY.length > 8
         ? RC_IOS_API_KEY.slice(0, 4) + "…" + RC_IOS_API_KEY.slice(-4)
         : "(too short)";
-    console.log("[RC] Initializing. Key:", maskedKey, "| User:", userId);
+    console.log("[RC] Calling Purchases.configure(). Key:", maskedKey, "| User:", userId);
 
     await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
     await Purchases.configure({ apiKey: RC_IOS_API_KEY, appUserID: userId });
@@ -166,9 +177,12 @@ export async function initRevenueCat(userId: string): Promise<void> {
     _isConfigured = true;
     _resolveConfigured?.();
 
-    console.log("[RC] Initialized successfully. User:", userId);
-  } catch (error) {
-    console.error("[RC] Failed to initialize:", error);
+    console.log("[RC] Initialized successfully ✓ User:", userId);
+  } catch (error: any) {
+    console.error("[RC] configure() threw:", error?.message ?? error);
+    console.error("[RC] full init error:", JSON.stringify(error));
+    _initFailed = true;
+    _rejectConfigured?.(new Error("[RC] configure() failed: " + String(error?.message ?? error)));
   }
 }
 
@@ -283,12 +297,16 @@ export async function getOfferings(): Promise<RCOffering | null> {
  */
 export async function purchasePackage(productId: string): Promise<RCPlan> {
   // ── Platform guard ──────────────────────────────────────────────────────────
-  const { Capacitor } = await import("@capacitor/core");
-  if (Capacitor.getPlatform() !== "ios") {
+  // Uses isNativeIOS() (already imported at top of file) — no extra dynamic import.
+  console.log("[IAP] purchasePackage() called. productId:", productId, "| isNativeIOS:", isNativeIOS());
+  if (!isNativeIOS()) {
     throw new Error("[IAP] purchasePackage is only available on iOS.");
   }
 
+  // ── Wait for RC SDK to finish Purchases.configure() ─────────────────────────
+  console.log("[IAP] Waiting for RC SDK to be configured...");
   await waitForConfigured();
+  console.log("[IAP] RC SDK is configured ✓");
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
 
   // ── Fetch offerings ─────────────────────────────────────────────────────────
