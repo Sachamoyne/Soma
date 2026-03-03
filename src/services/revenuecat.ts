@@ -4,24 +4,28 @@
  * All functions are no-ops (or throw) on web.
  * Use isNativeIOS() before calling any function in non-guarded contexts.
  *
- * Entitlements (must match RevenueCat dashboard):
- *   "Starter"  → Starter plan
- *   "Pro"      → Pro plan
+ * Entitlements (must match RevenueCat dashboard exactly — lowercase):
+ *   "starter"  → Starter plan
+ *   "pro"      → Pro plan
  *
- * Package identifiers (default offering):
- *   "$rc_monthly"  → Starter  ← verify against [RC] Package identifiers log
- *   "pro_monthly"  → Pro      ← verify against [RC] Package identifiers log
+ * Package identifiers inside offering "default_v3":
+ *   "$rc_monthly"  → Starter  (package identifier in RC dashboard)
+ *   "pro_monthly"  → Pro      (package identifier in RC dashboard)
  *
  * Offering resolution order:
- *   1. offerings.current   (RC "Current" flag)
- *   2. offerings.all["default"]  (name-based fallback if Current not set)
+ *   1. offerings.current         (RC "Current" flag — should be "default_v3")
+ *   2. offerings.all["default_v3"]  (name-based fallback if Current not set)
  */
 
 import { isNativeIOS } from "@/lib/native";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Debug flag ───────────────────────────────────────────────────────────────
+// Set DEBUG_RC = false before production release to suppress verbose logs.
+const DEBUG_RC = true;
 
-const RC_IOS_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ?? "";
+// ─── Target offering ─────────────────────────────────────────────────────────
+/** Offering identifier flagged as "Current" in the RevenueCat dashboard. */
+const RC_OFFERING_TARGET = "default_v3";
 
 // ─── Readiness tracking ───────────────────────────────────────────────────────
 //
@@ -53,11 +57,18 @@ function waitForConfigured(timeoutMs = 10_000): Promise<void> {
   ]);
 }
 
-/** Entitlement identifiers — must match RevenueCat dashboard exactly. */
-export const RC_ENTITLEMENT_STARTER = "Starter";
-export const RC_ENTITLEMENT_PRO = "Pro";
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Package identifiers inside the default offering. */
+const RC_IOS_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ?? "";
+
+/**
+ * Entitlement identifiers — must match RevenueCat dashboard exactly (lowercase).
+ * These are used as keys in customerInfo.entitlements.active.
+ */
+export const RC_ENTITLEMENT_STARTER = "starter";
+export const RC_ENTITLEMENT_PRO = "pro";
+
+/** Package identifiers inside offering "default_v3". */
 export const RC_PACKAGE_STARTER = "$rc_monthly";
 export const RC_PACKAGE_PRO = "pro_monthly";
 
@@ -90,12 +101,26 @@ export interface RCOffering {
 /**
  * Derives a RCPlan from a RevenueCat CustomerInfo object.
  * Pro takes precedence over Starter.
+ * Entitlement keys must match RC dashboard exactly (lowercase: "starter", "pro").
  */
 function planFromCustomerInfo(customerInfo: any): RCPlan {
   const active = customerInfo?.entitlements?.active ?? {};
+  if (DEBUG_RC) {
+    console.log("[RC] entitlements.active keys:", Object.keys(active));
+  }
   if (active[RC_ENTITLEMENT_PRO]) return "pro";
   if (active[RC_ENTITLEMENT_STARTER]) return "starter";
   return "free";
+}
+
+/**
+ * Explicit plan mapping from package identifier.
+ * Used as fallback when entitlements are not yet reflected after purchase.
+ */
+function planFromPackageIdentifier(packageIdentifier: string): RCPlan | null {
+  if (packageIdentifier === RC_PACKAGE_PRO) return "pro";
+  if (packageIdentifier === RC_PACKAGE_STARTER) return "starter";
+  return null;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -137,6 +162,7 @@ export async function initRevenueCat(userId: string): Promise<void> {
 
 /**
  * Fetch available offerings from RevenueCat.
+ * Returns the offering "default_v3" (via current or name-based fallback).
  * Returns null on web or if no offering is available.
  */
 export async function getOfferings(): Promise<RCOffering | null> {
@@ -148,14 +174,14 @@ export async function getOfferings(): Promise<RCOffering | null> {
 
     let result = await Purchases.getOfferings();
 
-    // ── Attempt 1 log ─────────────────────────────────────────────────────────
-    console.log("[RC] Offerings:", result.current ?? null);
-    console.log("[RC] Current:", result.current?.identifier ?? null);
-    console.log(
-      "[RC] Package identifiers:",
-      result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
-    );
-    console.log("[RC] All offering keys:", Object.keys(result.all ?? {}));
+    if (DEBUG_RC) {
+      console.log("[RC] getOfferings — current:", result.current?.identifier ?? null);
+      console.log(
+        "[RC] getOfferings — current packages:",
+        result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
+      );
+      console.log("[RC] getOfferings — all keys:", Object.keys(result.all ?? {}));
+    }
 
     // If current is null, wait 2 s and retry once (StoreKit cold-start timing).
     if (!result.current) {
@@ -163,27 +189,23 @@ export async function getOfferings(): Promise<RCOffering | null> {
       await new Promise<void>((r) => setTimeout(r, 2000));
       result = await Purchases.getOfferings();
 
-      // ── Attempt 2 log ───────────────────────────────────────────────────────
-      console.log("[RC] Retry — Offerings:", result.current ?? null);
-      console.log("[RC] Retry — Current:", result.current?.identifier ?? null);
-      console.log(
-        "[RC] Retry — Package identifiers:",
-        result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
-      );
-      console.log("[RC] Retry — All offering keys:", Object.keys(result.all ?? {}));
+      if (DEBUG_RC) {
+        console.log("[RC] retry — current:", result.current?.identifier ?? null);
+        console.log(
+          "[RC] retry — packages:",
+          result.current?.availablePackages?.map((p: any) => p.identifier) ?? []
+        );
+        console.log("[RC] retry — all keys:", Object.keys(result.all ?? {}));
+      }
     }
 
-    // ── Resolve offering: current → all["default"] → null ───────────────────
-    //
-    // offerings.current is set only when an offering is flagged "Current" in the
-    // RevenueCat dashboard.  If the "default" offering exists but isn't flagged,
-    // current is null even though packages are configured.  Fall back by name.
+    // ── Resolve: current → all["default_v3"] → null ──────────────────────────
     let resolved: any = result.current;
 
-    if (!resolved && result.all?.["default"]) {
-      resolved = result.all["default"];
+    if (!resolved && result.all?.[RC_OFFERING_TARGET]) {
+      resolved = result.all[RC_OFFERING_TARGET];
       console.warn(
-        '[RC] offerings.current is null — falling back to offerings.all["default"].',
+        `[RC] offerings.current is null — falling back to offerings.all["${RC_OFFERING_TARGET}"].`,
         "Identifier:", resolved.identifier,
         "| Packages:", resolved.availablePackages?.map((p: any) => p.identifier) ?? []
       );
@@ -191,18 +213,26 @@ export async function getOfferings(): Promise<RCOffering | null> {
 
     if (!resolved) {
       console.warn(
-        "[RC] No offering resolved. All available offering keys:",
+        "[RC] No offering resolved. Available keys:",
         Object.keys(result.all ?? {})
       );
       return null;
     }
 
-    console.log(
-      "[RC] Resolved offering:",
-      resolved.identifier,
-      "| Packages:",
-      resolved.availablePackages?.map((p: any) => p.identifier) ?? []
-    );
+    // Warn if the resolved offering is not the expected target (misconfiguration).
+    if (resolved.identifier !== RC_OFFERING_TARGET) {
+      console.warn(
+        `[RC] WARNING: resolved offering is "${resolved.identifier}", expected "${RC_OFFERING_TARGET}". ` +
+          "Check the RC dashboard Current flag."
+      );
+    }
+
+    if (DEBUG_RC) {
+      console.log(
+        "[RC] Resolved offering:", resolved.identifier,
+        "| Packages:", resolved.availablePackages?.map((p: any) => p.identifier) ?? []
+      );
+    }
 
     return {
       identifier: resolved.identifier,
@@ -229,6 +259,10 @@ export async function getOfferings(): Promise<RCOffering | null> {
  * Purchase a package by its identifier (e.g. RC_PACKAGE_STARTER).
  * Returns the resulting plan on success.
  * Throws on user cancellation or payment error.
+ *
+ * Plan determination priority:
+ *   1. RC entitlements from returned customerInfo (source of truth)
+ *   2. Explicit package→plan mapping fallback if entitlements not yet reflected
  */
 export async function purchasePackage(packageIdentifier: string): Promise<RCPlan> {
   if (!isNativeIOS()) throw new Error("[RC] purchasePackage is only available on iOS.");
@@ -237,18 +271,17 @@ export async function purchasePackage(packageIdentifier: string): Promise<RCPlan
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
 
   const result = await Purchases.getOfferings();
-  // Mirror the same resolution logic as getOfferings(): current → all["default"].
-  const current = result.current ?? result.all?.["default"] ?? null;
+  // Mirror the same resolution logic as getOfferings(): current → all["default_v3"].
+  const current = result.current ?? result.all?.[RC_OFFERING_TARGET] ?? null;
   if (!current) throw new Error("[RC] No offerings available");
 
-  console.log(
-    "[RC] purchasePackage — offering:",
-    current.identifier,
-    "| looking for package:",
-    packageIdentifier,
-    "| available:",
-    current.availablePackages?.map((p: any) => p.identifier) ?? []
-  );
+  if (DEBUG_RC) {
+    console.log(
+      "[RC] purchasePackage — offering:", current.identifier,
+      "| target package:", packageIdentifier,
+      "| available:", current.availablePackages?.map((p: any) => p.identifier) ?? []
+    );
+  }
 
   const pkg = current.availablePackages?.find(
     (p: any) => p.identifier === packageIdentifier
@@ -258,7 +291,27 @@ export async function purchasePackage(packageIdentifier: string): Promise<RCPlan
   console.log("[RC] Starting purchase for:", packageIdentifier);
   const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
 
-  const plan = planFromCustomerInfo(customerInfo);
+  console.log(
+    "[RC] Purchase response — entitlements.active:",
+    Object.keys(customerInfo?.entitlements?.active ?? {})
+  );
+
+  let plan = planFromCustomerInfo(customerInfo);
+
+  // Explicit fallback: if entitlements not yet reflected in customerInfo,
+  // infer the plan from the package identifier (pro_monthly→pro, $rc_monthly→starter).
+  if (plan === "free") {
+    const inferredPlan = planFromPackageIdentifier(packageIdentifier);
+    if (inferredPlan) {
+      console.warn(
+        "[RC] Entitlements not yet reflected — inferring plan from package:",
+        inferredPlan,
+        "(package:", packageIdentifier + ")"
+      );
+      plan = inferredPlan;
+    }
+  }
+
   console.log("[RC] Purchase complete → plan:", plan);
   return plan;
 }
@@ -275,8 +328,13 @@ export async function restorePurchases(): Promise<RCPlan> {
   console.log("[RC] Restoring purchases...");
 
   const { customerInfo } = await Purchases.restorePurchases();
-  const plan = planFromCustomerInfo(customerInfo);
 
+  console.log(
+    "[RC] Restore response — entitlements.active:",
+    Object.keys(customerInfo?.entitlements?.active ?? {})
+  );
+
+  const plan = planFromCustomerInfo(customerInfo);
   console.log("[RC] Restore complete → plan:", plan);
   return plan;
 }
@@ -292,6 +350,14 @@ export async function checkUserSubscription(): Promise<RCPlan> {
     await waitForConfigured();
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
     const { customerInfo } = await Purchases.getCustomerInfo();
+
+    if (DEBUG_RC) {
+      console.log(
+        "[RC] getCustomerInfo — entitlements.active:",
+        Object.keys(customerInfo?.entitlements?.active ?? {})
+      );
+    }
+
     const plan = planFromCustomerInfo(customerInfo);
     console.log("[RC] Current plan:", plan);
     return plan;
