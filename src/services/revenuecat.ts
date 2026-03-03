@@ -37,21 +37,30 @@ const RC_OFFERING_TARGET = "default_v3";
 // Fix: track a module-level promise that resolves when configure() succeeds.
 // All functions that require an initialized SDK await this promise first.
 // A 10-second timeout prevents indefinite hangs if init never completes.
+//
+// Retryable design: if configure() fails, the next call to initRevenueCat()
+// resets _initFailed and creates a fresh promise so purchases can be retried
+// without restarting the app.
 
-let _isConfigured = false;
-let _initFailed = false;
-let _resolveConfigured: (() => void) | null = null;
-let _rejectConfigured: ((err: Error) => void) | null = null;
-const _configuredPromise: Promise<void> = new Promise<void>((resolve, reject) => {
-  _resolveConfigured = resolve;
-  _rejectConfigured = reject;
-});
+let _isConfigured  = false; // true once configure() succeeds — never reset
+let _isConfiguring = false; // true while configure() is in-flight — prevents double-call
+let _initFailed    = false; // true if last attempt failed — reset on retry
+
+/** Create a new resolve/reject pair. Replaced on each retry. */
+function _makeReadiness() {
+  let resolve!: () => void;
+  let reject!: (err: Error) => void;
+  const promise = new Promise<void>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+let _readiness = _makeReadiness();
 
 function waitForConfigured(timeoutMs = 10_000): Promise<void> {
   if (_isConfigured) return Promise.resolve();
-  if (_initFailed) return Promise.reject(new Error("[RC] SDK initialization previously failed — cannot purchase."));
+  if (_initFailed)   return Promise.reject(new Error("[RC] SDK init failed — call initRevenueCat() to retry."));
   return Promise.race([
-    _configuredPromise,
+    _readiness.promise,
     new Promise<void>((_, reject) =>
       setTimeout(
         () => reject(new Error("[RC] Init timeout — Purchases not configured after " + timeoutMs + "ms")),
@@ -145,44 +154,104 @@ function planFromProductIdentifier(productId: string): RCPlan | null {
  * Initialize RevenueCat with the authenticated Supabase user ID.
  * Must be called once per session, after auth is confirmed.
  * No-op on web.
+ *
+ * Retryable: if a previous attempt failed, calling this again resets the
+ * failed state and retries configure() with a fresh promise.
  */
 export async function initRevenueCat(userId: string): Promise<void> {
-  console.log("[RC] initRevenueCat called. isNativeIOS:", isNativeIOS(), "| userId:", userId);
+  // ── Full diagnostic header ───────────────────────────────────────────────
+  console.log("[RC] ══ initRevenueCat() ══");
+  console.log("[RC]   isNativeIOS()  :", isNativeIOS());
+  console.log("[RC]   userId         :", userId);
+  console.log("[RC]   _isConfigured  :", _isConfigured);
+  console.log("[RC]   _isConfiguring :", _isConfiguring);
+  console.log("[RC]   _initFailed    :", _initFailed);
 
+  // ── Platform guard ───────────────────────────────────────────────────────
   if (!isNativeIOS()) {
     console.log("[RC] Not native iOS — skipping init.");
     return;
   }
 
-  if (!RC_IOS_API_KEY || RC_IOS_API_KEY === "appl_REPLACE_ME") {
-    const err = new Error("[RC] NEXT_PUBLIC_REVENUECAT_IOS_KEY is not set.");
-    console.error(err.message);
-    _initFailed = true;
-    _rejectConfigured?.(err);
+  // ── Already configured ───────────────────────────────────────────────────
+  if (_isConfigured) {
+    console.log("[RC] Already configured ✓ — skipping duplicate call.");
     return;
   }
 
+  // ── Init already in-flight — do NOT start a second configure() ──────────
+  if (_isConfiguring) {
+    console.log("[RC] Init already in progress — ignoring duplicate call.");
+    return;
+  }
+
+  // ── Previous attempt failed — reset so the next call can retry ──────────
+  if (_initFailed) {
+    console.warn("[RC] Previous init failed — resetting state for retry.");
+    _initFailed = false;
+    _readiness  = _makeReadiness();
+  }
+
+  // ── API key validation ───────────────────────────────────────────────────
+  const keyMasked =
+    RC_IOS_API_KEY.length > 8
+      ? RC_IOS_API_KEY.slice(0, 4) + "…" + RC_IOS_API_KEY.slice(-4)
+      : "(too short)";
+  console.log("[RC]   Key masked     :", keyMasked);
+  console.log("[RC]   Key prefix     :", RC_IOS_API_KEY.slice(0, 5), "(iOS keys start with 'appl_')");
+  console.log("[RC]   Key length     :", RC_IOS_API_KEY.length);
+
+  if (!RC_IOS_API_KEY) {
+    const err = new Error("[RC] NEXT_PUBLIC_REVENUECAT_IOS_KEY is not set.");
+    console.error(err.message);
+    _initFailed = true;
+    _readiness.reject(err);
+    return;
+  }
+  if (!RC_IOS_API_KEY.startsWith("appl_")) {
+    console.error(
+      "[RC] WARNING: Key does not start with 'appl_'. " +
+      "You may be using the wrong key (Stripe key, web RC key, or placeholder). " +
+      "Check NEXT_PUBLIC_REVENUECAT_IOS_KEY in your .env / Capacitor build."
+    );
+  }
+
+  // ── Configure ────────────────────────────────────────────────────────────
+  _isConfiguring = true;
   try {
+    // Confirm Capacitor platform (native vs. web context)
+    const { Capacitor } = await import("@capacitor/core");
+    console.log("[RC]   Capacitor.getPlatform()       :", Capacitor.getPlatform());
+    console.log("[RC]   Capacitor.isNativePlatform()  :", Capacitor.isNativePlatform());
+
     const { Purchases, LOG_LEVEL } = await import("@revenuecat/purchases-capacitor");
-
-    const maskedKey =
-      RC_IOS_API_KEY.length > 8
-        ? RC_IOS_API_KEY.slice(0, 4) + "…" + RC_IOS_API_KEY.slice(-4)
-        : "(too short)";
-    console.log("[RC] Calling Purchases.configure(). Key:", maskedKey, "| User:", userId);
-
+    console.log("[RC] SDK imported ✓ — setting log level...");
     await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+
+    console.log("[RC] Calling Purchases.configure({ apiKey:", keyMasked, ", appUserID:", userId, "})");
     await Purchases.configure({ apiKey: RC_IOS_API_KEY, appUserID: userId });
 
     _isConfigured = true;
-    _resolveConfigured?.();
-
+    _readiness.resolve();
     console.log("[RC] Initialized successfully ✓ User:", userId);
+
   } catch (error: any) {
-    console.error("[RC] configure() threw:", error?.message ?? error);
-    console.error("[RC] full init error:", JSON.stringify(error));
+    // Log every available field — paste these in the bug report
+    console.error("[RC] configure() FAILED ✗");
+    console.error("[RC]   error.message              :", error?.message);
+    console.error("[RC]   error.code                 :", error?.code);
+    console.error("[RC]   error.underlyingErrorMessage:", error?.underlyingErrorMessage);
+    console.error("[RC]   error.stack                :", error?.stack);
+    try {
+      console.error("[RC]   JSON.stringify(error)      :", JSON.stringify(error));
+    } catch {
+      console.error("[RC]   (error is not JSON-serializable)");
+    }
+
     _initFailed = true;
-    _rejectConfigured?.(new Error("[RC] configure() failed: " + String(error?.message ?? error)));
+    _readiness.reject(new Error("[RC] configure() failed: " + String(error?.message ?? error)));
+  } finally {
+    _isConfiguring = false;
   }
 }
 
