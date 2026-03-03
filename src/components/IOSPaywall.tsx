@@ -65,10 +65,11 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // ── State — three independent axes, never a single machine ─────────────────
   const [currentPlan, setCurrentPlan] = useState<RCPlan>("free");
   const [offering, setOffering]       = useState<RCOffering | null>(null);
-  const [purchasing, setPurchasing]   = useState<"starter" | "pro" | null>(null);
-  const [restoring, setRestoring]     = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [successMsg, setSuccessMsg]   = useState<string | null>(null);
+  const [purchasing, setPurchasing]     = useState<"starter" | "pro" | null>(null);
+  const [restoring, setRestoring]       = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+  const [successMsg, setSuccessMsg]     = useState<string | null>(null);
+  const [purchaseAttempted, setPurchaseAttempted] = useState(false);
 
   const loadingRef     = useRef(false);
   const autoRetriedRef = useRef(false);
@@ -150,6 +151,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // The rest of the UI is never touched.
 
   async function handlePurchase(packageIdentifier: string, planId: "starter" | "pro") {
+    setPurchaseAttempted(true);
     setPurchasing(planId);
     setError(null);
     setSuccessMsg(null);
@@ -437,17 +439,19 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       {usingFallback && (
         <div className="space-y-3">
 
-          {/* Subtle Preview badge + manual retry */}
+          {/* Subtle Preview badge + manual retry (only after a failed purchase attempt) */}
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-900/20 dark:text-amber-400 dark:ring-amber-400/30">
               Preview
             </span>
-            <button
-              className="text-xs underline underline-offset-2 text-muted-foreground"
-              onClick={() => void loadData()}
-            >
-              {t("paywall.retry")}
-            </button>
+            {purchaseAttempted && error !== null && (
+              <button
+                className="text-xs underline underline-offset-2 text-muted-foreground"
+                onClick={() => void loadData()}
+              >
+                {t("paywall.retry")}
+              </button>
+            )}
           </div>
 
           {/* Starter fallback — only for free plan */}
