@@ -21,6 +21,7 @@ import { useUserPlan } from "@/hooks/useUserPlan";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import type { DeckMode } from "@/lib/supabase-db";
+import { useTranslation } from "@/i18n";
 
 interface CardPreview {
   front: string;
@@ -88,6 +89,8 @@ export function AICardGenerator({
     "starter" | "pro" | undefined
   >(undefined);
 
+  const { t } = useTranslation();
+
   // Get user plan to check AI access
   const userPlan = useUserPlan();
   const canUseAI = userPlan?.canUseAI ?? false;
@@ -153,7 +156,7 @@ export function AICardGenerator({
   // Regenerate all cards
   const handleRegenerateAll = async () => {
     if (!sourceText && !sourcePdf) {
-      setAiError("Impossible de regénérer : source non disponible");
+      setAiError(t("aiGenerator.errorCannotRegenerate"));
       return;
     }
 
@@ -249,7 +252,7 @@ export function AICardGenerator({
           return;
         }
         setAiError(
-          data.message || data.error || "Erreur lors de la regénération"
+          data.message || data.error || t("aiGenerator.errorRegeneration")
         );
         return;
       }
@@ -264,7 +267,7 @@ export function AICardGenerator({
       setAiError(
         error instanceof Error
           ? error.message
-          : "Erreur lors de la regénération"
+          : t("aiGenerator.errorRegeneration")
       );
     } finally {
       setRegeneratingAll(false);
@@ -274,7 +277,7 @@ export function AICardGenerator({
   // Regenerate a single card
   const handleRegenerateCard = async (index: number) => {
     if (!sourceText && !sourcePdf) {
-      setAiError("Impossible de regénérer : source non disponible");
+      setAiError(t("aiGenerator.errorCannotRegenerate"));
       return;
     }
 
@@ -354,7 +357,7 @@ export function AICardGenerator({
           return;
         }
         setAiError(
-          data.message || data.error || "Erreur lors de la regénération"
+          data.message || data.error || t("aiGenerator.errorRegeneration")
         );
         return;
       }
@@ -374,7 +377,7 @@ export function AICardGenerator({
       setAiError(
         error instanceof Error
           ? error.message
-          : "Erreur lors de la regénération"
+          : t("aiGenerator.errorRegeneration")
       );
     } finally {
       setRegeneratingIndex(null);
@@ -466,7 +469,7 @@ export function AICardGenerator({
           return;
         }
         setAiError(
-          data.message || data.error || "Erreur lors de la confirmation"
+          data.message || data.error || t("aiGenerator.errorConfirmation")
         );
         return;
       }
@@ -499,7 +502,7 @@ export function AICardGenerator({
       setAiError(
         error instanceof Error
           ? error.message
-          : "Erreur lors de la confirmation"
+          : t("aiGenerator.errorConfirmation")
       );
     } finally {
       setConfirmLoading(false);
@@ -514,16 +517,14 @@ export function AICardGenerator({
       file.type !== "application/pdf" &&
       !file.name.toLowerCase().endsWith(".pdf")
     ) {
-      setPdfError(
-        "Type de fichier invalide. Veuillez sélectionner un fichier PDF."
-      );
+      setPdfError(t("aiGenerator.errorInvalidFileType"));
       return;
     }
 
     const MAX_SIZE = 15 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setPdfError(
-        `Le PDF est trop volumineux. Taille maximale : ${Math.round(MAX_SIZE / 1024 / 1024)} MB.`
+        t("aiGenerator.errorPdfTooLarge", { size: String(Math.round(MAX_SIZE / 1024 / 1024)) })
       );
       return;
     }
@@ -574,9 +575,7 @@ export function AICardGenerator({
             contentType,
             text: responseText.substring(0, 200),
           });
-          setPdfError(
-            "Le serveur a renvoyé une réponse invalide. Veuillez réessayer."
-          );
+          setPdfError(t("aiGenerator.errorInvalidResponse"));
           return;
         }
 
@@ -588,9 +587,7 @@ export function AICardGenerator({
           "Response text:",
           responseText.substring(0, 200)
         );
-        setPdfError(
-          "Impossible de lire la réponse du serveur. Veuillez réessayer."
-        );
+        setPdfError(t("aiGenerator.errorParseResponse"));
         return;
       }
 
@@ -614,30 +611,24 @@ export function AICardGenerator({
         }
 
         if (data.code === "PDF_NO_TEXT" || data.code === "PDF_SCANNED") {
-          setPdfError(
-            "Ce PDF ne contient pas de texte sélectionnable. Il s'agit probablement d'un PDF scanné (image). Veuillez utiliser un PDF avec du texte."
-          );
+          setPdfError(t("aiGenerator.errorPdfNoText"));
           return;
         }
 
         if (data.code === "PDF_ENCRYPTED") {
-          setPdfError(
-            "Ce PDF est protégé par un mot de passe. Veuillez le déverrouiller avant de l'importer."
-          );
+          setPdfError(t("aiGenerator.errorPdfEncrypted"));
           return;
         }
 
         if (data.code === "PDF_INVALID") {
-          setPdfError(
-            "Ce fichier PDF semble corrompu ou mal formé. Veuillez essayer un autre fichier."
-          );
+          setPdfError(t("aiGenerator.errorPdfCorrupted"));
           return;
         }
 
         const errorMessage =
           data.message ||
           data.error ||
-          "Échec de la génération de cartes depuis le PDF";
+          t("aiGenerator.errorPdfGeneration");
         setPdfError(errorMessage);
         return;
       }
@@ -765,13 +756,11 @@ export function AICardGenerator({
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">
-              Générer des cartes avec l&apos;IA
+              {t("aiGenerator.title")}
             </h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Colle un extrait de cours, un article ou des notes.
-            L&apos;IA va créer automatiquement des flashcards pertinentes pour
-            ce paquet.
+            {t("aiGenerator.subtitle")}
           </p>
         </div>
 
@@ -800,13 +789,12 @@ export function AICardGenerator({
                 >
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {pdfLoading ? "Traitement du PDF..." : "Importer un PDF"}
+                    {pdfLoading ? t("aiGenerator.processingPdf") : t("aiGenerator.importPdf")}
                   </span>
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Astuce : si vous ne pouvez pas sélectionner de texte dans le
-                PDF, il s&apos;agit probablement d&apos;un PDF scanné.
+                {t("aiGenerator.pdfTip")}
               </p>
             </div>
 
@@ -816,7 +804,7 @@ export function AICardGenerator({
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-muted/30 px-2 text-muted-foreground">
-                  Ou
+                  {t("aiGenerator.or")}
                 </span>
               </div>
             </div>
@@ -828,20 +816,14 @@ export function AICardGenerator({
               className="bg-background"
               placeholder={
                 !canUseAI
-                  ? "Fonctionnalité réservée aux abonnés. Passez à Starter ou Pro pour utiliser l'IA."
-                  : `Exemple :
-– un cours
-– un chapitre de livre
-– des notes prises en classe
-– un article
-
-Plus le texte est clair, meilleures seront les cartes.`
+                  ? t("aiGenerator.subscriberOnlyPlaceholder")
+                  : t("aiGenerator.textPlaceholder")
               }
               disabled={!canUseAI}
             />
             {!canUseAI ? (
               <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-                Fonctionnalité réservée aux abonnés
+                {t("aiGenerator.subscriberOnly")}
               </div>
             ) : (
               <>
@@ -850,7 +832,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                   {/* Cards count selector */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">
-                      Nombre de cartes
+                      {t("aiGenerator.cardsCount")}
                     </label>
                     <div className="flex gap-1.5">
                       {[
@@ -879,7 +861,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                   {/* Detail level selector */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">
-                      Niveau de détail
+                      {t("aiGenerator.detailLevel")}
                     </label>
                     <select
                       value={detailLevel}
@@ -894,9 +876,9 @@ Plus le texte est clair, meilleures seront les cartes.`
                       disabled={aiLoading || pdfLoading}
                       className="w-full px-3 py-1.5 text-sm rounded-md border border-muted bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <option value="summary">Synthèse</option>
-                      <option value="standard">Standard</option>
-                      <option value="detailed">Détaillé</option>
+                      <option value="summary">{t("aiGenerator.summary")}</option>
+                      <option value="standard">{t("aiGenerator.standard")}</option>
+                      <option value="detailed">{t("aiGenerator.detailed")}</option>
                     </select>
                   </div>
                 </div>
@@ -909,10 +891,10 @@ Plus le texte est clair, meilleures seront les cartes.`
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
                   {aiLoading || pdfLoading
-                    ? "Génération en cours…"
+                    ? t("aiGenerator.generating")
                     : cardsCount !== undefined
-                      ? `Générer ${cardsCount} cartes`
-                      : "Générer des cartes pour ce paquet"}
+                      ? t("aiGenerator.generateCount", { count: cardsCount })
+                      : t("aiGenerator.generateForDeck")}
                 </Button>
               </>
             )}
@@ -931,15 +913,12 @@ Plus le texte est clair, meilleures seront les cartes.`
           <div className="space-y-4">
             <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
               <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                {confirmedCount} carte
                 {confirmedCount > 1
-                  ? "s ont été ajoutées"
-                  : " a été ajoutée"}{" "}
-                à ce paquet
+                  ? t("aiGenerator.cardsAddedPlural", { count: confirmedCount })
+                  : t("aiGenerator.cardsAddedSingular", { count: confirmedCount })}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Tu peux les modifier, les supprimer ou commencer à les réviser
-                immédiatement.
+                {t("aiGenerator.canModifyCards")}
               </p>
             </div>
             <Button
@@ -947,7 +926,7 @@ Plus le texte est clair, meilleures seront les cartes.`
               onClick={() => setConfirmedCount(null)}
               className="w-full"
             >
-              Générer d&apos;autres cartes
+              {t("aiGenerator.generateMore")}
             </Button>
           </div>
         )}
@@ -958,13 +937,12 @@ Plus le texte est clair, meilleures seront les cartes.`
             {/* Info banner */}
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
               <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
-                {generatedCards.length} carte
-                {generatedCards.length > 1 ? "s générées" : " générée"} -
-                Sélectionnez celles à ajouter
+                {generatedCards.length > 1
+                  ? t("aiGenerator.generatedBannerPlural", { count: generatedCards.length })
+                  : t("aiGenerator.generatedBannerSingular", { count: generatedCards.length })}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Validez les cartes que vous souhaitez conserver. Les cartes non
-                validées seront ignorées.
+                {t("aiGenerator.generatedBannerHint")}
               </p>
             </div>
 
@@ -982,7 +960,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                 className="flex-1"
               >
                 <CheckCheck className="mr-2 h-4 w-4" />
-                Tout accepter
+                {t("aiGenerator.acceptAll")}
               </Button>
               <Button
                 variant="outline"
@@ -996,7 +974,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                 className="flex-1"
               >
                 <XCircle className="mr-2 h-4 w-4" />
-                Tout refuser
+                {t("aiGenerator.rejectAll")}
               </Button>
               <Button
                 variant="outline"
@@ -1013,17 +991,16 @@ Plus le texte est clair, meilleures seront les cartes.`
                 <RefreshCw
                   className={`mr-2 h-4 w-4 ${regeneratingAll ? "animate-spin" : ""}`}
                 />
-                {regeneratingAll ? "Regénération..." : "Tout regénérer"}
+                {regeneratingAll ? t("aiGenerator.regenerating") : t("aiGenerator.regenerateAll")}
               </Button>
             </div>
 
             {/* Card list with selection */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {selectedIndices.size} / {generatedCards.length} carte
                 {selectedIndices.size > 1
-                  ? "s sélectionnées"
-                  : " sélectionnée"}
+                  ? t("aiGenerator.cardsSelectedPlural", { selected: selectedIndices.size, total: generatedCards.length })
+                  : t("aiGenerator.cardsSelectedSingular", { selected: selectedIndices.size, total: generatedCards.length })}
               </p>
               <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
                 {generatedCards.map((card, index) => {
@@ -1041,13 +1018,13 @@ Plus le texte est clair, meilleures seront les cartes.`
                         <div className="flex-1 space-y-3">
                           <div>
                             <p className="text-xs font-medium text-primary mb-1">
-                              Question
+                              {t("aiGenerator.question")}
                             </p>
                             <p className="text-sm">{card.front}</p>
                           </div>
                           <div className="border-t pt-3">
                             <p className="text-xs font-medium text-muted-foreground mb-1">
-                              Réponse
+                              {t("aiGenerator.answer")}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {card.back}
@@ -1087,7 +1064,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                               confirmLoading ||
                               (!sourceText && !sourcePdf)
                             }
-                            title="Regénérer cette carte"
+                            title={t("aiGenerator.regenerateCard")}
                           >
                             <RefreshCw
                               className={`h-4 w-4 ${regeneratingIndex === index ? "animate-spin" : ""}`}
@@ -1103,7 +1080,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                               confirmLoading
                             }
                             className="hover:border-destructive hover:text-destructive"
-                            title="Supprimer cette carte"
+                            title={t("aiGenerator.deleteCard")}
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
@@ -1127,7 +1104,7 @@ Plus le texte est clair, meilleures seront les cartes.`
                 }
                 className="flex-1"
               >
-                Annuler
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleConfirmCards}
@@ -1140,12 +1117,13 @@ Plus le texte est clair, meilleures seront les cartes.`
                 className="flex-1"
               >
                 {confirmLoading ? (
-                  "Ajout en cours..."
+                  t("aiGenerator.adding")
                 ) : (
                   <>
                     <Check className="mr-2 h-4 w-4" />
-                    Ajouter {selectedIndices.size} carte
-                    {selectedIndices.size > 1 ? "s" : ""}
+                    {selectedIndices.size > 1
+                      ? t("aiGenerator.addCardsPlural", { count: selectedIndices.size })
+                      : t("aiGenerator.addCardsSingular", { count: selectedIndices.size })}
                   </>
                 )}
               </Button>
@@ -1158,11 +1136,10 @@ Plus le texte est clair, meilleures seront les cartes.`
           <div className="space-y-4">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-center">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Aucune carte générée
+                {t("aiGenerator.noCardsGenerated")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                L&apos;IA n&apos;a pas pu générer de cartes à partir du contenu
-                fourni. Essayez avec un texte plus long ou plus structuré.
+                {t("aiGenerator.noCardsHint")}
               </p>
             </div>
             <Button
@@ -1170,7 +1147,7 @@ Plus le texte est clair, meilleures seront les cartes.`
               onClick={resetPreview}
               className="w-full"
             >
-              Retour
+              {t("common.back")}
             </Button>
           </div>
         )}

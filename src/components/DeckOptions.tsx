@@ -14,6 +14,7 @@ import { SettingsForm } from "@/components/SettingsForm";
 import { getDeckSettings, updateDeckSettings, resetDeckSettings, type DeckSettings } from "@/store/deck-settings";
 import { getSettings, type Settings } from "@/store/settings";
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface DeckOptionsProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface DeckOptionsProps {
 }
 
 export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: DeckOptionsProps) {
+  const { t } = useTranslation();
   const [deckSettings, setDeckSettings] = useState<DeckSettings | null>(null);
   const [globalSettings, setGlobalSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,9 +54,9 @@ export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: D
         // Check if it's a database table error
         const errorMessage = (error as Error).message || String(error);
         if (errorMessage.includes("deck_settings") || errorMessage.includes("relation") || errorMessage.includes("does not exist")) {
-          setError("La table deck_settings n'existe pas dans votre base de données Supabase. Veuillez créer la table en exécutant le SQL fourni dans Supabase Dashboard.");
+          setError(t("deckSettings.errorTableMissing"));
         } else {
-          setError("Erreur lors du chargement des paramètres : " + errorMessage);
+          setError(t("deckSettings.errorLoading", { message: errorMessage }));
         }
       } finally {
         setLoading(false);
@@ -82,7 +84,7 @@ export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: D
   };
 
   const handleReset = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir réinitialiser tous les paramètres de ce paquet aux valeurs globales ?")) {
+    if (!confirm(t("settings.resetConfirm"))) {
       return;
     }
 
@@ -107,16 +109,16 @@ export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: D
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Options du paquet : {deckName}</DialogTitle>
+          <DialogTitle>{t("deckSettings.optionsTitle", { deckName })}</DialogTitle>
           <DialogDescription>
-            Personnalisez les paramètres pour ce paquet. Les paramètres non définis héritent des paramètres globaux.
+            {t("deckSettings.optionsDesc")}
           </DialogDescription>
         </DialogHeader>
 
         {error ? (
           <div className="py-8 px-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-semibold text-red-900 mb-2">Erreur</h3>
+              <h3 className="font-semibold text-red-900 mb-2">{t("common.error")}</h3>
               <p className="text-sm text-red-700 mb-4">{error}</p>
               {(error.includes("deck_settings") || error.includes("relation") || error.includes("does not exist")) && (
                 <div className="text-xs text-red-600 bg-red-100 p-3 rounded">
@@ -133,7 +135,7 @@ export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: D
           </div>
         ) : loading || !deckSettings || !globalSettings ? (
           <div className="py-8 text-center text-muted-foreground">
-            Chargement...
+            {t("common.loading")}
           </div>
         ) : (
           <div className="py-4">
@@ -155,17 +157,17 @@ export function DeckOptions({ open, onOpenChange, deckId, deckName, onSaved }: D
                 className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Réinitialiser aux paramètres globaux
+                {t("settings.resetToGlobal")}
               </Button>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {error ? "Fermer" : "Annuler"}
+              {error ? t("common.close") : t("common.cancel")}
             </Button>
             {!error && (
               <Button onClick={handleSave} disabled={saving || loading}>
-                {saving ? "Enregistrement..." : "Enregistrer"}
+                {saving ? t("settings.saving") : t("common.save")}
               </Button>
             )}
           </div>

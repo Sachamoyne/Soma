@@ -18,6 +18,7 @@ import { listDecks, type Deck } from "@/store/decks";
 import { createImport, generateCards, persistGeneratedCards, type GenerateCardsResult, type CardProposal } from "@/store/imports";
 import { GeneratedCardRow } from "@/components/GeneratedCardRow";
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { useTranslation } from "@/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 
@@ -88,6 +89,8 @@ export function ImportDialog({
   const ankiImportIdRef = useRef<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const importCompleteRef = useRef(false);
+
+  const { t } = useTranslation();
 
   // Check user plan to disable AI generation
   const userPlan = useUserPlan();
@@ -588,7 +591,7 @@ export function ImportDialog({
           <div className="space-y-4 py-4">
             {!canUseAI && (
               <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-                Fonctionnalité réservée aux abonnés. La génération de cartes via IA nécessite un abonnement Starter ou Pro.
+                {t("import.subscriberOnly")}
               </div>
             )}
             <div>
@@ -671,7 +674,7 @@ export function ImportDialog({
               </Button>
               {!canUseAI ? (
                 <Button disabled className="opacity-50 cursor-not-allowed">
-                  Fonctionnalité réservée aux abonnés
+                  {t("aiGenerator.subscriberOnly")}
                 </Button>
               ) : (
                 <Button onClick={handleGenerateCards} disabled={isGenerating || !selectedDeckId}>

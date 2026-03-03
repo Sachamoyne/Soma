@@ -38,13 +38,9 @@ export default function AppShellClient({
     return <OfflineFallback onRetry={() => window.location.reload()} />;
   }
 
-  // Study pages: full-screen, no chrome at all
+  // Study pages: full-screen, no chrome — StudyLayout handles the container
   if (isStudyPage) {
-    return (
-      <div className="app-shell flex h-screen w-screen overflow-hidden bg-background text-foreground">
-        {children}
-      </div>
-    );
+    return <>{children}</>;
   }
 
   // Native app (Capacitor): bottom tab bar instead of sidebar

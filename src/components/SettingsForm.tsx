@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Settings } from "@/store/settings";
 import type { DeckSettings } from "@/store/deck-settings";
+import { useTranslation } from "@/i18n";
 
 interface SettingsFormProps {
   settings: Settings | DeckSettings;
@@ -32,6 +33,8 @@ function FieldWrapper({
   children: React.ReactNode;
   mode: "global" | "deck";
 }) {
+  const { t } = useTranslation();
+
   if (mode === "global") {
     return <div className="space-y-2">{children}</div>;
   }
@@ -45,7 +48,7 @@ function FieldWrapper({
           onChange={onToggleInherit}
           className="w-4 h-4"
         />
-        <span className="text-sm font-medium">Personnaliser</span>
+        <span className="text-sm font-medium">{t("settings.customize")}</span>
       </div>
       <div className={isInherited ? "opacity-50 pointer-events-none" : ""}>
         {children}
@@ -55,6 +58,7 @@ function FieldWrapper({
 }
 
 export function SettingsForm({ settings, globalSettings, onChange, mode }: SettingsFormProps) {
+  const { t } = useTranslation();
   const deckSettings = isDeckSettings(settings) ? settings : null;
   const effectiveSettings = deckSettings && globalSettings ? globalSettings : settings;
 
@@ -111,27 +115,27 @@ export function SettingsForm({ settings, globalSettings, onChange, mode }: Setti
       {mode === "deck" && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Paramètres spécifiques à ce paquet</strong>
+            <strong>{t("settings.deckSpecificSettings")}</strong>
           </p>
           <p className="text-xs text-blue-700 mt-1">
-            Les paramètres non personnalisés héritent automatiquement des paramètres globaux.
+            {t("settings.inheritFromGlobal")}
           </p>
         </div>
       )}
 
-      {/* Limites journalières */}
+      {/* Daily limits */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Limites journalières</CardTitle>
+          <CardTitle className="text-lg">{t("settings.dailyLimits")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <FieldWrapper
-            label="Nouvelles cartes par jour"
+            label={t("settings.newCardsPerDay")}
             isInherited={isInherited("newCardsPerDay")}
             onToggleInherit={() => toggleInherit("newCardsPerDay", 20)}
             mode={mode}
           >
-            <Label htmlFor="newCardsPerDay">Nouvelles cartes par jour</Label>
+            <Label htmlFor="newCardsPerDay">{t("settings.newCardsPerDay")}</Label>
             <Input
               id="newCardsPerDay"
               type="number"
@@ -150,12 +154,12 @@ export function SettingsForm({ settings, globalSettings, onChange, mode }: Setti
           </FieldWrapper>
 
           <FieldWrapper
-            label="Révisions max par jour"
+            label={t("settings.maxReviewsPerDay")}
             isInherited={isInherited("maxReviewsPerDay")}
             onToggleInherit={() => toggleInherit("maxReviewsPerDay", 9999)}
             mode={mode}
           >
-            <Label htmlFor="maxReviewsPerDay">Révisions max par jour</Label>
+            <Label htmlFor="maxReviewsPerDay">{t("settings.maxReviewsPerDay")}</Label>
             <Input
               id="maxReviewsPerDay"
               type="number"
@@ -175,19 +179,19 @@ export function SettingsForm({ settings, globalSettings, onChange, mode }: Setti
         </CardContent>
       </Card>
 
-      {/* Étude */}
+      {/* Study */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Étude</CardTitle>
+          <CardTitle className="text-lg">{t("settings.study")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <FieldWrapper
-            label="Ordre des révisions"
+            label={t("settings.displayOrder")}
             isInherited={isInherited("reviewOrder")}
             onToggleInherit={() => toggleInherit("reviewOrder", "mixed")}
             mode={mode}
           >
-            <Label htmlFor="reviewOrder">Ordre d&apos;affichage</Label>
+            <Label htmlFor="reviewOrder">{t("settings.displayOrder")}</Label>
             <select
               id="reviewOrder"
               value={String(getDisplayValue("reviewOrder") ?? "mixed")}
@@ -201,9 +205,9 @@ export function SettingsForm({ settings, globalSettings, onChange, mode }: Setti
               }}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <option value="newFirst">Nouvelles d&apos;abord</option>
-              <option value="oldFirst">Révisions d&apos;abord</option>
-              <option value="mixed">Mélangé</option>
+              <option value="newFirst">{t("settings.newFirst")}</option>
+              <option value="oldFirst">{t("settings.reviewFirst")}</option>
+              <option value="mixed">{t("settings.mixed")}</option>
             </select>
           </FieldWrapper>
         </CardContent>

@@ -355,36 +355,35 @@ export function StudyCard({
   if (queue.length === 0 || !currentCard) {
     if (pendingCount > 0) {
       return (
-        <div className="flex h-full w-full flex-col items-center justify-center p-8 relative">
-          <div className="absolute top-6 left-6 z-10">
+        <div className="flex h-full w-full flex-col">
+          <div className="flex-shrink-0 px-4 py-3">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                router.push("/decks");
-              }}
+              onClick={() => router.push("/decks")}
               className="text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Decks
             </Button>
           </div>
-          <div className="mx-auto flex max-w-3xl flex-col items-center justify-center space-y-3">
-            <p className="text-xl font-medium">Waiting for cards to become due</p>
-            {waitingUntil && (
-              <p className="text-sm text-muted-foreground">
-                Next card at {waitingUntil.toLocaleTimeString()}
-              </p>
-            )}
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div className="mx-auto flex max-w-3xl flex-col items-center justify-center space-y-3">
+              <p className="text-xl font-medium">Waiting for cards to become due</p>
+              {waitingUntil && (
+                <p className="text-sm text-muted-foreground">
+                  Next card at {waitingUntil.toLocaleTimeString()}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center p-8 relative">
-        {/* Back to Decks button - top left */}
-        <div className="absolute top-6 left-6 z-10">
+      <div className="flex h-full w-full flex-col">
+        <div className="flex-shrink-0 px-4 py-3">
           <Button
             variant="ghost"
             size="sm"
@@ -402,11 +401,11 @@ export function StudyCard({
             Decks
           </Button>
         </div>
-
-        {/* Completion message */}
-        <div className="mx-auto flex max-w-3xl flex-col items-center justify-center space-y-6">
-          <p className="text-xl font-medium">Study session complete</p>
-          <p className="text-muted-foreground">No cards remaining</p>
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <div className="mx-auto flex max-w-3xl flex-col items-center justify-center space-y-6">
+            <p className="text-xl font-medium">Study session complete</p>
+            <p className="text-muted-foreground">No cards remaining</p>
+          </div>
         </div>
       </div>
     );
@@ -414,9 +413,9 @@ export function StudyCard({
 
   return (
     <>
-      <div className="flex h-full w-full flex-col items-center justify-center p-8 relative">
-        {/* Back to Decks button - top left */}
-        <div className="absolute top-6 left-6 z-10">
+      <div className="flex h-full w-full flex-col">
+        {/* Header row: back button | deck title + count | edit/suspend */}
+        <div className="flex-shrink-0 flex items-center px-4 py-3">
           <Button
             variant="ghost"
             size="sm"
@@ -433,50 +432,49 @@ export function StudyCard({
             <ArrowLeft className="h-4 w-4 mr-2" />
             Decks
           </Button>
+
+          <div className="flex-1 text-center">
+            <h1 className="text-sm font-normal text-muted-foreground">
+              {title}
+            </h1>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              {queue.length} card{queue.length !== 1 ? "s" : ""} remaining
+            </p>
+          </div>
+
+          <div className="flex gap-2 opacity-40 hover:opacity-100 transition-opacity">
+            <Tooltip content="Edit card">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleEditCard}
+                className="h-8 w-8"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Suspend card">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSuspendCard}
+                className="h-8 w-8"
+              >
+                <Pause className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          </div>
         </div>
 
-        {/* Minimal header - deck name + remaining cards */}
-        <div className="absolute top-6 left-0 right-0 text-center">
-          <h1 className="text-sm font-normal text-muted-foreground">
-            {title}
-          </h1>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            {queue.length} card{queue.length !== 1 ? "s" : ""} remaining
-          </p>
-        </div>
-
-        {/* Subtle action icons in top-right corner */}
-        <div className="absolute top-6 right-6 flex gap-2 opacity-40 hover:opacity-100 transition-opacity">
-          <Tooltip content="Edit card">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleEditCard}
-              className="h-8 w-8"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Suspend card">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSuspendCard}
-              className="h-8 w-8"
-            >
-              <Pause className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-        </div>
-
-        {/* Main content container */}
-        <div className="mx-auto flex max-w-3xl w-full flex-col items-center space-y-8 pt-16">
+        {/* Main content: card + rating buttons, vertically centered */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-4 min-h-0">
           {error && (
-            <div className="w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="w-full max-w-3xl rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-4">
               {error}
             </div>
           )}
 
+          <div className="mx-auto flex max-w-3xl w-full flex-col items-center space-y-6">
           {/* Dispatch to appropriate card type component */}
           {(() => {
             // Get card type, defaulting to 'basic' for backward compatibility
@@ -537,6 +535,7 @@ export function StudyCard({
                 );
             }
           })()}
+          </div>
         </div>
       </div>
 
