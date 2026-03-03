@@ -17,7 +17,7 @@
  * Spinner next to plan badge appears ONLY during an active purchase or restore.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import {
@@ -59,10 +59,6 @@ interface IOSPaywallProps {
   onSuccess?: (plan: RCPlan) => void;
 }
 
-// ─── Debug panel flag ────────────────────────────────────────────────────────
-// Set DEBUG_IAP_UI = false before production release.
-const DEBUG_IAP_UI = true;
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
@@ -80,19 +76,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   const loadingRef     = useRef(false);
   const autoRetriedRef = useRef(false);
 
-  // ── Debug log (always declared; no-op when DEBUG_IAP_UI = false) ────────────
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const addLog = useCallback((msg: string) => {
-    if (!DEBUG_IAP_UI) return;
-    const ts = new Date().toLocaleTimeString("en-US", { hour12: false });
-    setDebugLogs((prev) => [...prev.slice(-14), `${ts} ${msg}`]);
-  }, []);
-
   // ── Effects ─────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    addLog("mounted ✓");
-  }, [addLog]);
 
   useEffect(() => {
     if (!isNativeIOS()) return;
@@ -120,7 +104,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   async function loadData() {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    addLog("loadData start");
     // Clear any previous purchase/restore error so a manual retry feels clean.
     setError(null);
 
@@ -129,32 +112,24 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         "@/services/revenuecat"
       );
 
-      // ── Log RC init state so it's visible in the overlay ────────────────────
-      const rcState = getRCInitState();
-      addLog(
-        `RC: conf=${rcState.isConfigured} confing=${rcState.isConfiguring} fail=${rcState.initFailed}`
-      );
-
       // ── Fallback init: run if AppShell's useRevenueCat() was skipped ─────────
       // useRevenueCat.initAndSync() silently returns when supabase.auth.getUser()
       // returns null (auth session not ready when AppShell mounts). This block
       // ensures RC is initialized before the first purchase attempt regardless.
+      const rcState = getRCInitState();
       if (!rcState.isConfigured && !rcState.isConfiguring) {
-        addLog("RC not configured — fallback init from paywall...");
+        console.log("[IOSPaywall] RC not configured — fallback init from paywall...");
         try {
           const { createClient } = await import("@/lib/supabase/client");
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            addLog(`init userId: ${user.id.slice(0, 8)}...`);
             await initRevenueCat(user.id);
-            const s2 = getRCInitState();
-            addLog(`init done: conf=${s2.isConfigured} fail=${s2.initFailed}`);
           } else {
-            addLog("no Supabase user — RC init skipped");
+            console.log("[IOSPaywall] no Supabase user — RC init skipped");
           }
         } catch (initErr: any) {
-          addLog(`init err: ${String(initErr?.message ?? initErr).slice(0, 50)}`);
+          console.error("[IOSPaywall] fallback init error:", initErr);
         }
       }
 
@@ -168,8 +143,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         "| offering:", offeringData?.identifier ?? "none",
         "| packages:", offeringData?.availablePackages.map((p) => p.identifier) ?? []
       );
-
-      addLog(`plan:${rcPlan} | off:${offeringData?.identifier ?? "null"}`);
 
       setCurrentPlan(rcPlan);
       setOffering(offeringData);
@@ -190,7 +163,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       // Silent fail — RC errors during background fetch do not surface to the user.
       // Fallback plans remain visible; the user can tap Retry in the fallback section.
       console.error("[IOSPaywall] loadData error:", err);
-      addLog(`loadData err: ${err?.message ?? String(err)}`);
     } finally {
       loadingRef.current = false;
     }
@@ -204,7 +176,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   async function handlePurchase(productId: string, planId: "starter" | "pro") {
     // ── Absolute first log — confirms button tap reached JS ──────────────────
     console.log("[IAP BUTTON TAPPED] planId:", planId, "| productId:", productId);
-    addLog(`TAP ${planId}`);
 
     setPurchaseAttempted(true);
     setPurchasing(planId);
@@ -213,15 +184,12 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
     try {
       console.log("[IAP] Importing revenuecat service...");
-      addLog("importing RC...");
       const { purchasePackage } = await import("@/services/revenuecat");
       console.log("[IAP] revenuecat service imported ✓ Calling purchasePackage...");
-      addLog("RC imported ✓ calling purchase...");
 
       const newPlan = await purchasePackage(productId);
 
       console.log("[IAP] Purchase success → plan:", newPlan);
-      addLog(`success → ${newPlan}`);
       void syncPlan(newPlan);
       setCurrentPlan(newPlan);
       const label = newPlan === "pro" ? "Pro" : "Starter";
@@ -232,7 +200,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
       console.error("[IAP] Purchase threw. code:", err?.code, "| message:", err?.message);
       console.error("[IAP] underlyingErrorMessage:", err?.underlyingErrorMessage);
       console.error("[IAP] full error JSON:", JSON.stringify(err));
-      addLog(`err code:${err?.code ?? "?"} ${String(err?.message ?? "").slice(0, 40)}`);
 
       const cancelled =
         err?.code === "PURCHASE_CANCELLED" ||
@@ -242,7 +209,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
       if (cancelled) {
         console.log("[IAP] Purchase cancelled by user");
-        addLog("cancelled by user");
       } else {
         setError(t("paywall.purchaseError"));
       }
@@ -317,22 +283,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
   return (
     <div className="space-y-4">
-
-      {/* ── On-screen debug panel (remove before release: set DEBUG_IAP_UI = false) ── */}
-      {DEBUG_IAP_UI && (
-        <div className="rounded border border-green-500/40 bg-black/85 p-2 font-mono text-[10px] text-green-400">
-          <div className="mb-1 font-bold text-green-300">IAP Debug ← set DEBUG_IAP_UI=false to hide</div>
-          {debugLogs.length === 0 ? (
-            <div className="text-green-600">waiting for events...</div>
-          ) : (
-            <div className="max-h-28 space-y-0.5 overflow-y-auto">
-              {debugLogs.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Current plan + discrete RC loading indicator */}
       <div className="flex items-center gap-2 text-sm">
