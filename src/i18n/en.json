@@ -678,6 +678,10 @@
       "upgradeToPro": "Upgrade to Pro",
       "continueManual": "Continue without subscription",
       "viewPlans": "View plans"
-    }
+    },
+    "legalPrefix": "By subscribing, you agree to our",
+    "legalTerms": "Terms of Use",
+    "legalAnd": "and",
+    "legalPrivacy": "Privacy Policy"
   }
 }
