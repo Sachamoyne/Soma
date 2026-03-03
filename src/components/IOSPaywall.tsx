@@ -386,6 +386,25 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             </Button>
           )}
 
+          {/* Legal links — Apple Guideline 3.1.2(c) */}
+          <p className="px-2 text-center text-[10px] leading-relaxed text-muted-foreground">
+            By subscribing, you agree to our{" "}
+            <button
+              className="underline"
+              onClick={() => window.open("https://soma-edu.com/terms", "_system")}
+            >
+              Terms of Use
+            </button>
+            {" "}and{" "}
+            <button
+              className="underline"
+              onClick={() => window.open("https://soma-edu.com/privacy", "_system")}
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
+
           {/* Restore */}
           <Button
             variant="ghost"
@@ -503,6 +522,25 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               {t("paywall.manageSubscription")}
             </Button>
           )}
+
+          {/* Legal links — Apple Guideline 3.1.2(c) */}
+          <p className="px-2 text-center text-[10px] leading-relaxed text-muted-foreground">
+            By subscribing, you agree to our{" "}
+            <button
+              className="underline"
+              onClick={() => window.open("https://soma-edu.com/terms", "_system")}
+            >
+              Terms of Use
+            </button>
+            {" "}and{" "}
+            <button
+              className="underline"
+              onClick={() => window.open("https://soma-edu.com/privacy", "_system")}
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
 
           {/* Restore */}
           <Button
