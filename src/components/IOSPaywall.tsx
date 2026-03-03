@@ -23,6 +23,8 @@ import { Loader2, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import {
   RC_PACKAGE_STARTER,
   RC_PACKAGE_PRO,
+  RC_PRODUCT_STARTER,
+  RC_PRODUCT_PRO,
   type RCOffering,
   type RCPlan,
 } from "@/services/revenuecat";
@@ -323,7 +325,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                 variant="outline"
                 className="w-full"
                 disabled={anyActionInProgress}
-                onClick={() => void handlePurchase(RC_PACKAGE_STARTER, "starter")}
+                onClick={() => void handlePurchase(RC_PRODUCT_STARTER, "starter")}
               >
                 {purchasing === "starter" ? (
                   <>
@@ -360,7 +362,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               size="sm"
               className="w-full"
               disabled={anyActionInProgress}
-              onClick={() => void handlePurchase(RC_PACKAGE_PRO, "pro")}
+              onClick={() => void handlePurchase(RC_PRODUCT_PRO, "pro")}
             >
               {purchasing === "pro" ? (
                 <>
@@ -476,7 +478,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                 variant="outline"
                 className="w-full"
                 disabled={anyActionInProgress}
-                onClick={() => void handlePurchase(FALLBACK_PLANS[0].pkgId, "starter")}
+                onClick={() => void handlePurchase(RC_PRODUCT_STARTER, "starter")}
               >
                 {t("paywall.chooseStarter")}
               </Button>
@@ -506,7 +508,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               size="sm"
               className="w-full"
               disabled={anyActionInProgress}
-              onClick={() => void handlePurchase(FALLBACK_PLANS[1].pkgId, "pro")}
+              onClick={() => void handlePurchase(RC_PRODUCT_PRO, "pro")}
             >
               {currentPlan === "starter"
                 ? t("paywall.upgradeToPro")

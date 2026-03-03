@@ -68,9 +68,21 @@ const RC_IOS_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY ?? "";
 export const RC_ENTITLEMENT_STARTER = "starter";
 export const RC_ENTITLEMENT_PRO = "pro";
 
-/** Package identifiers inside offering "default_v3". */
+/**
+ * RC package identifiers — used only for price display (finding packages in the
+ * pre-fetched offering to show priceString). NOT used for purchase lookup.
+ */
 export const RC_PACKAGE_STARTER = "$rc_monthly";
 export const RC_PACKAGE_PRO = "pro_monthly";
+
+/**
+ * App Store product identifiers — used for purchase lookup via StoreKit.
+ * These come from App Store Connect and are stable regardless of RC config.
+ * Purchase lookup uses productIdentifier (not the RC package identifier) to
+ * avoid mismatches if the RC dashboard package identifier differs.
+ */
+export const RC_PRODUCT_STARTER = "com.soma.edu.starter.monthly.v3";
+export const RC_PRODUCT_PRO = "com.soma.edu.pro.monthly.v3";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -114,12 +126,12 @@ function planFromCustomerInfo(customerInfo: any): RCPlan {
 }
 
 /**
- * Explicit plan mapping from package identifier.
+ * Explicit plan mapping from App Store product identifier.
  * Used as fallback when entitlements are not yet reflected after purchase.
  */
-function planFromPackageIdentifier(packageIdentifier: string): RCPlan | null {
-  if (packageIdentifier === RC_PACKAGE_PRO) return "pro";
-  if (packageIdentifier === RC_PACKAGE_STARTER) return "starter";
+function planFromProductIdentifier(productId: string): RCPlan | null {
+  if (productId === RC_PRODUCT_PRO) return "pro";
+  if (productId === RC_PRODUCT_STARTER) return "starter";
   return null;
 }
 
@@ -256,63 +268,110 @@ export async function getOfferings(): Promise<RCOffering | null> {
 }
 
 /**
- * Purchase a package by its identifier (e.g. RC_PACKAGE_STARTER).
+ * Purchase a plan by its App Store product identifier.
+ * Accepts RC_PRODUCT_STARTER or RC_PRODUCT_PRO.
  * Returns the resulting plan on success.
  * Throws on user cancellation or payment error.
  *
+ * Package lookup uses App Store product identifier (p.product.productIdentifier)
+ * rather than RC package identifier (p.identifier), because the product ID comes
+ * directly from App Store Connect and is stable regardless of RC dashboard config.
+ *
  * Plan determination priority:
  *   1. RC entitlements from returned customerInfo (source of truth)
- *   2. Explicit package→plan mapping fallback if entitlements not yet reflected
+ *   2. Explicit productId→plan mapping fallback if entitlements not yet reflected
  */
-export async function purchasePackage(packageIdentifier: string): Promise<RCPlan> {
-  if (!isNativeIOS()) throw new Error("[RC] purchasePackage is only available on iOS.");
+export async function purchasePackage(productId: string): Promise<RCPlan> {
+  // ── Platform guard ──────────────────────────────────────────────────────────
+  const { Capacitor } = await import("@capacitor/core");
+  if (Capacitor.getPlatform() !== "ios") {
+    throw new Error("[IAP] purchasePackage is only available on iOS.");
+  }
 
   await waitForConfigured();
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
 
+  // ── Fetch offerings ─────────────────────────────────────────────────────────
+  console.log("[IAP] Fetching offerings for purchase...");
   const result = await Purchases.getOfferings();
-  // Mirror the same resolution logic as getOfferings(): current → all["default_v3"].
-  const current = result.current ?? result.all?.[RC_OFFERING_TARGET] ?? null;
-  if (!current) throw new Error("[RC] No offerings available");
 
-  if (DEBUG_RC) {
-    console.log(
-      "[RC] purchasePackage — offering:", current.identifier,
-      "| target package:", packageIdentifier,
-      "| available:", current.availablePackages?.map((p: any) => p.identifier) ?? []
-    );
+  const current = result.current ?? result.all?.[RC_OFFERING_TARGET] ?? null;
+
+  if (!current) {
+    console.error("[IAP ERROR] No current offering found. All keys:", Object.keys(result.all ?? {}));
+    throw new Error("[IAP ERROR] No current offering found");
   }
 
-  const pkg = current.availablePackages?.find(
-    (p: any) => p.identifier === packageIdentifier
-  );
-  if (!pkg) throw new Error(`[RC] Package not found: ${packageIdentifier}`);
+  // ── Log all available packages with both identifiers ────────────────────────
+  const packages = current.availablePackages ?? [];
+  console.log("[IAP] Offering:", current.identifier, "| Package count:", packages.length);
+  packages.forEach((p: any, i: number) => {
+    // p.identifier       = RC package identifier (e.g. "$rc_monthly")
+    // p.product.identifier = App Store product ID (e.g. "com.soma.edu.starter.monthly.v3")
+    console.log(
+      `[IAP] Package[${i}] pkgId="${p.identifier}" | productId="${p.product?.identifier ?? "?"}" | price="${p.product?.priceString ?? "?"}"`
+    );
+  });
+  console.log("[IAP] Looking for productId:", productId);
 
-  console.log("[RC] Starting purchase for:", packageIdentifier);
-  const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
+  // ── Find package by App Store product identifier ─────────────────────────────
+  // p.product.identifier is the App Store Connect product ID on PurchasesStoreProduct.
+  // This is distinct from p.identifier which is the RC package identifier.
+  const pkg = packages.find((p: any) => p.product?.identifier === productId);
+
+  if (!pkg) {
+    console.error(
+      "[IAP ERROR] Package is undefined — productId not found:",
+      productId,
+      "| Available productIds:",
+      packages.map((p: any) => p.product?.identifier ?? "?")
+    );
+    throw new Error(`[IAP ERROR] Package not found for productId: ${productId}`);
+  }
 
   console.log(
-    "[RC] Purchase response — entitlements.active:",
+    "[IAP] Package found:",
+    "pkgId=", pkg.identifier,
+    "| productId=", pkg.product?.identifier,
+    "| price=", pkg.product?.priceString
+  );
+  console.log("[IAP] Full package object:", JSON.stringify(pkg));
+
+  // ── Trigger StoreKit purchase sheet ─────────────────────────────────────────
+  console.log("[IAP] Calling purchasePackage...");
+  let customerInfo: any;
+  try {
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+    customerInfo = result.customerInfo;
+  } catch (err: any) {
+    console.error("[IAP] purchasePackage threw:", err?.message ?? err);
+    console.error("[IAP] error.code:", err?.code);
+    console.error("[IAP] error.underlyingErrorMessage:", err?.underlyingErrorMessage);
+    console.error("[IAP] full error:", JSON.stringify(err));
+    throw err;
+  }
+
+  console.log(
+    "[IAP] Purchase response — entitlements.active:",
     Object.keys(customerInfo?.entitlements?.active ?? {})
   );
 
   let plan = planFromCustomerInfo(customerInfo);
 
   // Explicit fallback: if entitlements not yet reflected in customerInfo,
-  // infer the plan from the package identifier (pro_monthly→pro, $rc_monthly→starter).
+  // infer the plan from the product identifier.
   if (plan === "free") {
-    const inferredPlan = planFromPackageIdentifier(packageIdentifier);
+    const inferredPlan = planFromProductIdentifier(productId);
     if (inferredPlan) {
       console.warn(
-        "[RC] Entitlements not yet reflected — inferring plan from package:",
-        inferredPlan,
-        "(package:", packageIdentifier + ")"
+        "[IAP] Entitlements not yet reflected — inferring plan from productId:",
+        inferredPlan, "(productId:", productId + ")"
       );
       plan = inferredPlan;
     }
   }
 
-  console.log("[RC] Purchase complete → plan:", plan);
+  console.log("[IAP] Purchase complete → plan:", plan);
   return plan;
 }
 
