@@ -158,7 +158,7 @@ export function DeckTree({
 
             if (learningCounts[deck.id] !== undefined) {
               return (
-                <div className="grid grid-cols-4 w-52 gap-3">
+                <div className="grid grid-cols-4 w-64 gap-3">
                   <span
                     className={`text-xs font-medium text-right whitespace-nowrap ${
                       counts.new > 0
@@ -193,7 +193,7 @@ export function DeckTree({
               );
             }
             return (
-              <div className="w-52 text-right">
+              <div className="w-64 text-right">
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {totalCards}
                 </span>

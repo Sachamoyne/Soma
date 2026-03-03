@@ -254,11 +254,11 @@ export default function DecksPage() {
                       {t("decks.collapseAll")}
                     </Button>
 
-                    <div className="grid grid-cols-4 w-52 gap-3">
-                      <span className="text-xs text-right text-muted-foreground">{t("decks.new")}</span>
-                      <span className="text-xs text-right text-muted-foreground">{t("decks.learning")}</span>
-                      <span className="text-xs text-right text-muted-foreground">{t("decks.review")}</span>
-                      <span className="text-xs text-right text-muted-foreground">{t("decks.total")}</span>
+                    <div className="grid grid-cols-4 w-64 gap-3">
+                      <span className="text-xs text-right text-muted-foreground whitespace-nowrap">{t("decks.new")}</span>
+                      <span className="text-xs text-right text-muted-foreground whitespace-nowrap">{t("decks.learning")}</span>
+                      <span className="text-xs text-right text-muted-foreground whitespace-nowrap">{t("decks.review")}</span>
+                      <span className="text-xs text-right text-muted-foreground whitespace-nowrap">{t("decks.total")}</span>
                     </div>
 
                     <div className="w-16" />
@@ -332,6 +332,7 @@ export default function DecksPage() {
                   <SelectItem value="math">{t("decks.modeMath")}</SelectItem>
                   <SelectItem value="languages">{t("decks.modeLanguages")}</SelectItem>
                   <SelectItem value="humanities">{t("decks.modeHumanities")}</SelectItem>
+                  <SelectItem value="law">{t("decks.modeLaw")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

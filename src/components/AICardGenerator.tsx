@@ -20,6 +20,7 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { useUserPlan } from "@/hooks/useUserPlan";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
+import type { DeckMode } from "@/lib/supabase-db";
 
 interface CardPreview {
   front: string;
@@ -30,12 +31,15 @@ interface CardPreview {
 
 interface AICardGeneratorProps {
   deckId: string;
+  /** Optional deck mode — forwarded to the backend so it can use mode-specific prompts */
+  deckMode?: DeckMode;
   onCardsConfirmed?: (importedCount: number) => void;
   className?: string;
 }
 
 export function AICardGenerator({
   deckId,
+  deckMode,
   onCardsConfirmed,
   className,
 }: AICardGeneratorProps) {
@@ -197,6 +201,7 @@ export function AICardGenerator({
           text: string;
           cardsCount?: number;
           detailLevel?: "summary" | "standard" | "detailed";
+          mode?: DeckMode;
         } = {
           deck_id: String(deckId),
           language: "fr",
@@ -208,6 +213,9 @@ export function AICardGenerator({
         }
         if (detailLevel !== "standard") {
           payload.detailLevel = detailLevel;
+        }
+        if (deckMode) {
+          payload.mode = deckMode;
         }
 
         response = await fetch(`${BACKEND_URL}/generate/cards`, {
@@ -312,6 +320,7 @@ export function AICardGenerator({
           text: sourceText,
           cardsCount: 3,
           ...(detailLevel !== "standard" && { detailLevel }),
+          ...(deckMode && { mode: deckMode }),
         };
 
         response = await fetch(`${BACKEND_URL}/generate/cards`, {
@@ -677,6 +686,7 @@ export function AICardGenerator({
         text: string;
         cardsCount?: number;
         detailLevel?: "summary" | "standard" | "detailed";
+        mode?: DeckMode;
       } = {
         deck_id: String(deckId),
         language: "fr",
@@ -688,6 +698,9 @@ export function AICardGenerator({
       }
       if (detailLevel !== "standard") {
         payload.detailLevel = detailLevel;
+      }
+      if (deckMode) {
+        payload.mode = deckMode;
       }
 
       const response = await fetch(`${BACKEND_URL}/generate/cards`, {

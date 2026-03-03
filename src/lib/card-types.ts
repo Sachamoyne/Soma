@@ -17,8 +17,11 @@ export type LanguagesCardType = "vocabulary" | "grammar_rule";
 // Humanities mode card types (semantic types for philosophy, etc.)
 export type HumanitiesCardType = "philosophy_concept";
 
+// Law mode card types (semantic types for legal studies)
+export type LawCardType = "statute_article" | "case_brief" | "practical_case";
+
 // Union of all card types
-export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType;
+export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType | LawCardType;
 
 export interface CardTypeInfo {
   id: CardType;
@@ -133,6 +136,38 @@ export const HUMANITIES_CARD_TYPES: CardTypeInfo[] = [
 ];
 
 /**
+ * Law mode card types (semantic types for legal studies):
+ * - statute_article: Article reference → Structured article content
+ * - case_brief: Case identifier → Faits / Procédure / Problème / Solution / Portée
+ * - practical_case: Practical question → Qualification / Règles / Application / Conclusion
+ *
+ * These use the extra JSONB field for structured data.
+ */
+export const LAW_CARD_TYPES: CardTypeInfo[] = [
+  {
+    id: "statute_article",
+    label: "Article de loi",
+    description: "Référence → Texte, conditions, pièges, exemple",
+    labelKey: "cardTypes.statuteArticle",
+    descKey: "cardTypes.statuteArticleDesc",
+  },
+  {
+    id: "case_brief",
+    label: "Fiche d'arrêt",
+    description: "Arrêt → Faits, procédure, problème, solution, portée",
+    labelKey: "cardTypes.caseBrief",
+    descKey: "cardTypes.caseBriefDesc",
+  },
+  {
+    id: "practical_case",
+    label: "Cas pratique",
+    description: "Question → Qualification, règles, application, conclusion",
+    labelKey: "cardTypes.practicalCase",
+    descKey: "cardTypes.practicalCaseDesc",
+  },
+];
+
+/**
  * Legacy export for backward compatibility
  * @deprecated Use CLASSIC_CARD_TYPES or getCardTypesForMode() instead
  */
@@ -141,7 +176,7 @@ export const CARD_TYPES: CardTypeInfo[] = CLASSIC_CARD_TYPES;
 /**
  * Returns the appropriate card types for a given deck mode
  */
-export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities"): CardTypeInfo[] {
+export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities" | "law"): CardTypeInfo[] {
   switch (mode) {
     case "math":
       return MATH_CARD_TYPES;
@@ -149,6 +184,8 @@ export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "hu
       return LANGUAGES_CARD_TYPES;
     case "humanities":
       return HUMANITIES_CARD_TYPES;
+    case "law":
+      return LAW_CARD_TYPES;
     default:
       return CLASSIC_CARD_TYPES;
   }
@@ -157,7 +194,7 @@ export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "hu
 /**
  * Returns the default card type for a given deck mode
  */
-export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages" | "humanities"): CardType {
+export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages" | "humanities" | "law"): CardType {
   switch (mode) {
     case "math":
       return "definition";
@@ -165,6 +202,8 @@ export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages"
       return "vocabulary";
     case "humanities":
       return "philosophy_concept";
+    case "law":
+      return "statute_article";
     default:
       return "basic";
   }
@@ -181,10 +220,11 @@ export interface CardWithType {
 
 /** All valid card type values */
 const ALL_CARD_TYPES: CardType[] = [
-  "basic", "reversible", "typed",           // Classic
-  "definition", "property", "formula",       // Math
-  "vocabulary", "grammar_rule",              // Languages
-  "philosophy_concept",                      // Humanities
+  "basic", "reversible", "typed",                        // Classic
+  "definition", "property", "formula",                   // Math
+  "vocabulary", "grammar_rule",                          // Languages
+  "philosophy_concept",                                  // Humanities
+  "statute_article", "case_brief", "practical_case",     // Law
 ];
 
 /**
@@ -221,6 +261,13 @@ export function isLanguagesCardType(type: CardType): type is LanguagesCardType {
  */
 export function isHumanitiesCardType(type: CardType): type is HumanitiesCardType {
   return type === "philosophy_concept";
+}
+
+/**
+ * Checks if a card type is a law-specific type
+ */
+export function isLawCardType(type: CardType): type is LawCardType {
+  return type === "statute_article" || type === "case_brief" || type === "practical_case";
 }
 
 /**

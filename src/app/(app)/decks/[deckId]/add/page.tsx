@@ -16,6 +16,7 @@ import { Plus, Upload, PenLine, Sparkles } from "lucide-react";
 import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks, type Deck } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
+import { isLawCardType } from "@/lib/card-types";
 import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
@@ -45,6 +46,22 @@ export default function AddCardsPage() {
   const [conceptDate, setConceptDate] = useState("");
   const [conceptExplanation, setConceptExplanation] = useState("");
   const [conceptExample, setConceptExample] = useState("");
+  // Law mode — statute_article fields
+  const [lawArticleText, setLawArticleText] = useState("");
+  const [lawConditions, setLawConditions] = useState("");
+  const [lawPitfalls, setLawPitfalls] = useState("");
+  const [lawExample, setLawExample] = useState("");
+  // Law mode — case_brief fields
+  const [lawFacts, setLawFacts] = useState("");
+  const [lawProcedure, setLawProcedure] = useState("");
+  const [lawProblem, setLawProblem] = useState("");
+  const [lawSolution, setLawSolution] = useState("");
+  const [lawScope, setLawScope] = useState("");
+  // Law mode — practical_case fields
+  const [lawQualification, setLawQualification] = useState("");
+  const [lawRules, setLawRules] = useState("");
+  const [lawApplication, setLawApplication] = useState("");
+  const [lawConclusion, setLawConclusion] = useState("");
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -55,6 +72,9 @@ export default function AddCardsPage() {
   // Check if current type is property (needs special form)
   const isPropertyType = cardType === "property";
   const isPhilosophyConceptType = cardType === "philosophy_concept";
+  const isLawStatuteType = cardType === "statute_article";
+  const isLawCaseBriefType = cardType === "case_brief";
+  const isLawPracticalCaseType = cardType === "practical_case";
 
   // Load deck mode on mount
   useEffect(() => {
@@ -85,8 +105,8 @@ export default function AddCardsPage() {
     if (isPropertyType && !theoremName.trim()) {
       return;
     }
-    // Validation: philosophy_concept cards require concept (front)
-    if (isPhilosophyConceptType) {
+    // Validation: philosophy_concept and law cards require front only
+    if (isPhilosophyConceptType || isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType) {
       if (!front.trim()) return;
     } else if (!front.trim() || !back.trim()) {
       return;
@@ -119,6 +139,30 @@ export default function AddCardsPage() {
         if (conceptExample.trim()) extra.example = conceptExample.trim();
       }
 
+      // Build extra field for law card types
+      if (isLawStatuteType) {
+        extra = {};
+        if (lawArticleText.trim()) extra.articleText = lawArticleText.trim();
+        if (lawConditions.trim()) extra.conditions = lawConditions.trim();
+        if (lawPitfalls.trim()) extra.pitfalls = lawPitfalls.trim();
+        if (lawExample.trim()) extra.example = lawExample.trim();
+      }
+      if (isLawCaseBriefType) {
+        extra = {};
+        if (lawFacts.trim()) extra.facts = lawFacts.trim();
+        if (lawProcedure.trim()) extra.procedure = lawProcedure.trim();
+        if (lawProblem.trim()) extra.problem = lawProblem.trim();
+        if (lawSolution.trim()) extra.solution = lawSolution.trim();
+        if (lawScope.trim()) extra.scope = lawScope.trim();
+      }
+      if (isLawPracticalCaseType) {
+        extra = {};
+        if (lawQualification.trim()) extra.qualification = lawQualification.trim();
+        if (lawRules.trim()) extra.rules = lawRules.trim();
+        if (lawApplication.trim()) extra.application = lawApplication.trim();
+        if (lawConclusion.trim()) extra.conclusion = lawConclusion.trim();
+      }
+
       // For philosophy_concept, build a summary back from the structured fields
       let cardBack = back.trim();
       if (isPhilosophyConceptType) {
@@ -128,6 +172,21 @@ export default function AddCardsPage() {
         if (conceptDate.trim()) parts.push(`(${conceptDate.trim()})`);
         if (conceptExplanation.trim()) parts.push(`— ${conceptExplanation.trim()}`);
         cardBack = parts.join(" ") || front.trim();
+      }
+      // For law cards, build a compact summary back
+      if (isLawStatuteType) {
+        cardBack = lawArticleText.trim()
+          ? lawArticleText.trim().substring(0, 120)
+          : front.trim();
+      }
+      if (isLawCaseBriefType) {
+        const parts: string[] = [];
+        if (lawProblem.trim()) parts.push(lawProblem.trim());
+        if (lawSolution.trim()) parts.push(`→ ${lawSolution.trim()}`);
+        cardBack = parts.join(" ") || front.trim();
+      }
+      if (isLawPracticalCaseType) {
+        cardBack = lawConclusion.trim() || front.trim();
       }
 
       await createCard(normalizedDeckId, front.trim(), cardBack, cardType, supabase, extra);
@@ -142,6 +201,9 @@ export default function AddCardsPage() {
       setConceptDate("");
       setConceptExplanation("");
       setConceptExample("");
+      setLawArticleText(""); setLawConditions(""); setLawPitfalls(""); setLawExample("");
+      setLawFacts(""); setLawProcedure(""); setLawProblem(""); setLawSolution(""); setLawScope("");
+      setLawQualification(""); setLawRules(""); setLawApplication(""); setLawConclusion("");
 
       // Show success message
       setSuccessMessage(t("addCards.cardCreated"));
@@ -262,6 +324,12 @@ export default function AddCardsPage() {
                         setConceptExplanation("");
                         setConceptExample("");
                       }
+                      // Clear law fields when switching away
+                      if (!["statute_article", "case_brief", "practical_case"].includes(value)) {
+                        setLawArticleText(""); setLawConditions(""); setLawPitfalls(""); setLawExample("");
+                        setLawFacts(""); setLawProcedure(""); setLawProblem(""); setLawSolution(""); setLawScope("");
+                        setLawQualification(""); setLawRules(""); setLawApplication(""); setLawConclusion("");
+                      }
                     }}
                   >
                     <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background px-4 shadow-sm flex items-center justify-between text-sm text-foreground hover:border-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -285,7 +353,131 @@ export default function AddCardsPage() {
                 </div>
 
                 {/* Fields adapt based on card type */}
-                {isPhilosophyConceptType ? (
+                {isLawStatuteType ? (
+                  <>
+                    {/* Article reference (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.lawArticleRef")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawArticleRefPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawArticleText")}
+                      value={lawArticleText}
+                      onChange={setLawArticleText}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawArticleTextPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawConditions")}
+                      value={lawConditions}
+                      onChange={setLawConditions}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawConditionsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawPitfalls")}
+                      value={lawPitfalls}
+                      onChange={setLawPitfalls}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawPitfallsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawExample")}
+                      value={lawExample}
+                      onChange={setLawExample}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawExamplePlaceholder")}
+                    />
+                  </>
+                ) : isLawCaseBriefType ? (
+                  <>
+                    {/* Case identifier (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.lawCaseId")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawCaseIdPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawFacts")}
+                      value={lawFacts}
+                      onChange={setLawFacts}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawFactsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawProcedure")}
+                      value={lawProcedure}
+                      onChange={setLawProcedure}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawProcedurePlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawProblem")}
+                      value={lawProblem}
+                      onChange={setLawProblem}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawProblemPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawSolution")}
+                      value={lawSolution}
+                      onChange={setLawSolution}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawSolutionPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawScope")}
+                      value={lawScope}
+                      onChange={setLawScope}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawScopePlaceholder")}
+                    />
+                  </>
+                ) : isLawPracticalCaseType ? (
+                  <>
+                    {/* Practical question (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.lawQuestion")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawQuestionPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawQualification")}
+                      value={lawQualification}
+                      onChange={setLawQualification}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawQualificationPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawRules")}
+                      value={lawRules}
+                      onChange={setLawRules}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawRulesPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawApplication")}
+                      value={lawApplication}
+                      onChange={setLawApplication}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawApplicationPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.lawConclusion")}
+                      value={lawConclusion}
+                      onChange={setLawConclusion}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.lawConclusionPlaceholder")}
+                    />
+                  </>
+                ) : isPhilosophyConceptType ? (
                   <>
                     {/* Concept field (required) — maps to FRONT */}
                     <RichCardInput
@@ -408,7 +600,13 @@ export default function AddCardsPage() {
                   </p>
                   <Button
                     onClick={handleCreateCard}
-                    disabled={(!isPhilosophyConceptType && (!front.trim() || !back.trim())) || (isPhilosophyConceptType && !front.trim()) || (isPropertyType && !theoremName.trim()) || creating}
+                    disabled={
+                      (isPhilosophyConceptType && !front.trim()) ||
+                      (isPropertyType && !theoremName.trim()) ||
+                      ((isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType) && !front.trim()) ||
+                      (!isPhilosophyConceptType && !isLawStatuteType && !isLawCaseBriefType && !isLawPracticalCaseType && (!front.trim() || !back.trim())) ||
+                      creating
+                    }
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {creating ? t("addCards.adding") : t("addCards.addCard")}
@@ -434,7 +632,7 @@ export default function AddCardsPage() {
 
         {/* AI card generation */}
         {creationMode === "ai" && (
-          <AICardGenerator deckId={deckId} />
+          <AICardGenerator deckId={deckId} deckMode={deckMode} />
         )}
       </div>
 

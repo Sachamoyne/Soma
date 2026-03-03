@@ -103,7 +103,7 @@ export async function listDecks(): Promise<Deck[]> {
   return result;
 }
 
-export type DeckMode = "classic" | "math" | "languages" | "humanities";
+export type DeckMode = "classic" | "math" | "languages" | "humanities" | "law";
 
 /** Vocabulary direction for languages mode */
 export type VocabDirection = "normal" | "reversed" | "both";
@@ -370,7 +370,7 @@ export async function createCard(
   deckId: string,
   front: string,
   back: string,
-  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" = "basic",
+  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" = "basic",
   supabase: SupabaseClient,
   extra?: Record<string, unknown> | null
 ): Promise<Card> {
@@ -615,7 +615,7 @@ export async function updateCard(
   id: string,
   front: string,
   back: string,
-  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept"
+  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case"
 ): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
