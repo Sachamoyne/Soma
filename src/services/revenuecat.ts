@@ -56,6 +56,11 @@ function _makeReadiness() {
 
 let _readiness = _makeReadiness();
 
+/** Returns current RC init flags — for diagnostics and fallback init checks. */
+export function getRCInitState() {
+  return { isConfigured: _isConfigured, isConfiguring: _isConfiguring, initFailed: _initFailed };
+}
+
 function waitForConfigured(timeoutMs = 10_000): Promise<void> {
   if (_isConfigured) return Promise.resolve();
   if (_initFailed)   return Promise.reject(new Error("[RC] SDK init failed — call initRevenueCat() to retry."));

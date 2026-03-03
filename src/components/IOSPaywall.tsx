@@ -125,9 +125,38 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     setError(null);
 
     try {
-      const { getOfferings, checkUserSubscription } = await import(
+      const { getOfferings, checkUserSubscription, getRCInitState, initRevenueCat } = await import(
         "@/services/revenuecat"
       );
+
+      // ── Log RC init state so it's visible in the overlay ────────────────────
+      const rcState = getRCInitState();
+      addLog(
+        `RC: conf=${rcState.isConfigured} confing=${rcState.isConfiguring} fail=${rcState.initFailed}`
+      );
+
+      // ── Fallback init: run if AppShell's useRevenueCat() was skipped ─────────
+      // useRevenueCat.initAndSync() silently returns when supabase.auth.getUser()
+      // returns null (auth session not ready when AppShell mounts). This block
+      // ensures RC is initialized before the first purchase attempt regardless.
+      if (!rcState.isConfigured && !rcState.isConfiguring) {
+        addLog("RC not configured — fallback init from paywall...");
+        try {
+          const { createClient } = await import("@/lib/supabase/client");
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            addLog(`init userId: ${user.id.slice(0, 8)}...`);
+            await initRevenueCat(user.id);
+            const s2 = getRCInitState();
+            addLog(`init done: conf=${s2.isConfigured} fail=${s2.initFailed}`);
+          } else {
+            addLog("no Supabase user — RC init skipped");
+          }
+        } catch (initErr: any) {
+          addLog(`init err: ${String(initErr?.message ?? initErr).slice(0, 50)}`);
+        }
+      }
 
       const [rcPlan, offeringData] = await Promise.all([
         checkUserSubscription(),

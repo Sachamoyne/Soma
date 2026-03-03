@@ -55,19 +55,32 @@ export function useRevenueCat(): void {
 
 /** Full init + sync: initializes RevenueCat SDK, then checks and syncs plan. */
 async function initAndSync(): Promise<void> {
+  console.log("[RC] initAndSync() start — isNativeIOS:", isNativeIOS());
   try {
     // Dynamic import to avoid loading Supabase client code path on SSR
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
 
+    console.log("[RC] initAndSync() — calling supabase.auth.getUser()...");
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
+    if (authError) {
+      console.error("[RC] initAndSync() — auth error:", authError.message);
+    }
+
     if (!user) {
-      console.log("[RC] No authenticated user — skipping init");
+      // This is the silent failure point: if the user session is not yet
+      // available when AppShell mounts, initRevenueCat() is never called.
+      // IOSPaywall.loadData() has a fallback that handles this case.
+      console.warn("[RC] initAndSync() — no authenticated user — skipping initRevenueCat(). " +
+        "IOSPaywall will retry when the paywall opens.");
       return;
     }
+
+    console.log("[RC] initAndSync() — user:", user.id.slice(0, 8) + "...");
 
     const { initRevenueCat, checkUserSubscription } = await import(
       "@/services/revenuecat"
