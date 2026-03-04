@@ -23,6 +23,37 @@ export interface GenerationOptions {
   cardsCount?: number;       // If defined: generate EXACTLY this many cards (3-50)
   detailLevel?: DetailLevel; // Default: "standard"
   isPdf?: boolean;           // If true: skip corrective generation (max 2 LLM calls)
+  mode?: string;             // Deck mode (e.g., "medicine", "law") for mode-specific prompts
+}
+
+// ============================================================================
+// MODE-SPECIFIC PROMPT CONTEXT
+// ============================================================================
+
+/**
+ * Returns additional system prompt context for specialized deck modes.
+ * Injected into card generation prompts to guide domain-specific output.
+ */
+function getModeContext(mode?: string): string {
+  if (mode === "medicine") {
+    return `
+CONTEXTE MÉDICAL : Ce paquet est destiné à des étudiants en médecine.
+Génère un mélange équilibré des types de cartes suivants :
+- Définitions médicales (terme → définition + éléments clés) — environ 30%
+- Présentations cliniques (maladie → symptômes et signes) — environ 25%
+- Raisonnement diagnostique (présentation → diagnostics possibles) — environ 20%
+- Traitements (maladie → traitement de 1ère intention, alternatives) — environ 15%
+- Cas cliniques (scénario court → diagnostic + explication) — environ 10%
+
+RÈGLES MÉDICALES :
+- Utiliser une terminologie médicale précise et correcte
+- Préférer les listes à puces pour les symptômes, signes et traitements
+- Cartes concises : aller à l'essentiel (high-yield)
+- Éviter les longs paragraphes : préférer des listes structurées
+- Pour les cas cliniques : scénario court (2-3 lignes max au recto)
+- Prioriser les connaissances à fort rendement pédagogique (examens, clinique)`;
+  }
+  return "";
 }
 
 // ============================================================================
@@ -188,7 +219,8 @@ Réponds UNIQUEMENT avec le JSON strict conforme au schéma.`;
  */
 async function generateCardsFromAnalysis(
   analysis: ContentAnalysis,
-  options?: GenerationOptions
+  options?: GenerationOptions,
+  modeContext?: string
 ): Promise<{ language: string; title: string; cards: any[]; coveredConceptIds: string[] } | null> {
   const model = process.env.LLM_MODEL || "gpt-4o-mini";
   const baseURL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
@@ -252,7 +284,7 @@ async function generateCardsFromAnalysis(
 RÈGLE ABSOLUE : Return ONLY valid JSON. No text, no markdown, no explanation.
 
 TÂCHE : Créer des flashcards à partir des concepts analysés ci-dessous.
-
+${modeContext ? `\n${modeContext}\n` : ""}
 CONCEPTS À COUVRIR :
 ${conceptsList}
 
@@ -501,6 +533,7 @@ async function generateWithPipeline(
   const cardsCount = options?.cardsCount;
   const detailLevel = options?.detailLevel || "standard";
   const isPdf = options?.isPdf || false;
+  const modeContext = getModeContext(options?.mode);
   let llmCallCount = 0;
 
   const originalTextLength = text.length;
@@ -540,7 +573,7 @@ async function generateWithPipeline(
   });
 
   // ÉTAPE 2.2 - Génération des cartes à partir de l'analyse
-  const generationResult = await generateCardsFromAnalysis(analysis, options);
+  const generationResult = await generateCardsFromAnalysis(analysis, options, modeContext);
   llmCallCount++;
 
   if (!generationResult || generationResult.cards.length === 0) {
@@ -679,7 +712,8 @@ async function callLLM(
   text: string,
   isRetry: boolean,
   options?: GenerationOptions,
-  retryContext?: { expectedCount: number; actualCount: number }
+  retryContext?: { expectedCount: number; actualCount: number },
+  modeContext?: string
 ): Promise<{ language: string; title: string; cards: any[] }> {
   const model = process.env.LLM_MODEL || "gpt-4o-mini";
   const baseURL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
@@ -731,7 +765,7 @@ Tu DOIS générer EXACTEMENT ${retryContext.expectedCount} cartes cette fois. C'
   }
 
   const systemPrompt = `Tu es un expert en création de flashcards pour la mémorisation efficace et l'apprentissage conceptuel.
-
+${modeContext ? `\n${modeContext}\n` : ""}
 RÈGLE ABSOLUE : Return ONLY valid JSON. No text, no markdown, no explanation before or after.
 
 RÈGLES STRICTES DE SORTIE JSON :
@@ -1205,6 +1239,9 @@ export async function generateCardsPreview(
       ? text.substring(0, MAX_TEXT_LENGTH) + "\n\n[Texte tronqué...]"
       : text;
 
+  // Build mode-specific context for prompts
+  const modeContext = getModeContext(options?.mode);
+
   // ============================================================================
   // ÉTAPE 2 - PIPELINE D'ANALYSE (avec fallback)
   // ============================================================================
@@ -1240,13 +1277,13 @@ export async function generateCardsPreview(
     let lastError: Error | null = null;
 
     try {
-      result = await callLLM(truncatedText, false, options);
+      result = await callLLM(truncatedText, false, options, undefined, modeContext);
     } catch (error) {
       console.error("[generateCardsPreview] First LLM call failed:", error);
       lastError = error instanceof Error ? error : new Error(String(error));
 
       try {
-        result = await callLLM(truncatedText, true, options);
+        result = await callLLM(truncatedText, true, options, undefined, modeContext);
       } catch (retryError) {
         console.error("[generateCardsPreview] Retry LLM call also failed:", retryError);
         const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
@@ -1289,7 +1326,7 @@ export async function generateCardsPreview(
       const retryResult = await callLLM(truncatedText, true, options, {
         expectedCount: cardsCount,
         actualCount: result.cards.length,
-      });
+      }, modeContext);
 
       if (retryResult.cards.length === cardsCount) {
         console.log(`[ai-cards] Retry successful, got exactly ${cardsCount} cards`);

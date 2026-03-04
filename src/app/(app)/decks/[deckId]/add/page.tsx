@@ -16,7 +16,7 @@ import { Plus, Upload, PenLine, Sparkles } from "lucide-react";
 import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks, type Deck } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
-import { isLawCardType } from "@/lib/card-types";
+import { isLawCardType, isMedicineCardType } from "@/lib/card-types";
 import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
@@ -62,6 +62,24 @@ export default function AddCardsPage() {
   const [lawRules, setLawRules] = useState("");
   const [lawApplication, setLawApplication] = useState("");
   const [lawConclusion, setLawConclusion] = useState("");
+  // Medicine mode — med_definition fields
+  const [medDefinition, setMedDefinition] = useState("");
+  const [medKeyElements, setMedKeyElements] = useState("");
+  const [medExample, setMedExample] = useState("");
+  // Medicine mode — med_presentation fields
+  const [medSymptoms, setMedSymptoms] = useState("");
+  const [medSigns, setMedSigns] = useState("");
+  const [medPresentationNotes, setMedPresentationNotes] = useState("");
+  // Medicine mode — med_diagnosis fields
+  const [medDiagnoses, setMedDiagnoses] = useState("");
+  const [medDiagNotes, setMedDiagNotes] = useState("");
+  // Medicine mode — med_treatment fields
+  const [medFirstLine, setMedFirstLine] = useState("");
+  const [medAlternatives, setMedAlternatives] = useState("");
+  const [medLifestyle, setMedLifestyle] = useState("");
+  // Medicine mode — med_clinical_case fields
+  const [medCaseDiagnosis, setMedCaseDiagnosis] = useState("");
+  const [medCaseExplanation, setMedCaseExplanation] = useState("");
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -75,6 +93,11 @@ export default function AddCardsPage() {
   const isLawStatuteType = cardType === "statute_article";
   const isLawCaseBriefType = cardType === "case_brief";
   const isLawPracticalCaseType = cardType === "practical_case";
+  const isMedDefinitionType = cardType === "med_definition";
+  const isMedPresentationType = cardType === "med_presentation";
+  const isMedDiagnosisType = cardType === "med_diagnosis";
+  const isMedTreatmentType = cardType === "med_treatment";
+  const isMedClinicalCaseType = cardType === "med_clinical_case";
 
   // Load deck mode on mount
   useEffect(() => {
@@ -105,8 +128,9 @@ export default function AddCardsPage() {
     if (isPropertyType && !theoremName.trim()) {
       return;
     }
-    // Validation: philosophy_concept and law cards require front only
-    if (isPhilosophyConceptType || isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType) {
+    // Validation: philosophy_concept, law and medicine cards require front only
+    if (isPhilosophyConceptType || isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType ||
+        isMedDefinitionType || isMedPresentationType || isMedDiagnosisType || isMedTreatmentType || isMedClinicalCaseType) {
       if (!front.trim()) return;
     } else if (!front.trim() || !back.trim()) {
       return;
@@ -163,6 +187,36 @@ export default function AddCardsPage() {
         if (lawConclusion.trim()) extra.conclusion = lawConclusion.trim();
       }
 
+      // Build extra field for medicine card types
+      if (isMedDefinitionType) {
+        extra = {};
+        if (medDefinition.trim()) extra.definition = medDefinition.trim();
+        if (medKeyElements.trim()) extra.keyElements = medKeyElements.trim();
+        if (medExample.trim()) extra.example = medExample.trim();
+      }
+      if (isMedPresentationType) {
+        extra = {};
+        if (medSymptoms.trim()) extra.symptoms = medSymptoms.trim();
+        if (medSigns.trim()) extra.signs = medSigns.trim();
+        if (medPresentationNotes.trim()) extra.notes = medPresentationNotes.trim();
+      }
+      if (isMedDiagnosisType) {
+        extra = {};
+        if (medDiagnoses.trim()) extra.diagnoses = medDiagnoses.trim();
+        if (medDiagNotes.trim()) extra.notes = medDiagNotes.trim();
+      }
+      if (isMedTreatmentType) {
+        extra = {};
+        if (medFirstLine.trim()) extra.firstLine = medFirstLine.trim();
+        if (medAlternatives.trim()) extra.alternatives = medAlternatives.trim();
+        if (medLifestyle.trim()) extra.lifestyle = medLifestyle.trim();
+      }
+      if (isMedClinicalCaseType) {
+        extra = {};
+        if (medCaseDiagnosis.trim()) extra.diagnosis = medCaseDiagnosis.trim();
+        if (medCaseExplanation.trim()) extra.explanation = medCaseExplanation.trim();
+      }
+
       // For philosophy_concept, build a summary back from the structured fields
       let cardBack = back.trim();
       if (isPhilosophyConceptType) {
@@ -188,6 +242,28 @@ export default function AddCardsPage() {
       if (isLawPracticalCaseType) {
         cardBack = lawConclusion.trim() || front.trim();
       }
+      // For medicine cards, build a compact summary back
+      if (isMedDefinitionType) {
+        cardBack = medDefinition.trim()
+          ? medDefinition.trim().substring(0, 120)
+          : front.trim();
+      }
+      if (isMedPresentationType) {
+        cardBack = medSymptoms.trim()
+          ? medSymptoms.trim().substring(0, 120)
+          : front.trim();
+      }
+      if (isMedDiagnosisType) {
+        cardBack = medDiagnoses.trim()
+          ? medDiagnoses.trim().substring(0, 120)
+          : front.trim();
+      }
+      if (isMedTreatmentType) {
+        cardBack = medFirstLine.trim() || front.trim();
+      }
+      if (isMedClinicalCaseType) {
+        cardBack = medCaseDiagnosis.trim() || front.trim();
+      }
 
       await createCard(normalizedDeckId, front.trim(), cardBack, cardType, supabase, extra);
 
@@ -204,6 +280,11 @@ export default function AddCardsPage() {
       setLawArticleText(""); setLawConditions(""); setLawPitfalls(""); setLawExample("");
       setLawFacts(""); setLawProcedure(""); setLawProblem(""); setLawSolution(""); setLawScope("");
       setLawQualification(""); setLawRules(""); setLawApplication(""); setLawConclusion("");
+      setMedDefinition(""); setMedKeyElements(""); setMedExample("");
+      setMedSymptoms(""); setMedSigns(""); setMedPresentationNotes("");
+      setMedDiagnoses(""); setMedDiagNotes("");
+      setMedFirstLine(""); setMedAlternatives(""); setMedLifestyle("");
+      setMedCaseDiagnosis(""); setMedCaseExplanation("");
 
       // Show success message
       setSuccessMessage(t("addCards.cardCreated"));
@@ -475,6 +556,152 @@ export default function AddCardsPage() {
                       onChange={setLawConclusion}
                       onKeyDown={handleKeyDown}
                       placeholder={t("addCards.lawConclusionPlaceholder")}
+                    />
+                  </>
+                ) : isMedDefinitionType ? (
+                  <>
+                    {/* Term (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.medTerm")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medTermPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medDefinition")}
+                      value={medDefinition}
+                      onChange={setMedDefinition}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDefinitionPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medKeyElements")}
+                      value={medKeyElements}
+                      onChange={setMedKeyElements}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medKeyElementsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medExample")}
+                      value={medExample}
+                      onChange={setMedExample}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medExamplePlaceholder")}
+                    />
+                  </>
+                ) : isMedPresentationType ? (
+                  <>
+                    {/* Disease name (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.medDisease")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDiseasePlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medSymptoms")}
+                      value={medSymptoms}
+                      onChange={setMedSymptoms}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medSymptomsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("medicineCard.signs")}
+                      value={medSigns}
+                      onChange={setMedSigns}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medSymptomsPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medDiagNotes")}
+                      value={medPresentationNotes}
+                      onChange={setMedPresentationNotes}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDiagNotesPlaceholder")}
+                    />
+                  </>
+                ) : isMedDiagnosisType ? (
+                  <>
+                    {/* Clinical presentation (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.medPresentation")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medPresentationPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medDiagnoses")}
+                      value={medDiagnoses}
+                      onChange={setMedDiagnoses}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDiagnosesPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medDiagNotes")}
+                      value={medDiagNotes}
+                      onChange={setMedDiagNotes}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDiagNotesPlaceholder")}
+                    />
+                  </>
+                ) : isMedTreatmentType ? (
+                  <>
+                    {/* Disease name (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.medDisease")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medDiseasePlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medFirstLine")}
+                      value={medFirstLine}
+                      onChange={setMedFirstLine}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medFirstLinePlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medAlternatives")}
+                      value={medAlternatives}
+                      onChange={setMedAlternatives}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medAlternativesPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medLifestyle")}
+                      value={medLifestyle}
+                      onChange={setMedLifestyle}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medLifestylePlaceholder")}
+                    />
+                  </>
+                ) : isMedClinicalCaseType ? (
+                  <>
+                    {/* Clinical scenario (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.medClinicalScenario")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medClinicalScenarioPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medCaseDiagnosis")}
+                      value={medCaseDiagnosis}
+                      onChange={setMedCaseDiagnosis}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medCaseDiagnosisPlaceholder")}
+                    />
+                    <RichCardInput
+                      label={t("addCards.medCaseExplanation")}
+                      value={medCaseExplanation}
+                      onChange={setMedCaseExplanation}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.medCaseExplanationPlaceholder")}
                     />
                   </>
                 ) : isPhilosophyConceptType ? (

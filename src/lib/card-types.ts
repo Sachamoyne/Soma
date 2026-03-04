@@ -20,8 +20,11 @@ export type HumanitiesCardType = "philosophy_concept";
 // Law mode card types (semantic types for legal studies)
 export type LawCardType = "statute_article" | "case_brief" | "practical_case";
 
+// Medicine mode card types (semantic types for medical studies)
+export type MedicineCardType = "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case";
+
 // Union of all card types
-export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType | LawCardType;
+export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType | LawCardType | MedicineCardType;
 
 export interface CardTypeInfo {
   id: CardType;
@@ -168,6 +171,54 @@ export const LAW_CARD_TYPES: CardTypeInfo[] = [
 ];
 
 /**
+ * Medicine mode card types (semantic types for medical studies):
+ * - med_definition: Term → Definition + key elements
+ * - med_presentation: Disease → Clinical presentation (symptoms/signs)
+ * - med_diagnosis: Clinical presentation → Possible diagnoses
+ * - med_treatment: Disease → Treatment and management
+ * - med_clinical_case: Clinical case → Diagnosis + explanation
+ *
+ * These use the extra JSONB field for structured data.
+ */
+export const MEDICINE_CARD_TYPES: CardTypeInfo[] = [
+  {
+    id: "med_definition",
+    label: "Medical Definition",
+    description: "Term → Definition + key elements",
+    labelKey: "cardTypes.medDefinition",
+    descKey: "cardTypes.medDefinitionDesc",
+  },
+  {
+    id: "med_presentation",
+    label: "Clinical Presentation",
+    description: "Disease → Symptoms & signs",
+    labelKey: "cardTypes.medPresentation",
+    descKey: "cardTypes.medPresentationDesc",
+  },
+  {
+    id: "med_diagnosis",
+    label: "Diagnostic Reasoning",
+    description: "Presentation → Possible diagnoses",
+    labelKey: "cardTypes.medDiagnosis",
+    descKey: "cardTypes.medDiagnosisDesc",
+  },
+  {
+    id: "med_treatment",
+    label: "Treatment",
+    description: "Disease → Treatment & management",
+    labelKey: "cardTypes.medTreatment",
+    descKey: "cardTypes.medTreatmentDesc",
+  },
+  {
+    id: "med_clinical_case",
+    label: "Clinical Case",
+    description: "Scenario → Diagnosis + explanation",
+    labelKey: "cardTypes.medClinicalCase",
+    descKey: "cardTypes.medClinicalCaseDesc",
+  },
+];
+
+/**
  * Legacy export for backward compatibility
  * @deprecated Use CLASSIC_CARD_TYPES or getCardTypesForMode() instead
  */
@@ -176,7 +227,7 @@ export const CARD_TYPES: CardTypeInfo[] = CLASSIC_CARD_TYPES;
 /**
  * Returns the appropriate card types for a given deck mode
  */
-export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities" | "law"): CardTypeInfo[] {
+export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities" | "law" | "medicine"): CardTypeInfo[] {
   switch (mode) {
     case "math":
       return MATH_CARD_TYPES;
@@ -186,6 +237,8 @@ export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "hu
       return HUMANITIES_CARD_TYPES;
     case "law":
       return LAW_CARD_TYPES;
+    case "medicine":
+      return MEDICINE_CARD_TYPES;
     default:
       return CLASSIC_CARD_TYPES;
   }
@@ -194,7 +247,7 @@ export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "hu
 /**
  * Returns the default card type for a given deck mode
  */
-export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages" | "humanities" | "law"): CardType {
+export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages" | "humanities" | "law" | "medicine"): CardType {
   switch (mode) {
     case "math":
       return "definition";
@@ -204,6 +257,8 @@ export function getDefaultCardTypeForMode(mode: "classic" | "math" | "languages"
       return "philosophy_concept";
     case "law":
       return "statute_article";
+    case "medicine":
+      return "med_definition";
     default:
       return "basic";
   }
@@ -220,11 +275,12 @@ export interface CardWithType {
 
 /** All valid card type values */
 const ALL_CARD_TYPES: CardType[] = [
-  "basic", "reversible", "typed",                        // Classic
-  "definition", "property", "formula",                   // Math
-  "vocabulary", "grammar_rule",                          // Languages
-  "philosophy_concept",                                  // Humanities
-  "statute_article", "case_brief", "practical_case",     // Law
+  "basic", "reversible", "typed",                                              // Classic
+  "definition", "property", "formula",                                         // Math
+  "vocabulary", "grammar_rule",                                                // Languages
+  "philosophy_concept",                                                        // Humanities
+  "statute_article", "case_brief", "practical_case",                          // Law
+  "med_definition", "med_presentation", "med_diagnosis", "med_treatment", "med_clinical_case", // Medicine
 ];
 
 /**
@@ -268,6 +324,19 @@ export function isHumanitiesCardType(type: CardType): type is HumanitiesCardType
  */
 export function isLawCardType(type: CardType): type is LawCardType {
   return type === "statute_article" || type === "case_brief" || type === "practical_case";
+}
+
+/**
+ * Checks if a card type is a medicine-specific type
+ */
+export function isMedicineCardType(type: CardType): type is MedicineCardType {
+  return (
+    type === "med_definition" ||
+    type === "med_presentation" ||
+    type === "med_diagnosis" ||
+    type === "med_treatment" ||
+    type === "med_clinical_case"
+  );
 }
 
 /**

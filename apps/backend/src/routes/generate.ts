@@ -21,7 +21,7 @@ router.post("/cards", async (req: Request, res: Response) => {
     }
 
     // Validate request body
-    const { text, deck_id, language, cardsCount, detailLevel } = req.body;
+    const { text, deck_id, language, cardsCount, detailLevel, mode } = req.body;
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return res.status(400).json({
@@ -111,6 +111,9 @@ router.post("/cards", async (req: Request, res: Response) => {
     }
     if (validatedDetailLevel !== "standard") {
       generationOptions.detailLevel = validatedDetailLevel;
+    }
+    if (mode && typeof mode === "string") {
+      generationOptions.mode = mode;
     }
 
     // Generate cards preview

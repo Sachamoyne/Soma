@@ -353,7 +353,7 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
     }
 
     // Get optional generation parameters from form data
-    const { cardsCount, detailLevel } = req.body;
+    const { cardsCount, detailLevel, mode } = req.body;
 
     // Validate optional cardsCount (3-50)
     let validatedCardsCount: number | undefined;
@@ -513,6 +513,9 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       generationOptions.detailLevel = validatedDetailLevel;
     }
     generationOptions.isPdf = true;
+    if (mode && typeof mode === "string") {
+      generationOptions.mode = mode;
+    }
 
     // Generate cards preview (NO insertion yet)
     console.log("[generate-cards-from-pdf] Generating cards preview from extracted text...", {

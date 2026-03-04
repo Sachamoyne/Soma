@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import type { CardType } from "@/lib/card-types";
 
 export type Deck = Database["public"]["Tables"]["decks"]["Row"];
 export type Card = Database["public"]["Tables"]["cards"]["Row"];
@@ -103,7 +104,7 @@ export async function listDecks(): Promise<Deck[]> {
   return result;
 }
 
-export type DeckMode = "classic" | "math" | "languages" | "humanities" | "law";
+export type DeckMode = "classic" | "math" | "languages" | "humanities" | "law" | "medicine";
 
 /** Vocabulary direction for languages mode */
 export type VocabDirection = "normal" | "reversed" | "both";
@@ -370,7 +371,7 @@ export async function createCard(
   deckId: string,
   front: string,
   back: string,
-  type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" = "basic",
+  type: CardType = "basic",
   supabase: SupabaseClient,
   extra?: Record<string, unknown> | null
 ): Promise<Card> {
@@ -615,7 +616,7 @@ export async function updateCard(
   id: string,
   front: string,
   back: string,
-  type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case"
+  type?: CardType
 ): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
