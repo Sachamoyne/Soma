@@ -1031,13 +1031,21 @@ export async function getAllDeckCounts(deckIds: string[]): Promise<{
     // Due count
     dueCounts[deckId] = deckCards.filter(card => card.due_at <= now).length;
 
-    // Learning counts (new, learning, review) - only due cards
+    // Mutually exclusive card categories (same priority as RPC get_deck_anki_counts):
+    //   new_due      = state='new'                    AND due_at <= now
+    //   learning_due = state IN (learning,relearning)  AND due_at > now   (in pipeline, not yet due)
+    //   review_due   = state != 'new'                 AND due_at <= now   (highest priority)
     const counts = { new: 0, learning: 0, review: 0 };
     for (const card of deckCards) {
-      if (card.due_at <= now) {
-        if (card.state === "new") counts.new++;
-        else if (card.state === "review") counts.review++;
-        else if (card.state === "learning" || card.state === "relearning") counts.learning++;
+      const isDue = card.due_at <= now;
+      if (card.state === "new") {
+        if (isDue) counts.new++;
+      } else if (isDue) {
+        // Due non-new card → À revoir (includes due learning/relearning/review)
+        counts.review++;
+      } else if (card.state === "learning" || card.state === "relearning") {
+        // Learning but not yet due → En cours
+        counts.learning++;
       }
     }
     learningCounts[deckId] = counts;
