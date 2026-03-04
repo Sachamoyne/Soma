@@ -831,7 +831,8 @@ export default function AddCardsPage() {
                       (isPhilosophyConceptType && !front.trim()) ||
                       (isPropertyType && !theoremName.trim()) ||
                       ((isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType) && !front.trim()) ||
-                      (!isPhilosophyConceptType && !isLawStatuteType && !isLawCaseBriefType && !isLawPracticalCaseType && (!front.trim() || !back.trim())) ||
+                      ((isMedDefinitionType || isMedPresentationType || isMedDiagnosisType || isMedTreatmentType || isMedClinicalCaseType) && !front.trim()) ||
+                      (!isPhilosophyConceptType && !isPropertyType && !isLawStatuteType && !isLawCaseBriefType && !isLawPracticalCaseType && !isMedDefinitionType && !isMedPresentationType && !isMedDiagnosisType && !isMedTreatmentType && !isMedClinicalCaseType && (!front.trim() || !back.trim())) ||
                       creating
                     }
                   >
