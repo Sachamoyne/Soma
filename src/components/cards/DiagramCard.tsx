@@ -8,6 +8,11 @@
  * 3. Click "Vérifier" → each input turns green/red + correct answers revealed
  * 4. Rating buttons appear
  *
+ * Layout:
+ * - Root fills the height given by StudyCard (flex-col h-full)
+ * - Top section: scrollable (image + inputs)
+ * - Bottom section: flex-shrink-0 (rating buttons — always visible)
+ *
  * Structured data is stored in card.extra:
  *   { image_url: string, markers: Array<{ id, x, y, answer }> }
  */
@@ -97,59 +102,65 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
   };
 
   return (
-    <>
-      {/* ── Card ─────────────────────────────────────────────────────────── */}
-      <Card className="w-full max-w-[700px] mx-auto shadow-lg border-border/50">
-        <CardContent className="p-5 md:p-7">
+    // Root: fills the height given by StudyCard's diagram wrapper (flex-1 min-h-0)
+    <div className="flex flex-col h-full min-h-0 w-full">
 
-          {/* Title */}
-          {card.front && (
-            <div
-              className="text-xl font-semibold text-center leading-relaxed mb-5"
-              dangerouslySetInnerHTML={{ __html: card.front }}
-            />
-          )}
+      {/* ── Scrollable content ──────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="mx-auto w-full max-w-[700px]">
+          <Card className="w-full shadow-lg border-border/50">
+            <CardContent className="p-5 md:p-7 space-y-5">
 
-          {/* ── Image + markers ──────────────────────────────────────────── */}
-          {extra?.image_url ? (
-            <div className="mx-auto w-full max-w-[640px]">
-              {/* Relative container so markers are positioned against the image */}
-              <div className="relative w-full select-none">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={extra.image_url}
-                  alt="Diagram"
-                  className="w-full h-auto object-contain rounded-lg block"
-                  draggable={false}
+              {/* Title */}
+              {card.front && (
+                <div
+                  className="text-xl font-semibold text-center leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: card.front }}
                 />
+              )}
 
-                {/* Markers */}
-                {markers.map((marker, idx) => (
-                  <div
-                    key={marker.id}
-                    className={cn(
-                      "absolute flex items-center justify-center",
-                      "w-8 h-8 rounded-full text-xs font-bold text-white",
-                      "shadow-md border-2 border-white pointer-events-none transition-colors",
-                      markerBg(marker.id)
-                    )}
-                    style={{
-                      left: `${marker.x * 100}%`,
-                      top: `${marker.y * 100}%`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    {idx + 1}
+              {/* Image + markers */}
+              {extra?.image_url ? (
+                <div className="mx-auto w-full max-w-[640px]">
+                  <div className="relative w-full select-none">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={extra.image_url}
+                      alt="Diagram"
+                      className="w-full h-auto object-contain rounded-lg block"
+                      draggable={false}
+                    />
+                    {markers.map((marker, idx) => (
+                      <div
+                        key={marker.id}
+                        className={cn(
+                          "absolute flex items-center justify-center",
+                          "w-8 h-8 rounded-full text-xs font-bold text-white",
+                          "shadow-md border-2 border-white pointer-events-none transition-colors",
+                          markerBg(marker.id)
+                        )}
+                        style={{
+                          left: `${marker.x * 100}%`,
+                          top: `${marker.y * 100}%`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        {idx + 1}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="text-center text-sm text-muted-foreground py-12">
+                  {t("diagramCard.noImage")}
+                </div>
+              )}
 
-              {/* ── Answer inputs ───────────────────────────────────────── */}
+              {/* Answer inputs */}
               {markers.length > 0 && (
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mx-auto w-full max-w-[640px] flex flex-col gap-3">
                   {markers.map((marker, idx) => (
                     <div key={marker.id} className="flex flex-col gap-1">
-                      {/* Input row */}
                       <div className="flex items-center gap-3">
                         {/* Numbered badge */}
                         <span
@@ -161,7 +172,6 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
                         >
                           {idx + 1}
                         </span>
-
                         {/* Answer field */}
                         <Input
                           value={answers[marker.id] ?? ""}
@@ -185,8 +195,7 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
                           }}
                         />
                       </div>
-
-                      {/* Correct answer — shown below when wrong, indented to align with input */}
+                      {/* Correct answer shown below when wrong, indented to align with input */}
                       {checked && !results[marker.id] && (
                         <p className="pl-11 text-sm font-medium text-green-700 dark:text-green-400">
                           → {marker.answer}
@@ -196,91 +205,90 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
                   ))}
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="text-center text-sm text-muted-foreground py-12">
-              {t("diagramCard.noImage")}
-            </div>
-          )}
 
-        </CardContent>
-      </Card>
-
-      {/* ── Actions ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 w-full max-w-[700px] mx-auto">
-        {!checked ? (
-          <Button
-            onClick={handleCheck}
-            size="lg"
-            className="h-14 text-base"
-            disabled={markers.length === 0}
-          >
-            {t("diagramCard.check")}
-          </Button>
-        ) : (
-          <>
-            {allCorrect && (
-              <p className="text-center text-sm text-green-600 dark:text-green-400 font-medium">
-                {t("diagramCard.allCorrect")}
-              </p>
-            )}
-            <div className="grid grid-cols-2 gap-3 w-full">
-              <Button
-                onClick={() => onRate("again")}
-                size="lg"
-                className={cn(
-                  "transition-all flex flex-col h-auto py-4 bg-red-600/80 hover:bg-red-600 text-white",
-                  ratingFlash === "again" && "scale-105 ring-2 ring-red-500"
-                )}
-              >
-                <span className="font-medium">{t("study.again")}</span>
-                {intervalPreviews && (
-                  <span className="text-xs opacity-70 mt-1">{intervalPreviews.again}</span>
-                )}
-              </Button>
-              <Button
-                onClick={() => onRate("hard")}
-                size="lg"
-                className={cn(
-                  "transition-all flex flex-col h-auto py-4 bg-orange-600/80 hover:bg-orange-600 text-white",
-                  ratingFlash === "hard" && "scale-105 ring-2 ring-orange-500"
-                )}
-              >
-                <span className="font-medium">{t("study.hard")}</span>
-                {intervalPreviews && (
-                  <span className="text-xs opacity-70 mt-1">{intervalPreviews.hard}</span>
-                )}
-              </Button>
-              <Button
-                onClick={() => onRate("good")}
-                size="lg"
-                className={cn(
-                  "transition-all flex flex-col h-auto py-4 bg-yellow-600/80 hover:bg-yellow-600 text-white",
-                  ratingFlash === "good" && "scale-105 ring-2 ring-yellow-500"
-                )}
-              >
-                <span className="font-medium">{t("study.good")}</span>
-                {intervalPreviews && (
-                  <span className="text-xs opacity-70 mt-1">{intervalPreviews.good}</span>
-                )}
-              </Button>
-              <Button
-                onClick={() => onRate("easy")}
-                size="lg"
-                className={cn(
-                  "transition-all flex flex-col h-auto py-4 bg-green-600/80 hover:bg-green-600 text-white",
-                  ratingFlash === "easy" && "scale-105 ring-2 ring-green-500"
-                )}
-              >
-                <span className="font-medium">{t("study.easy")}</span>
-                {intervalPreviews && (
-                  <span className="text-xs opacity-70 mt-1">{intervalPreviews.easy}</span>
-                )}
-              </Button>
-            </div>
-          </>
-        )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </>
+
+      {/* ── Rating buttons — always visible, never pushed off-screen ───── */}
+      <div className="flex-shrink-0 px-6 pt-3 pb-4 bg-background border-t border-border/20">
+        <div className="mx-auto w-full max-w-[700px] flex flex-col gap-3">
+          {!checked ? (
+            <Button
+              onClick={handleCheck}
+              size="lg"
+              className="h-14 text-base w-full"
+              disabled={markers.length === 0}
+            >
+              {t("diagramCard.check")}
+            </Button>
+          ) : (
+            <>
+              {allCorrect && (
+                <p className="text-center text-sm text-green-600 dark:text-green-400 font-medium">
+                  {t("diagramCard.allCorrect")}
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <Button
+                  onClick={() => onRate("again")}
+                  size="lg"
+                  className={cn(
+                    "transition-all flex flex-col h-auto py-4 bg-red-600/80 hover:bg-red-600 text-white",
+                    ratingFlash === "again" && "scale-105 ring-2 ring-red-500"
+                  )}
+                >
+                  <span className="font-medium">{t("study.again")}</span>
+                  {intervalPreviews && (
+                    <span className="text-xs opacity-70 mt-1">{intervalPreviews.again}</span>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => onRate("hard")}
+                  size="lg"
+                  className={cn(
+                    "transition-all flex flex-col h-auto py-4 bg-orange-600/80 hover:bg-orange-600 text-white",
+                    ratingFlash === "hard" && "scale-105 ring-2 ring-orange-500"
+                  )}
+                >
+                  <span className="font-medium">{t("study.hard")}</span>
+                  {intervalPreviews && (
+                    <span className="text-xs opacity-70 mt-1">{intervalPreviews.hard}</span>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => onRate("good")}
+                  size="lg"
+                  className={cn(
+                    "transition-all flex flex-col h-auto py-4 bg-yellow-600/80 hover:bg-yellow-600 text-white",
+                    ratingFlash === "good" && "scale-105 ring-2 ring-yellow-500"
+                  )}
+                >
+                  <span className="font-medium">{t("study.good")}</span>
+                  {intervalPreviews && (
+                    <span className="text-xs opacity-70 mt-1">{intervalPreviews.good}</span>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => onRate("easy")}
+                  size="lg"
+                  className={cn(
+                    "transition-all flex flex-col h-auto py-4 bg-green-600/80 hover:bg-green-600 text-white",
+                    ratingFlash === "easy" && "scale-105 ring-2 ring-green-500"
+                  )}
+                >
+                  <span className="font-medium">{t("study.easy")}</span>
+                  {intervalPreviews && (
+                    <span className="text-xs opacity-70 mt-1">{intervalPreviews.easy}</span>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+    </div>
   );
 }

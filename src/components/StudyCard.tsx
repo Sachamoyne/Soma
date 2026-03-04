@@ -413,6 +413,9 @@ export function StudyCard({
     );
   }
 
+  // Computed here so JSX can branch on it without re-computing inside the switch
+  const currentCardType = (currentCard.type as CardTypeEnum) || "basic";
+
   return (
     <>
       <div className="flex h-full w-full flex-col">
@@ -468,101 +471,103 @@ export function StudyCard({
           </div>
         </div>
 
-        {/* Main content: card + rating buttons, vertically centered */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-4 min-h-0">
-          {error && (
-            <div className="w-full max-w-3xl rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-4">
+        {/* Error banner — shown above content regardless of card type */}
+        {error && (
+          <div className="flex-shrink-0 px-6 pb-2">
+            <div className="w-full max-w-3xl mx-auto rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
-          )}
-
-          <div className="mx-auto flex max-w-3xl w-full flex-col items-center space-y-6">
-          {/* Dispatch to appropriate card type component */}
-          {(() => {
-            // Get card type, defaulting to 'basic' for backward compatibility
-            const cardType = (currentCard.type as CardTypeEnum) || "basic";
-
-            switch (cardType) {
-              case "reversible":
-                return (
-                  <ReversibleCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "typed":
-                return (
-                  <TypedCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "philosophy_concept":
-                return (
-                  <PhilosophyConceptCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "statute_article":
-              case "case_brief":
-              case "practical_case":
-                return (
-                  <LawCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "med_definition":
-              case "med_presentation":
-              case "med_diagnosis":
-              case "med_treatment":
-              case "med_clinical_case":
-                return (
-                  <MedicineCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "diagram":
-                return (
-                  <DiagramCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-
-              case "basic":
-              default:
-                return (
-                  <BasicCard
-                    card={currentCard}
-                    onRate={handleRate}
-                    intervalPreviews={intervalPreviews}
-                    ratingFlash={ratingFlash}
-                  />
-                );
-            }
-          })()}
           </div>
-        </div>
+        )}
+
+        {currentCardType === "diagram" ? (
+          // ── Diagram: full-height container, DiagramCard manages scroll + sticky buttons ──
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <DiagramCard
+              card={currentCard}
+              onRate={handleRate}
+              intervalPreviews={intervalPreviews}
+              ratingFlash={ratingFlash}
+            />
+          </div>
+        ) : (
+          // ── All other card types: vertically centered, standard layout ──
+          <div className="flex-1 flex flex-col items-center justify-center px-6 pb-4 min-h-0">
+            <div className="mx-auto flex max-w-3xl w-full flex-col items-center space-y-6">
+            {/* Dispatch to appropriate card type component */}
+            {(() => {
+              switch (currentCardType) {
+                case "reversible":
+                  return (
+                    <ReversibleCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+
+                case "typed":
+                  return (
+                    <TypedCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+
+                case "philosophy_concept":
+                  return (
+                    <PhilosophyConceptCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+
+                case "statute_article":
+                case "case_brief":
+                case "practical_case":
+                  return (
+                    <LawCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+
+                case "med_definition":
+                case "med_presentation":
+                case "med_diagnosis":
+                case "med_treatment":
+                case "med_clinical_case":
+                  return (
+                    <MedicineCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+
+                case "basic":
+                default:
+                  return (
+                    <BasicCard
+                      card={currentCard}
+                      onRate={handleRate}
+                      intervalPreviews={intervalPreviews}
+                      ratingFlash={ratingFlash}
+                    />
+                  );
+              }
+            })()}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit card dialog */}
