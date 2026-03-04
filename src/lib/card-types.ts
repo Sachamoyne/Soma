@@ -23,8 +23,11 @@ export type LawCardType = "statute_article" | "case_brief" | "practical_case";
 // Medicine mode card types (semantic types for medical studies)
 export type MedicineCardType = "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case";
 
+// Diagram card type (cross-mode — available in all deck modes)
+export type DiagramCardType = "diagram";
+
 // Union of all card types
-export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType | LawCardType | MedicineCardType;
+export type CardType = ClassicCardType | MathCardType | LanguagesCardType | HumanitiesCardType | LawCardType | MedicineCardType | DiagramCardType;
 
 export interface CardTypeInfo {
   id: CardType;
@@ -219,29 +222,53 @@ export const MEDICINE_CARD_TYPES: CardTypeInfo[] = [
 ];
 
 /**
+ * Diagram card type (cross-mode):
+ * - diagram: Image with numbered markers that the user must label
+ *
+ * Available in all deck modes. Uses the extra JSONB field for image_url and markers.
+ */
+export const DIAGRAM_CARD_TYPES: CardTypeInfo[] = [
+  {
+    id: "diagram",
+    label: "Diagram",
+    description: "Image with numbered markers to label",
+    labelKey: "cardTypes.diagram",
+    descKey: "cardTypes.diagramDesc",
+  },
+];
+
+/**
  * Legacy export for backward compatibility
  * @deprecated Use CLASSIC_CARD_TYPES or getCardTypesForMode() instead
  */
 export const CARD_TYPES: CardTypeInfo[] = CLASSIC_CARD_TYPES;
 
 /**
- * Returns the appropriate card types for a given deck mode
+ * Returns the appropriate card types for a given deck mode.
+ * Diagram type is always appended as it is cross-mode.
  */
 export function getCardTypesForMode(mode: "classic" | "math" | "languages" | "humanities" | "law" | "medicine"): CardTypeInfo[] {
+  let modeTypes: CardTypeInfo[];
   switch (mode) {
     case "math":
-      return MATH_CARD_TYPES;
+      modeTypes = MATH_CARD_TYPES;
+      break;
     case "languages":
-      return LANGUAGES_CARD_TYPES;
+      modeTypes = LANGUAGES_CARD_TYPES;
+      break;
     case "humanities":
-      return HUMANITIES_CARD_TYPES;
+      modeTypes = HUMANITIES_CARD_TYPES;
+      break;
     case "law":
-      return LAW_CARD_TYPES;
+      modeTypes = LAW_CARD_TYPES;
+      break;
     case "medicine":
-      return MEDICINE_CARD_TYPES;
+      modeTypes = MEDICINE_CARD_TYPES;
+      break;
     default:
-      return CLASSIC_CARD_TYPES;
+      modeTypes = CLASSIC_CARD_TYPES;
   }
+  return [...modeTypes, ...DIAGRAM_CARD_TYPES];
 }
 
 /**
@@ -281,6 +308,7 @@ const ALL_CARD_TYPES: CardType[] = [
   "philosophy_concept",                                                        // Humanities
   "statute_article", "case_brief", "practical_case",                          // Law
   "med_definition", "med_presentation", "med_diagnosis", "med_treatment", "med_clinical_case", // Medicine
+  "diagram",                                                                   // Cross-mode
 ];
 
 /**
@@ -337,6 +365,13 @@ export function isMedicineCardType(type: CardType): type is MedicineCardType {
     type === "med_treatment" ||
     type === "med_clinical_case"
   );
+}
+
+/**
+ * Checks if a card type is the cross-mode diagram type
+ */
+export function isDiagramCardType(type: CardType): type is DiagramCardType {
+  return type === "diagram";
 }
 
 /**

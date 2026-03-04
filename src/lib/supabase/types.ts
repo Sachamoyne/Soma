@@ -48,7 +48,7 @@ export interface Database {
           deck_id: string
           front: string
           back: string
-          type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case"
+          type: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case" | "diagram"
           extra: Json | null
           state: "new" | "learning" | "review" | "relearning"
           due_at: string
@@ -68,7 +68,7 @@ export interface Database {
           deck_id: string
           front: string
           back: string
-          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case"
+          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case" | "diagram"
           extra?: Json | null
           state?: "new" | "learning" | "review" | "relearning"
           due_at?: string
@@ -88,7 +88,7 @@ export interface Database {
           deck_id?: string
           front?: string
           back?: string
-          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case"
+          type?: "basic" | "reversible" | "typed" | "definition" | "property" | "formula" | "vocabulary" | "grammar_rule" | "philosophy_concept" | "statute_article" | "case_brief" | "practical_case" | "med_definition" | "med_presentation" | "med_diagnosis" | "med_treatment" | "med_clinical_case" | "diagram"
           extra?: Json | null
           state?: "new" | "learning" | "review" | "relearning"
           due_at?: string

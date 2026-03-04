@@ -331,7 +331,9 @@
     "medTreatment": "Treatment",
     "medTreatmentDesc": "Disease → Treatment & management",
     "medClinicalCase": "Clinical Case",
-    "medClinicalCaseDesc": "Scenario → Diagnosis + explanation"
+    "medClinicalCaseDesc": "Scenario → Diagnosis + explanation",
+    "diagram": "Diagram",
+    "diagramDesc": "Image with numbered markers to label"
   },
   "propertyCard": {
     "theoremName": "Theorem",
@@ -383,6 +385,22 @@
     "lifestyle": "Lifestyle / supportive care",
     "diagnosis": "Diagnosis",
     "explanation": "Explanation"
+  },
+  "diagramEditor": {
+    "image": "Image",
+    "uploading": "Uploading...",
+    "uploadHint": "Click to upload an image",
+    "replaceImage": "Replace image",
+    "clickToAddMarker": "Click on the image to add a marker",
+    "maxMarkersReached": "Maximum 12 markers reached",
+    "markers": "Markers",
+    "markerAnswerPlaceholder": "Label for this marker..."
+  },
+  "diagramCard": {
+    "noImage": "No image",
+    "answerPlaceholder": "Your answer...",
+    "check": "Check answers",
+    "allCorrect": "All correct!"
   },
   "cardContext": {
     "changeDeck": "Change deck...",
@@ -548,7 +566,9 @@
     "medCaseDiagnosis": "Diagnosis (optional)",
     "medCaseDiagnosisPlaceholder": "E.g., Acute coronary syndrome (STEMI)",
     "medCaseExplanation": "Explanation (optional)",
-    "medCaseExplanationPlaceholder": "Key reasoning elements supporting the diagnosis"
+    "medCaseExplanationPlaceholder": "Key reasoning elements supporting the diagnosis",
+    "diagramTitle": "Title",
+    "diagramTitlePlaceholder": "E.g., Heart anatomy, Cell structure"
   },
   "deckTree": {
     "newSubDeck": "New sub-deck",

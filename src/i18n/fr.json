@@ -331,7 +331,9 @@
     "medTreatment": "Traitement",
     "medTreatmentDesc": "Maladie → Traitement et prise en charge",
     "medClinicalCase": "Cas clinique",
-    "medClinicalCaseDesc": "Scenario → Diagnostic + explication"
+    "medClinicalCaseDesc": "Scenario → Diagnostic + explication",
+    "diagram": "Schema",
+    "diagramDesc": "Image avec marqueurs numerotes a identifier"
   },
   "propertyCard": {
     "theoremName": "Theoreme",
@@ -383,6 +385,22 @@
     "lifestyle": "Hygieno-dietetique / soins de support",
     "diagnosis": "Diagnostic",
     "explanation": "Explication"
+  },
+  "diagramEditor": {
+    "image": "Image",
+    "uploading": "Envoi en cours...",
+    "uploadHint": "Cliquer pour telecharger une image",
+    "replaceImage": "Remplacer l'image",
+    "clickToAddMarker": "Cliquer sur l'image pour ajouter un marqueur",
+    "maxMarkersReached": "Maximum 12 marqueurs atteint",
+    "markers": "Marqueurs",
+    "markerAnswerPlaceholder": "Label pour ce marqueur..."
+  },
+  "diagramCard": {
+    "noImage": "Aucune image",
+    "answerPlaceholder": "Votre reponse...",
+    "check": "Verifier les reponses",
+    "allCorrect": "Tout est correct !"
   },
   "cardContext": {
     "changeDeck": "Changer de paquet...",
@@ -548,7 +566,9 @@
     "medCaseDiagnosis": "Diagnostic (optionnel)",
     "medCaseDiagnosisPlaceholder": "Ex : Syndrome coronarien aigu (STEMI)",
     "medCaseExplanation": "Explication (optionnel)",
-    "medCaseExplanationPlaceholder": "Elements cles du raisonnement soutenant le diagnostic"
+    "medCaseExplanationPlaceholder": "Elements cles du raisonnement soutenant le diagnostic",
+    "diagramTitle": "Titre",
+    "diagramTitlePlaceholder": "Ex : Anatomie du coeur, Structure cellulaire"
   },
   "deckTree": {
     "newSubDeck": "Nouveau sous-paquet",

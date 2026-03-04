@@ -17,6 +17,7 @@ import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks, type
 import { createClient } from "@/lib/supabase/client";
 import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
 import { isLawCardType, isMedicineCardType } from "@/lib/card-types";
+import { DiagramEditor, type DiagramData } from "@/components/DiagramEditor";
 import type { DeckMode } from "@/lib/supabase-db";
 import { ImportDialog } from "@/components/ImportDialog";
 import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
@@ -80,6 +81,8 @@ export default function AddCardsPage() {
   // Medicine mode — med_clinical_case fields
   const [medCaseDiagnosis, setMedCaseDiagnosis] = useState("");
   const [medCaseExplanation, setMedCaseExplanation] = useState("");
+  // Diagram card
+  const [diagramData, setDiagramData] = useState<DiagramData | null>(null);
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -98,6 +101,7 @@ export default function AddCardsPage() {
   const isMedDiagnosisType = cardType === "med_diagnosis";
   const isMedTreatmentType = cardType === "med_treatment";
   const isMedClinicalCaseType = cardType === "med_clinical_case";
+  const isDiagramType = cardType === "diagram";
 
   // Load deck mode on mount
   useEffect(() => {
@@ -132,6 +136,8 @@ export default function AddCardsPage() {
     if (isPhilosophyConceptType || isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType ||
         isMedDefinitionType || isMedPresentationType || isMedDiagnosisType || isMedTreatmentType || isMedClinicalCaseType) {
       if (!front.trim()) return;
+    } else if (isDiagramType) {
+      if (!front.trim() || !diagramData?.image_url || !diagramData?.markers.length) return;
     } else if (!front.trim() || !back.trim()) {
       return;
     }
@@ -143,7 +149,7 @@ export default function AddCardsPage() {
       const normalizedDeckId = String(deckId);
 
       // Build extra field for property cards
-      let extra: Record<string, string> | null = null;
+      let extra: Record<string, unknown> | null = null;
       if (isPropertyType) {
         extra = {
           theoremName: theoremName.trim(),
@@ -217,6 +223,14 @@ export default function AddCardsPage() {
         if (medCaseExplanation.trim()) extra.explanation = medCaseExplanation.trim();
       }
 
+      // Build extra field for diagram card
+      if (isDiagramType && diagramData) {
+        extra = {
+          image_url: diagramData.image_url,
+          markers: diagramData.markers,
+        };
+      }
+
       // For philosophy_concept, build a summary back from the structured fields
       let cardBack = back.trim();
       if (isPhilosophyConceptType) {
@@ -264,6 +278,9 @@ export default function AddCardsPage() {
       if (isMedClinicalCaseType) {
         cardBack = medCaseDiagnosis.trim() || front.trim();
       }
+      if (isDiagramType) {
+        cardBack = front.trim();
+      }
 
       await createCard(normalizedDeckId, front.trim(), cardBack, cardType, supabase, extra);
 
@@ -285,6 +302,7 @@ export default function AddCardsPage() {
       setMedDiagnoses(""); setMedDiagNotes("");
       setMedFirstLine(""); setMedAlternatives(""); setMedLifestyle("");
       setMedCaseDiagnosis(""); setMedCaseExplanation("");
+      setDiagramData(null);
 
       // Show success message
       setSuccessMessage(t("addCards.cardCreated"));
@@ -410,6 +428,10 @@ export default function AddCardsPage() {
                         setLawArticleText(""); setLawConditions(""); setLawPitfalls(""); setLawExample("");
                         setLawFacts(""); setLawProcedure(""); setLawProblem(""); setLawSolution(""); setLawScope("");
                         setLawQualification(""); setLawRules(""); setLawApplication(""); setLawConclusion("");
+                      }
+                      // Clear diagram when switching away
+                      if (value !== "diagram") {
+                        setDiagramData(null);
                       }
                     }}
                   >
@@ -704,6 +726,22 @@ export default function AddCardsPage() {
                       placeholder={t("addCards.medCaseExplanationPlaceholder")}
                     />
                   </>
+                ) : isDiagramType ? (
+                  <>
+                    {/* Diagram title (required) — maps to FRONT */}
+                    <RichCardInput
+                      label={t("addCards.diagramTitle")}
+                      value={front}
+                      onChange={setFront}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("addCards.diagramTitlePlaceholder")}
+                    />
+                    {/* Diagram editor — upload + interactive marker placement */}
+                    <DiagramEditor
+                      value={diagramData}
+                      onChange={setDiagramData}
+                    />
+                  </>
                 ) : isPhilosophyConceptType ? (
                   <>
                     {/* Concept field (required) — maps to FRONT */}
@@ -832,7 +870,8 @@ export default function AddCardsPage() {
                       (isPropertyType && !theoremName.trim()) ||
                       ((isLawStatuteType || isLawCaseBriefType || isLawPracticalCaseType) && !front.trim()) ||
                       ((isMedDefinitionType || isMedPresentationType || isMedDiagnosisType || isMedTreatmentType || isMedClinicalCaseType) && !front.trim()) ||
-                      (!isPhilosophyConceptType && !isPropertyType && !isLawStatuteType && !isLawCaseBriefType && !isLawPracticalCaseType && !isMedDefinitionType && !isMedPresentationType && !isMedDiagnosisType && !isMedTreatmentType && !isMedClinicalCaseType && (!front.trim() || !back.trim())) ||
+                      (isDiagramType && (!front.trim() || !diagramData?.image_url || !diagramData?.markers.length)) ||
+                      (!isPhilosophyConceptType && !isPropertyType && !isLawStatuteType && !isLawCaseBriefType && !isLawPracticalCaseType && !isMedDefinitionType && !isMedPresentationType && !isMedDiagnosisType && !isMedTreatmentType && !isMedClinicalCaseType && !isDiagramType && (!front.trim() || !back.trim())) ||
                       creating
                     }
                   >

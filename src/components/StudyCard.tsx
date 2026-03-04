@@ -32,6 +32,7 @@ import { TypedCard } from "@/components/cards/TypedCard";
 import { PhilosophyConceptCard } from "@/components/cards/PhilosophyConceptCard";
 import { LawCard } from "@/components/cards/LawCard";
 import { MedicineCard } from "@/components/cards/MedicineCard";
+import { DiagramCard } from "@/components/cards/DiagramCard";
 import type { CardType as CardTypeEnum } from "@/lib/card-types";
 
 // Session requeue to mimic Anki learning behavior
@@ -531,6 +532,16 @@ export function StudyCard({
               case "med_clinical_case":
                 return (
                   <MedicineCard
+                    card={currentCard}
+                    onRate={handleRate}
+                    intervalPreviews={intervalPreviews}
+                    ratingFlash={ratingFlash}
+                  />
+                );
+
+              case "diagram":
+                return (
+                  <DiagramCard
                     card={currentCard}
                     onRate={handleRate}
                     intervalPreviews={intervalPreviews}
