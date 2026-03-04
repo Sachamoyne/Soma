@@ -68,7 +68,7 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
     setChecked(true);
   };
 
-  // Keyboard shortcuts (only active after checking)
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -91,104 +91,123 @@ export function DiagramCard({ card, onRate, intervalPreviews, ratingFlash }: Dia
 
   const allCorrect = checked && markers.length > 0 && Object.values(results).every(Boolean);
 
-  const markerColor = (markerId: number) => {
+  const markerBg = (markerId: number) => {
     if (!checked) return "bg-blue-500";
     return results[markerId] ? "bg-green-500" : "bg-red-500";
   };
 
   return (
     <>
-      {/* Card */}
-      <Card className="w-full shadow-lg border-border/50">
-        <CardContent className="p-6 space-y-5">
+      {/* ── Card ─────────────────────────────────────────────────────────── */}
+      <Card className="w-full max-w-[700px] mx-auto shadow-lg border-border/50">
+        <CardContent className="p-5 md:p-7">
+
           {/* Title */}
           {card.front && (
             <div
-              className="text-xl font-semibold text-center leading-relaxed"
+              className="text-xl font-semibold text-center leading-relaxed mb-5"
               dangerouslySetInnerHTML={{ __html: card.front }}
             />
           )}
 
-          {/* Image with numbered markers */}
+          {/* ── Image + markers ──────────────────────────────────────────── */}
           {extra?.image_url ? (
-            <div className="relative w-full select-none">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={extra.image_url}
-                alt="Diagram"
-                className="w-full rounded-md block"
-                draggable={false}
-              />
-              {markers.map((marker, idx) => (
-                <div
-                  key={marker.id}
-                  className={cn(
-                    "absolute flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold text-white shadow-md border-2 border-white pointer-events-none transition-colors",
-                    markerColor(marker.id)
-                  )}
-                  style={{
-                    left: `${marker.x * 100}%`,
-                    top: `${marker.y * 100}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  {idx + 1}
+            <div className="mx-auto w-full max-w-[640px]">
+              {/* Relative container so markers are positioned against the image */}
+              <div className="relative w-full select-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={extra.image_url}
+                  alt="Diagram"
+                  className="w-full h-auto object-contain rounded-lg block"
+                  draggable={false}
+                />
+
+                {/* Markers */}
+                {markers.map((marker, idx) => (
+                  <div
+                    key={marker.id}
+                    className={cn(
+                      "absolute flex items-center justify-center",
+                      "w-8 h-8 rounded-full text-xs font-bold text-white",
+                      "shadow-md border-2 border-white pointer-events-none transition-colors",
+                      markerBg(marker.id)
+                    )}
+                    style={{
+                      left: `${marker.x * 100}%`,
+                      top: `${marker.y * 100}%`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
+                    {idx + 1}
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Answer inputs ───────────────────────────────────────── */}
+              {markers.length > 0 && (
+                <div className="mt-6 flex flex-col gap-3">
+                  {markers.map((marker, idx) => (
+                    <div key={marker.id} className="flex flex-col gap-1">
+                      {/* Input row */}
+                      <div className="flex items-center gap-3">
+                        {/* Numbered badge */}
+                        <span
+                          className={cn(
+                            "flex items-center justify-center shrink-0",
+                            "w-8 h-8 rounded-full text-xs font-bold text-white transition-colors",
+                            markerBg(marker.id)
+                          )}
+                        >
+                          {idx + 1}
+                        </span>
+
+                        {/* Answer field */}
+                        <Input
+                          value={answers[marker.id] ?? ""}
+                          onChange={(e) =>
+                            setAnswers((prev) => ({ ...prev, [marker.id]: e.target.value }))
+                          }
+                          placeholder={t("diagramCard.answerPlaceholder")}
+                          disabled={checked}
+                          className={cn(
+                            "flex-1 h-11 rounded-lg",
+                            checked && results[marker.id] &&
+                              "border-green-500 bg-green-50 dark:bg-green-900/20",
+                            checked && !results[marker.id] &&
+                              "border-red-500 bg-red-50 dark:bg-red-900/20"
+                          )}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !checked) {
+                              e.preventDefault();
+                              handleCheck();
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {/* Correct answer — shown below when wrong, indented to align with input */}
+                      {checked && !results[marker.id] && (
+                        <p className="pl-11 text-sm font-medium text-green-700 dark:text-green-400">
+                          → {marker.answer}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           ) : (
-            <div className="text-center text-sm text-muted-foreground py-8">
+            <div className="text-center text-sm text-muted-foreground py-12">
               {t("diagramCard.noImage")}
             </div>
           )}
 
-          {/* Answer inputs — one per marker */}
-          {markers.length > 0 && (
-            <div className="space-y-2">
-              {markers.map((marker, idx) => (
-                <div key={marker.id} className="flex items-center gap-3">
-                  <span
-                    className={cn(
-                      "flex items-center justify-center w-7 h-7 shrink-0 rounded-full text-xs font-bold text-white transition-colors",
-                      markerColor(marker.id)
-                    )}
-                  >
-                    {idx + 1}
-                  </span>
-                  <Input
-                    value={answers[marker.id] ?? ""}
-                    onChange={(e) =>
-                      setAnswers((prev) => ({ ...prev, [marker.id]: e.target.value }))
-                    }
-                    placeholder={t("diagramCard.answerPlaceholder")}
-                    disabled={checked}
-                    className={cn(
-                      "flex-1",
-                      checked && results[marker.id] && "border-green-500 bg-green-50 dark:bg-green-900/20",
-                      checked && !results[marker.id] && "border-red-500 bg-red-50 dark:bg-red-900/20"
-                    )}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !checked) {
-                        e.preventDefault();
-                        handleCheck();
-                      }
-                    }}
-                  />
-                  {/* Show correct answer when wrong */}
-                  {checked && !results[marker.id] && (
-                    <span className="text-sm text-green-700 dark:text-green-400 shrink-0 font-medium">
-                      {marker.answer}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Actions */}
-      <div className="flex flex-col gap-4 w-full max-w-xl">
+      {/* ── Actions ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 w-full max-w-[700px] mx-auto">
         {!checked ? (
           <Button
             onClick={handleCheck}
