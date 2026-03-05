@@ -47,15 +47,26 @@ export interface SKEntitlementsResult {
 }
 
 // ─── Plugin bridge ────────────────────────────────────────────────────────────
+//
+// registerPlugin() must be called exactly once per plugin name.
+// Calling it multiple times produces "already registered" warnings and can
+// cause Capacitor 8 to return a broken proxy on subsequent calls.
+// The singleton is created lazily on first use.
 
-async function getPlugin() {
+type StoreKitPluginInterface = {
+  loadProducts(opts?: Record<string, never>):        Promise<{ products: SKProduct[] }>;
+  purchase(opts: { productId: string }):             Promise<SKPurchaseResult>;
+  restore(opts?: Record<string, never>):             Promise<SKEntitlementsResult>;
+  currentEntitlements(opts?: Record<string, never>): Promise<SKEntitlementsResult>;
+};
+
+let _plugin: StoreKitPluginInterface | null = null;
+
+async function getPlugin(): Promise<StoreKitPluginInterface> {
+  if (_plugin) return _plugin;
   const { registerPlugin } = await import("@capacitor/core");
-  return registerPlugin<{
-    loadProducts(opts?: Record<string, never>):  Promise<{ products: SKProduct[] }>;
-    purchase(opts: { productId: string }):       Promise<SKPurchaseResult>;
-    restore(opts?: Record<string, never>):       Promise<SKEntitlementsResult>;
-    currentEntitlements(opts?: Record<string, never>): Promise<SKEntitlementsResult>;
-  }>("StoreKitPlugin");
+  _plugin = registerPlugin<StoreKitPluginInterface>("StoreKitPlugin");
+  return _plugin;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
