@@ -194,7 +194,7 @@ function WebBillingSection() {
   );
 }
 
-// ─── iOS billing (RevenueCat via IOSPaywall) ─────────────────────────────────
+// ─── iOS billing (StoreKit 2 via IOSPaywall) ─────────────────────────────────
 
 function IOSBillingSection() {
   const { t } = useTranslation();

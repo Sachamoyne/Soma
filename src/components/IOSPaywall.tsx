@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * IOSPaywall — RevenueCat in-app purchase UI for iOS only.
+ * IOSPaywall — StoreKit 2 in-app purchase UI for iOS only.
  *
  * Never renders on web (returns null if not native iOS).
  *
  * State design — three independent concerns, never a single global machine:
  *   purchasing  : which plan button is mid-purchase ("starter" | "pro" | null)
  *   restoring   : restore button in progress
- *   error       : set ONLY by purchase/restore failures, never by background RC fetch
+ *   error       : set ONLY by purchase/restore failures, never by background fetch
  *
- * Background RC fetch (loadData) is fully silent:
+ * Background product fetch (loadData) is fully silent:
  *   - No spinner shown at mount
- *   - No error/retry shown if offerings are null or RC times out
- *   - Fallback plans are always visible; real plans replace them if RC responds
+ *   - No error/retry shown if StoreKit times out
+ *   - Fallback plans are always visible; real plans replace them if SK responds
  * Spinner next to plan badge appears ONLY during an active purchase or restore.
  */
 
@@ -21,13 +21,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import {
-  RC_PACKAGE_STARTER,
-  RC_PACKAGE_PRO,
-  RC_PRODUCT_STARTER,
-  RC_PRODUCT_PRO,
-  type RCOffering,
-  type RCPlan,
-} from "@/services/revenuecat";
+  SK_PRODUCT_STARTER,
+  SK_PRODUCT_PRO,
+  type SKProduct,
+  type SKPlan,
+} from "@/services/storekit";
 import { isNativeIOS } from "@/lib/native";
 import { useTranslation } from "@/i18n";
 
@@ -39,14 +37,14 @@ import { useTranslation } from "@/i18n";
 const FALLBACK_PLANS = [
   {
     id: "starter" as const,
-    pkgId: RC_PACKAGE_STARTER,
+    productId: SK_PRODUCT_STARTER,
     title: "Soma Starter",
     priceString: "€2.99",
     description: "Access up to 200 AI-generated flashcards per month.",
   },
   {
     id: "pro" as const,
-    pkgId: RC_PACKAGE_PRO,
+    productId: SK_PRODUCT_PRO,
     title: "Soma Pro",
     priceString: "€7.99",
     description: "Unlimited AI-generated flashcards.",
@@ -56,7 +54,7 @@ const FALLBACK_PLANS = [
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface IOSPaywallProps {
-  onSuccess?: (plan: RCPlan) => void;
+  onSuccess?: (plan: SKPlan) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -65,8 +63,8 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   const { t } = useTranslation();
 
   // ── State — three independent axes, never a single machine ─────────────────
-  const [currentPlan, setCurrentPlan] = useState<RCPlan>("free");
-  const [offering, setOffering]       = useState<RCOffering | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<SKPlan>("free");
+  const [products, setProducts]       = useState<SKProduct[] | null>(null);
   const [purchasing, setPurchasing]     = useState<"starter" | "pro" | null>(null);
   const [restoring, setRestoring]       = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -95,7 +93,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // Guard: never render on web
   if (!isNativeIOS()) return null;
 
-  // ── RC background fetch ───────────────────────────────────────────────────
+  // ── StoreKit background fetch ─────────────────────────────────────────────
   //
   // Fully silent: no state changes that affect the visible UI before or after.
   // Plans (fallback or real) are always visible regardless of this fetch.
@@ -108,47 +106,23 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     setError(null);
 
     try {
-      const { getOfferings, checkUserSubscription, getRCInitState, initRevenueCat } = await import(
-        "@/services/revenuecat"
-      );
+      const { loadProducts, checkCurrentPlan } = await import("@/services/storekit");
 
-      // ── Fallback init: run if AppShell's useRevenueCat() was skipped ─────────
-      // useRevenueCat.initAndSync() silently returns when supabase.auth.getUser()
-      // returns null (auth session not ready when AppShell mounts). This block
-      // ensures RC is initialized before the first purchase attempt regardless.
-      const rcState = getRCInitState();
-      if (!rcState.isConfigured && !rcState.isConfiguring) {
-        console.log("[IOSPaywall] RC not configured — fallback init from paywall...");
-        try {
-          const { createClient } = await import("@/lib/supabase/client");
-          const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await initRevenueCat(user.id);
-          } else {
-            console.log("[IOSPaywall] no Supabase user — RC init skipped");
-          }
-        } catch (initErr: any) {
-          console.error("[IOSPaywall] fallback init error:", initErr);
-        }
-      }
-
-      const [rcPlan, offeringData] = await Promise.all([
-        checkUserSubscription(),
-        getOfferings(),
+      const [skPlan, skProducts] = await Promise.all([
+        checkCurrentPlan(),
+        loadProducts(),
       ]);
 
       console.log(
-        "[IOSPaywall] plan:", rcPlan,
-        "| offering:", offeringData?.identifier ?? "none",
-        "| packages:", offeringData?.availablePackages.map((p) => p.identifier) ?? []
+        "[IOSPaywall] plan:", skPlan,
+        "| products:", skProducts.map((p) => `${p.productId} ${p.priceString}`)
       );
 
-      setCurrentPlan(rcPlan);
-      setOffering(offeringData);
+      setCurrentPlan(skPlan);
+      setProducts(skProducts.length > 0 ? skProducts : null);
 
-      if (!offeringData) {
-        console.warn("[RC] Using fallback mock offerings");
+      if (skProducts.length === 0) {
+        console.warn("[SK] No products returned — using fallback prices");
         if (!autoRetriedRef.current) {
           autoRetriedRef.current = true;
           console.warn("[IOSPaywall] scheduling one-time auto-retry in 5 s");
@@ -158,9 +132,9 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         }
       }
 
-      void syncPlan(rcPlan);
+      void syncPlan(skPlan);
     } catch (err: any) {
-      // Silent fail — RC errors during background fetch do not surface to the user.
+      // Silent fail — StoreKit errors during background fetch do not surface to the user.
       // Fallback plans remain visible; the user can tap Retry in the fallback section.
       console.error("[IOSPaywall] loadData error:", err);
     } finally {
@@ -174,7 +148,6 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
   // The rest of the UI is never touched.
 
   async function handlePurchase(productId: string, planId: "starter" | "pro") {
-    // ── Absolute first log — confirms button tap reached JS ──────────────────
     console.log("[IAP BUTTON TAPPED] planId:", planId, "| productId:", productId);
 
     setPurchaseAttempted(true);
@@ -183,29 +156,22 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     setSuccessMsg(null);
 
     try {
-      console.log("[IAP] Importing revenuecat service...");
-      const { purchasePackage } = await import("@/services/revenuecat");
-      console.log("[IAP] revenuecat service imported ✓ Calling purchasePackage...");
+      const { purchaseProduct } = await import("@/services/storekit");
+      const result = await purchaseProduct(productId);
 
-      const newPlan = await purchasePackage(productId);
-
-      console.log("[IAP] Purchase success → plan:", newPlan);
-      void syncPlan(newPlan);
-      setCurrentPlan(newPlan);
-      const label = newPlan === "pro" ? "Pro" : "Starter";
+      console.log("[IAP] Purchase success → plan:", result.plan);
+      void syncPlan(result.plan);
+      setCurrentPlan(result.plan);
+      const label = result.plan === "pro" ? "Pro" : "Starter";
       setSuccessMsg(t("paywall.activatedTemplate", { label }));
-      onSuccess?.(newPlan);
+      onSuccess?.(result.plan);
     } catch (err: any) {
-      // Log EVERYTHING before deciding how to handle the error
-      console.error("[IAP] Purchase threw. code:", err?.code, "| message:", err?.message);
-      console.error("[IAP] underlyingErrorMessage:", err?.underlyingErrorMessage);
+      console.error("[IAP] Purchase threw. message:", err?.message);
       console.error("[IAP] full error JSON:", JSON.stringify(err));
 
       const cancelled =
-        err?.code === "PURCHASE_CANCELLED" ||
-        err?.code === 1 ||
-        String(err?.message ?? "").toLowerCase().includes("cancel") ||
-        String(err?.underlyingErrorMessage ?? "").toLowerCase().includes("cancel");
+        err?.message === "PURCHASE_CANCELLED" ||
+        String(err?.message ?? "").toLowerCase().includes("cancel");
 
       if (cancelled) {
         console.log("[IAP] Purchase cancelled by user");
@@ -226,19 +192,19 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
     console.log("[IOSPaywall] Restoring purchases...");
 
     try {
-      const { restorePurchases } = await import("@/services/revenuecat");
-      const restoredPlan = await restorePurchases();
+      const { restorePurchases } = await import("@/services/storekit");
+      const result = await restorePurchases();
 
-      console.log("[IOSPaywall] Restore complete → plan:", restoredPlan);
-      void syncPlan(restoredPlan);
-      setCurrentPlan(restoredPlan);
+      console.log("[IOSPaywall] Restore complete → plan:", result.plan);
+      void syncPlan(result.plan);
+      setCurrentPlan(result.plan);
 
-      if (restoredPlan === "free") {
+      if (result.plan === "free") {
         setSuccessMsg(t("paywall.noRestoredPurchases"));
       } else {
-        const label = restoredPlan === "pro" ? "Pro" : "Starter";
+        const label = result.plan === "pro" ? "Pro" : "Starter";
         setSuccessMsg(t("paywall.restoredTemplate", { label }));
-        onSuccess?.(restoredPlan);
+        onSuccess?.(result.plan);
       }
     } catch (err) {
       console.error("[IOSPaywall] Restore error:", err);
@@ -258,19 +224,14 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
   const anyActionInProgress = purchasing !== null || restoring;
 
-  // Real RC packages (null if offering not yet loaded or identifier mismatch)
-  const starterPkg = offering?.availablePackages.find(
-    (p) => p.identifier === RC_PACKAGE_STARTER
-  );
-  const proPkg = offering?.availablePackages.find(
-    (p) => p.identifier === RC_PACKAGE_PRO
-  );
+  // Real StoreKit products (null until loadProducts() responds)
+  const starterProduct = products?.find((p) => p.productId === SK_PRODUCT_STARTER) ?? null;
+  const proProduct     = products?.find((p) => p.productId === SK_PRODUCT_PRO) ?? null;
 
-  // Use fallback when RC offering is absent — visible immediately on mount
-  const hasRealOffering =
-    offering !== null && offering.availablePackages.length > 0;
+  // Use fallback when SK products are not yet loaded
+  const hasRealProducts   = products !== null && products.length > 0;
   const showUpgradeSection = currentPlan !== "pro";
-  const usingFallback = showUpgradeSection && !hasRealOffering;
+  const usingFallback     = showUpgradeSection && !hasRealProducts;
 
   const planLabel =
     currentPlan === "pro"
@@ -332,8 +293,8 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
         </div>
       )}
 
-      {/* ── Upgrade section: real RC offering ── */}
-      {showUpgradeSection && hasRealOffering && (
+      {/* ── Upgrade section: real StoreKit products ── */}
+      {showUpgradeSection && hasRealProducts && (
         <div className="space-y-3">
 
           {/* Starter — only for free plan */}
@@ -341,16 +302,16 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
             <div className="rounded-xl border bg-card p-4 space-y-3">
               <div>
                 <p className="font-semibold text-sm leading-tight">
-                  {starterPkg?.product.title ?? "Soma Starter"}
+                  {starterProduct?.title ?? "Soma Starter"}
                 </p>
                 <p className="mt-0.5 text-sm font-semibold">
-                  {starterPkg?.product.priceString ?? FALLBACK_PLANS[0].priceString}
+                  {starterProduct?.priceString ?? FALLBACK_PLANS[0].priceString}
                   <span className="ml-0.5 font-normal text-xs text-muted-foreground">
                     {t("paywall.perMonth")}
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {starterPkg?.product.description ?? t("paywall.starterFallbackDesc")}
+                  {starterProduct?.description ?? t("paywall.starterFallbackDesc")}
                 </p>
               </div>
               <Button
@@ -358,7 +319,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                 variant="outline"
                 className="w-full"
                 disabled={anyActionInProgress}
-                onClick={() => void handlePurchase(RC_PRODUCT_STARTER, "starter")}
+                onClick={() => void handlePurchase(SK_PRODUCT_STARTER, "starter")}
               >
                 {purchasing === "starter" ? (
                   <>
@@ -378,24 +339,24 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               <div className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
                 <p className="font-semibold text-sm leading-tight">
-                  {proPkg?.product.title ?? "Soma Pro"}
+                  {proProduct?.title ?? "Soma Pro"}
                 </p>
               </div>
               <p className="mt-0.5 text-sm font-semibold">
-                {proPkg?.product.priceString ?? FALLBACK_PLANS[1].priceString}
+                {proProduct?.priceString ?? FALLBACK_PLANS[1].priceString}
                 <span className="ml-0.5 font-normal text-xs text-muted-foreground">
                   {t("paywall.perMonth")}
                 </span>
               </p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                {proPkg?.product.description ?? t("paywall.proFallbackDesc")}
+                {proProduct?.description ?? t("paywall.proFallbackDesc")}
               </p>
             </div>
             <Button
               size="sm"
               className="w-full"
               disabled={anyActionInProgress}
-              onClick={() => void handlePurchase(RC_PRODUCT_PRO, "pro")}
+              onClick={() => void handlePurchase(SK_PRODUCT_PRO, "pro")}
             >
               {purchasing === "pro" ? (
                 <>
@@ -511,7 +472,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
                 variant="outline"
                 className="w-full"
                 disabled={anyActionInProgress}
-                onClick={() => void handlePurchase(RC_PRODUCT_STARTER, "starter")}
+                onClick={() => void handlePurchase(SK_PRODUCT_STARTER, "starter")}
               >
                 {t("paywall.chooseStarter")}
               </Button>
@@ -541,7 +502,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
               size="sm"
               className="w-full"
               disabled={anyActionInProgress}
-              onClick={() => void handlePurchase(RC_PRODUCT_PRO, "pro")}
+              onClick={() => void handlePurchase(SK_PRODUCT_PRO, "pro")}
             >
               {currentPlan === "starter"
                 ? t("paywall.upgradeToPro")
@@ -610,7 +571,7 @@ export function IOSPaywall({ onSuccess }: IOSPaywallProps) {
 
 // ─── Supabase sync ────────────────────────────────────────────────────────────
 
-async function syncPlan(plan: RCPlan): Promise<void> {
+async function syncPlan(plan: SKPlan): Promise<void> {
   try {
     const res = await fetch("/api/revenuecat/sync-plan", {
       method: "POST",
