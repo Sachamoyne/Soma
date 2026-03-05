@@ -251,6 +251,23 @@
     "deleteDeck": "Supprimer le paquet",
     "deleteConfirm": "Supprimer ce paquet et toutes ses cartes et sous-paquets ?"
   },
+  "examMode": {
+    "scheduleExam": "Planifier pour un examen",
+    "editExam": "Modifier l'examen",
+    "dialogTitle": "Date d'examen",
+    "dialogDesc": "Soma planifiera vos révisions pour que chaque carte soit vue plusieurs fois avant cette date.",
+    "examDate": "Date de l'examen",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "cancelExam": "Annuler l'examen",
+    "cancelExamConfirm": "Désactiver le mode examen pour ce paquet ?",
+    "preparation": "Préparation à l'examen",
+    "daysRemaining": "Jours restants",
+    "dailyGoal": "Objectif du jour",
+    "readiness": "Préparation",
+    "cards": "cartes",
+    "examPast": "L'examen est passé. Désactivez le mode examen."
+  },
   "deckSettings": {
     "rename": "Renommer le paquet",
     "options": "Options du paquet",

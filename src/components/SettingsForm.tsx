@@ -84,7 +84,7 @@ export function SettingsForm({ settings, globalSettings, onChange, mode }: Setti
   };
 
   // Get the display value for a field - ALWAYS returns a defined value
-  const getDisplayValue = (field: keyof Omit<DeckSettings, "id" | "deckId">) => {
+  const getDisplayValue = (field: keyof Omit<DeckSettings, "id" | "deckId" | "examDate">) => {
     const defaults = {
       newCardsPerDay: 20,
       maxReviewsPerDay: 9999,

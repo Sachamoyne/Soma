@@ -4,9 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAppRouter } from "@/hooks/useAppRouter";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Trash2 } from "lucide-react";
-import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches } from "@/store/decks";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { BookOpen, CalendarDays, Trash2 } from "lucide-react";
+import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches, getExamStats } from "@/store/decks";
+import { getDeckSettings, setExamDate } from "@/store/deck-settings";
 import { useTranslation } from "@/i18n";
+import type { ExamStats } from "@/lib/supabase-db";
 
 export default function DeckOverviewPage() {
   const { t } = useTranslation();
@@ -21,42 +31,42 @@ export default function DeckOverviewPage() {
   }>({ new: 0, learning: 0, review: 0 });
   const [totalCards, setTotalCards] = useState(0);
 
-  useEffect(() => {
-    async function loadCounts() {
-      try {
-        const normalizedDeckId = String(deckId);
-        const { due, total } = await getAnkiCountsForDecks([normalizedDeckId]);
-        const counts = due[normalizedDeckId] || { new: 0, learning: 0, review: 0 };
-        setCardCounts(counts);
-        setTotalCards(total[normalizedDeckId] || 0);
-      } catch (error) {
-        console.error("Error loading card counts:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // Exam mode state
+  const [examStats, setExamStats] = useState<ExamStats | null>(null);
+  const [currentExamDate, setCurrentExamDate] = useState<string | null>(null);
+  const [examDialogOpen, setExamDialogOpen] = useState(false);
+  const [examDateInput, setExamDateInput] = useState("");
+  const [savingExam, setSavingExam] = useState(false);
 
-    loadCounts();
+  async function loadData() {
+    try {
+      const normalizedDeckId = String(deckId);
+      const [{ due, total }, deckSettings, stats] = await Promise.all([
+        getAnkiCountsForDecks([normalizedDeckId]),
+        getDeckSettings(normalizedDeckId),
+        getExamStats(normalizedDeckId),
+      ]);
+      const counts = due[normalizedDeckId] || { new: 0, learning: 0, review: 0 };
+      setCardCounts(counts);
+      setTotalCards(total[normalizedDeckId] || 0);
+      setCurrentExamDate(deckSettings.examDate);
+      setExamStats(stats);
+    } catch (error) {
+      console.error("Error loading card counts:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
   }, [deckId]);
 
   useEffect(() => {
     const handleCountsUpdated = () => {
       setLoading(true);
-      // Invalidate cache to get fresh data
       invalidateCardCaches();
-      const normalizedDeckId = String(deckId);
-      getAnkiCountsForDecks([normalizedDeckId])
-        .then(({ due, total }) => {
-          const counts = due[normalizedDeckId] || { new: 0, learning: 0, review: 0 };
-          setCardCounts(counts);
-          setTotalCards(total[normalizedDeckId] || 0);
-        })
-        .catch((error) => {
-          console.error("Error loading card counts:", error);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      loadData();
     };
     window.addEventListener("soma-counts-updated", handleCountsUpdated);
     return () => {
@@ -80,7 +90,46 @@ export default function DeckOverviewPage() {
     router.push(`/study/${String(deckId)}`);
   };
 
+  const handleOpenExamDialog = () => {
+    setExamDateInput(currentExamDate || "");
+    setExamDialogOpen(true);
+  };
+
+  const handleSaveExam = async () => {
+    if (!examDateInput) return;
+    setSavingExam(true);
+    try {
+      await setExamDate(String(deckId), examDateInput);
+      setExamDialogOpen(false);
+      setCurrentExamDate(examDateInput);
+      // Reload stats
+      const stats = await getExamStats(String(deckId));
+      setExamStats(stats);
+    } catch (error) {
+      console.error("Error saving exam date:", error);
+    } finally {
+      setSavingExam(false);
+    }
+  };
+
+  const handleCancelExam = async () => {
+    if (!confirm(t("examMode.cancelExamConfirm"))) return;
+    try {
+      await setExamDate(String(deckId), null);
+      setCurrentExamDate(null);
+      setExamStats(null);
+    } catch (error) {
+      console.error("Error cancelling exam:", error);
+    }
+  };
+
   const hasDueCards = (cardCounts.new + cardCounts.learning + cardCounts.review) > 0;
+  const examIsActive = !!currentExamDate && !!examStats;
+
+  // Minimum date for exam picker = tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split("T")[0];
 
   if (loading) {
     return (
@@ -92,6 +141,7 @@ export default function DeckOverviewPage() {
 
   return (
     <div className="space-y-6 md:space-y-12">
+      {/* Card counts */}
       <div className="flex justify-center">
         <div className="grid grid-cols-3 gap-6 md:gap-16 py-4 md:py-8">
           <div className="text-center">
@@ -123,6 +173,7 @@ export default function DeckOverviewPage() {
         </div>
       </div>
 
+      {/* Study button */}
       <div className="flex justify-center">
         {hasDueCards ? (
           <Button
@@ -154,6 +205,75 @@ export default function DeckOverviewPage() {
         )}
       </div>
 
+      {/* Exam mode dashboard */}
+      {examIsActive && examStats && (
+        <div className="border rounded-xl p-5 md:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              <CalendarDays className="h-4 w-4" />
+              {t("examMode.preparation")}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenExamDialog}
+              className="text-xs text-muted-foreground"
+            >
+              {t("examMode.editExam")}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-3xl font-bold">{examStats.daysRemaining}</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("examMode.daysRemaining")}</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">{examStats.dailyTarget}</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("examMode.dailyGoal")}</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">{examStats.readinessScore}%</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("examMode.readiness")}</div>
+            </div>
+          </div>
+
+          <div className="w-full bg-muted rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all"
+              style={{ width: `${examStats.readinessScore}%` }}
+            />
+          </div>
+
+          <div className="flex justify-center pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelExam}
+              className="text-xs text-muted-foreground hover:text-destructive"
+            >
+              {t("examMode.cancelExam")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule exam button (when no exam active) */}
+      {!examIsActive && totalCards > 0 && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenExamDialog}
+            className="text-muted-foreground gap-2"
+          >
+            <CalendarDays className="h-4 w-4" />
+            {t("examMode.scheduleExam")}
+          </Button>
+        </div>
+      )}
+
+      {/* Delete deck */}
       <div className="pt-6 md:pt-12 border-t flex justify-center">
         <Button
           variant="ghost"
@@ -165,6 +285,45 @@ export default function DeckOverviewPage() {
           {t("deckOverview.deleteDeck")}
         </Button>
       </div>
+
+      {/* Exam date picker dialog */}
+      <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("examMode.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("examMode.dialogDesc")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <label className="block text-sm font-medium mb-2">
+              {t("examMode.examDate")}
+            </label>
+            <input
+              type="date"
+              value={examDateInput}
+              min={minDate}
+              onChange={(e) => setExamDateInput(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setExamDialogOpen(false)}
+              disabled={savingExam}
+            >
+              {t("examMode.cancel")}
+            </Button>
+            <Button
+              onClick={handleSaveExam}
+              disabled={!examDateInput || savingExam}
+            >
+              {t("examMode.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

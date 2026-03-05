@@ -752,8 +752,11 @@ export async function getDueCards(
   // ✅ CRITICAL FIX: Get EFFECTIVE settings for this deck
   // This resolves: deck overrides → global settings (if null)
   // Import is at the bottom to avoid circular dependency
-  const { getEffectiveDeckSettings } = await import("../store/deck-settings");
-  const settings = await getEffectiveDeckSettings(deckId);
+  const { getEffectiveDeckSettings, getDeckSettings } = await import("../store/deck-settings");
+  const [settings, deckSpecificSettings] = await Promise.all([
+    getEffectiveDeckSettings(deckId),
+    getDeckSettings(deckId),
+  ]);
 
   console.log("🎯 getDueCards - Using Effective Settings:", {
     deckId,
@@ -853,11 +856,11 @@ export async function getDueCards(
     newCards = newCardsData || [];
   }
 
+  // Build base card list (normal SR order)
+  let baseCards: Card[];
   if (settings.reviewOrder === "newFirst") {
-    return [...learning, ...newCards, ...reviews];
-  }
-
-  if (settings.reviewOrder === "mixed") {
+    baseCards = [...learning, ...newCards, ...reviews];
+  } else if (settings.reviewOrder === "mixed") {
     const mixed: Card[] = [];
     let reviewIndex = 0;
     let newIndex = 0;
@@ -871,11 +874,190 @@ export async function getDueCards(
         reviewIndex += 1;
       }
     }
-    return [...learning, ...mixed];
+    baseCards = [...learning, ...mixed];
+  } else {
+    // Default: reviews before new
+    baseCards = [...learning, ...reviews, ...newCards];
   }
 
-  // Default: reviews before new
-  return [...learning, ...reviews, ...newCards];
+  // ── Exam mode pull-forward ──────────────────────────────────────────────
+  // If an exam date is set for this deck, surface cards that are not yet
+  // due by SM-2 but still need more expositions before the exam.
+  const examDateStr = deckSpecificSettings.examDate;
+  if (examDateStr) {
+    const {
+      getDaysRemaining,
+      getMinimumExposures,
+      getDailyTarget,
+      getExamPeriodStart,
+    } = await import("./exam-mode");
+
+    const daysRemaining = getDaysRemaining(examDateStr);
+    if (daysRemaining > 0) {
+      const minExposures = getMinimumExposures(daysRemaining);
+      const periodStart = getExamPeriodStart(daysRemaining);
+
+      // Count total cards in this deck (for daily_target)
+      const { count: totalCards } = await supabase
+        .from("cards")
+        .select("*", { count: "exact", head: true })
+        .in("deck_id", deckIds)
+        .eq("user_id", userId)
+        .eq("suspended", false);
+
+      // Count reviews per card in the exam period
+      const { data: examReviews } = await supabase
+        .from("reviews")
+        .select("card_id")
+        .in("deck_id", deckIds)
+        .eq("user_id", userId)
+        .gte("reviewed_at", periodStart.toISOString());
+
+      const exposureMap = new Map<string, number>();
+      for (const r of examReviews || []) {
+        exposureMap.set(r.card_id, (exposureMap.get(r.card_id) || 0) + 1);
+      }
+
+      const reviewsDoneInPeriod = (examReviews || []).length;
+      const dailyTarget = getDailyTarget(
+        totalCards || 0,
+        minExposures,
+        reviewsDoneInPeriod,
+        daysRemaining
+      );
+
+      const currentCount = baseCards.length;
+      const pullForwardNeeded = dailyTarget - currentCount;
+
+      if (pullForwardNeeded > 0) {
+        // Find cards not yet due that still need more exposures
+        const baseCardIds = new Set(baseCards.map((c) => c.id));
+        const { data: candidates } = await supabase
+          .from("cards")
+          .select("*")
+          .in("deck_id", deckIds)
+          .eq("user_id", userId)
+          .eq("suspended", false)
+          .in("state", ["review", "new", "learning", "relearning"])
+          .gt("due_at", now)
+          .order("last_reviewed_at", { ascending: true, nullsFirst: true })
+          .limit(pullForwardNeeded * 3); // overfetch to allow filtering
+
+        const pullForward = (candidates || [])
+          .filter(
+            (c) =>
+              !baseCardIds.has(c.id) &&
+              (exposureMap.get(c.id) || 0) < minExposures
+          )
+          .slice(0, pullForwardNeeded);
+
+        if (pullForward.length > 0) {
+          console.log(
+            `📅 Exam mode pull-forward: adding ${pullForward.length} cards (target=${dailyTarget}, have=${currentCount})`
+          );
+          return [...baseCards, ...pullForward];
+        }
+      }
+    }
+  }
+
+  return baseCards;
+}
+
+export type ExamStats = {
+  examDate: string;
+  daysRemaining: number;
+  minimumExposures: number;
+  dailyTarget: number;
+  deckSize: number;
+  reviewsDoneInPeriod: number;
+  readinessScore: number;
+};
+
+/**
+ * Compute exam preparation statistics for a deck.
+ * Returns null if no exam date is set for this deck.
+ */
+export async function getExamStats(deckId: string): Promise<ExamStats | null> {
+  const { getDeckSettings } = await import("../store/deck-settings");
+  const deckSpecificSettings = await getDeckSettings(deckId);
+  const examDateStr = deckSpecificSettings.examDate;
+  if (!examDateStr) return null;
+
+  const {
+    getDaysRemaining,
+    getMinimumExposures,
+    getDailyTarget,
+    getExamPeriodStart,
+    getReadinessScore,
+  } = await import("./exam-mode");
+
+  const daysRemaining = getDaysRemaining(examDateStr);
+  if (daysRemaining <= 0) return null;
+
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+  const deckIds = await getDeckAndAllChildren(deckId);
+  const minExposures = getMinimumExposures(daysRemaining);
+  const periodStart = getExamPeriodStart(daysRemaining);
+
+  // Total cards in deck
+  const { count: totalCards } = await supabase
+    .from("cards")
+    .select("*", { count: "exact", head: true })
+    .in("deck_id", deckIds)
+    .eq("user_id", userId)
+    .eq("suspended", false);
+
+  const deckSize = totalCards || 0;
+
+  // Reviews in exam period per card
+  const { data: examReviews } = await supabase
+    .from("reviews")
+    .select("card_id")
+    .in("deck_id", deckIds)
+    .eq("user_id", userId)
+    .gte("reviewed_at", periodStart.toISOString());
+
+  const exposureMap = new Map<string, number>();
+  for (const r of examReviews || []) {
+    exposureMap.set(r.card_id, (exposureMap.get(r.card_id) || 0) + 1);
+  }
+
+  // All card IDs in deck (for readiness)
+  const { data: allCards } = await supabase
+    .from("cards")
+    .select("id")
+    .in("deck_id", deckIds)
+    .eq("user_id", userId)
+    .eq("suspended", false);
+
+  const exposuresPerCard = (allCards || []).map(
+    (c) => exposureMap.get(c.id) || 0
+  );
+
+  const reviewsDoneInPeriod = (examReviews || []).length;
+  const dailyTarget = getDailyTarget(
+    deckSize,
+    minExposures,
+    reviewsDoneInPeriod,
+    daysRemaining
+  );
+  const readinessScore = getReadinessScore(
+    deckSize,
+    exposuresPerCard,
+    minExposures
+  );
+
+  return {
+    examDate: examDateStr,
+    daysRemaining,
+    minimumExposures: minExposures,
+    dailyTarget,
+    deckSize,
+    reviewsDoneInPeriod,
+    readinessScore,
+  };
 }
 
 export async function getDueCount(deckId: string): Promise<number> {
@@ -1159,6 +1341,64 @@ export async function reviewCard(
     new_reps: result.reps,
     learning_step_index: result.learning_step_index,
   });
+
+  // ── Exam mode: cap due_at before exam if card still needs exposures ──────
+  try {
+    const { getDeckSettings } = await import("../store/deck-settings");
+    const deckSpecificSettings = await getDeckSettings(card.deck_id);
+    const examDateStr = deckSpecificSettings.examDate;
+
+    if (examDateStr) {
+      const {
+        getDaysRemaining,
+        getMinimumExposures,
+        getExamPeriodStart,
+        computeCapDueDate,
+      } = await import("./exam-mode");
+
+      const daysRemaining = getDaysRemaining(examDateStr);
+      if (daysRemaining > 0) {
+        const examDate = new Date(examDateStr + "T00:00:00");
+        const minExposures = getMinimumExposures(daysRemaining);
+        const periodStart = getExamPeriodStart(daysRemaining);
+
+        // Count this card's exposures in the exam period
+        const { count: exposuresInPeriod } = await supabase
+          .from("reviews")
+          .select("*", { count: "exact", head: true })
+          .eq("card_id", cardId)
+          .eq("user_id", userId)
+          .gte("reviewed_at", periodStart.toISOString());
+
+        // +1 because the current review (being saved) isn't in DB yet
+        const totalExposures = (exposuresInPeriod || 0) + 1;
+
+        const cappedDueAt = computeCapDueDate(
+          examDate,
+          totalExposures,
+          minExposures,
+          result.due_at,
+          now
+        );
+
+        if (cappedDueAt) {
+          console.log(
+            `📅 Exam mode: capping due_at from ${result.due_at.toISOString()} to ${cappedDueAt.toISOString()} (exposures=${totalExposures}/${minExposures})`
+          );
+          result.due_at = cappedDueAt;
+          // Recompute interval_days to match capped due_at
+          const cappedIntervalMs = cappedDueAt.getTime() - now.getTime();
+          result.interval_days = Math.max(
+            1,
+            Math.round(cappedIntervalMs / (1000 * 60 * 60 * 24))
+          );
+        }
+      }
+    }
+  } catch (examErr) {
+    // Never let exam mode logic crash a normal review
+    console.warn("⚠️ Exam mode cap failed (non-critical):", examErr);
+  }
 
   // Update card
   // Convert ease to fixed decimal (2 decimal places) to match DECIMAL(3,2) in DB

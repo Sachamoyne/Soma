@@ -18,6 +18,7 @@ export type DeckSettings = {
   newCardsPerDay: number | null;
   maxReviewsPerDay: number | null;
   reviewOrder: "mixed" | "oldFirst" | "newFirst" | null;
+  examDate: string | null;
 };
 
 // Database row structure (snake_case)
@@ -28,6 +29,7 @@ type DeckSettingsRow = {
   new_cards_per_day: number | null;
   max_reviews_per_day: number | null;
   review_order: string | null;
+  exam_date: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +42,7 @@ function fromDatabaseRow(row: DeckSettingsRow): DeckSettings {
     newCardsPerDay: row.new_cards_per_day,
     maxReviewsPerDay: row.max_reviews_per_day,
     reviewOrder: row.review_order as "mixed" | "oldFirst" | "newFirst" | null,
+    examDate: row.exam_date ?? null,
   };
 }
 
@@ -49,6 +52,7 @@ function toDatabaseRow(settings: DeckSettings): Partial<DeckSettingsRow> {
     new_cards_per_day: settings.newCardsPerDay ?? null,
     max_reviews_per_day: settings.maxReviewsPerDay ?? null,
     review_order: settings.reviewOrder ?? null,
+    exam_date: settings.examDate ?? null,
   };
 }
 
@@ -94,6 +98,7 @@ export async function getDeckSettings(deckId: string): Promise<DeckSettings> {
       newCardsPerDay: null,
       maxReviewsPerDay: null,
       reviewOrder: null,
+      examDate: null,
     };
   }
 
@@ -172,6 +177,39 @@ export async function updateDeckSettings(deckId: string, settings: DeckSettings)
     
     return fromDatabaseRow(data as DeckSettingsRow);
   }
+}
+
+/**
+ * Set or clear the exam date for a deck.
+ * Pass null to deactivate exam mode.
+ */
+export async function setExamDate(deckId: string, examDate: string | null): Promise<void> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+
+  const { data: existing } = await supabase
+    .from("deck_settings")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("deck_id", deckId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("deck_settings")
+      .update({ exam_date: examDate })
+      .eq("id", existing.id)
+      .eq("user_id", userId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("deck_settings")
+      .insert({ user_id: userId, deck_id: deckId, exam_date: examDate });
+    if (error) throw error;
+  }
+
+  invalidateCardCaches();
+  dispatchCountsUpdated();
 }
 
 /**

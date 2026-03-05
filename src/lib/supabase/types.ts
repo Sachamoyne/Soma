@@ -284,6 +284,7 @@ export interface Database {
           new_cards_per_day: number | null
           max_reviews_per_day: number | null
           review_order: "mixed" | "oldFirst" | "newFirst" | null
+          exam_date: string | null
           created_at: string
           updated_at: string
         }
@@ -294,6 +295,7 @@ export interface Database {
           new_cards_per_day?: number | null
           max_reviews_per_day?: number | null
           review_order?: "mixed" | "oldFirst" | "newFirst" | null
+          exam_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -304,6 +306,7 @@ export interface Database {
           new_cards_per_day?: number | null
           max_reviews_per_day?: number | null
           review_order?: "mixed" | "oldFirst" | "newFirst" | null
+          exam_date?: string | null
           created_at?: string
           updated_at?: string
         }

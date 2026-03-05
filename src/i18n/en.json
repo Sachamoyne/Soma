@@ -251,6 +251,23 @@
     "deleteDeck": "Delete Deck",
     "deleteConfirm": "Delete this deck and all its cards and sub-decks?"
   },
+  "examMode": {
+    "scheduleExam": "Schedule for exam",
+    "editExam": "Edit exam",
+    "dialogTitle": "Exam date",
+    "dialogDesc": "Soma will schedule your reviews so every card is seen multiple times before this date.",
+    "examDate": "Exam date",
+    "save": "Save",
+    "cancel": "Cancel",
+    "cancelExam": "Cancel exam",
+    "cancelExamConfirm": "Disable exam mode for this deck?",
+    "preparation": "Exam preparation",
+    "daysRemaining": "Days remaining",
+    "dailyGoal": "Today's goal",
+    "readiness": "Readiness",
+    "cards": "cards",
+    "examPast": "The exam date has passed. Disable exam mode."
+  },
   "deckSettings": {
     "rename": "Rename deck",
     "options": "Deck options",

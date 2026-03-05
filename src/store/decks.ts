@@ -25,6 +25,7 @@ export {
   getDeckCardCounts,
   getAllDeckCounts,
   getAnkiCountsForDecks,
+  getExamStats,
   invalidateDeckCaches,
   invalidateCardCaches,
   reviewCard,
@@ -51,4 +52,5 @@ export {
   type VocabDirection,
   type LanguagesConfig,
   type DeckConfig,
+  type ExamStats,
 } from "@/lib/supabase-db";
