@@ -9,6 +9,7 @@
  *   com.soma.edu.pro.monthly.v3      → Pro plan
  */
 
+import { Capacitor } from "@capacitor/core";
 import { isNativeIOS } from "@/lib/native";
 
 // ─── Product IDs ──────────────────────────────────────────────────────────────
@@ -65,8 +66,12 @@ let _readyPromise: Promise<void> | null = null;
 
 async function getPlugin(): Promise<StoreKitPluginInterface> {
   if (_plugin) return _plugin;
-  const { registerPlugin } = await import("@capacitor/core");
-  _plugin = registerPlugin<StoreKitPluginInterface>("StoreKitPlugin");
+  const plugins = (Capacitor as any).Plugins as Record<string, unknown> | undefined;
+  const native = plugins?.StoreKitPlugin as StoreKitPluginInterface | undefined;
+  if (!native) {
+    throw new Error("[SK] Native StoreKitPlugin not available on this platform.");
+  }
+  _plugin = native;
   return _plugin;
 }
 

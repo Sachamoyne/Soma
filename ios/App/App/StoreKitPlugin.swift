@@ -53,7 +53,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // ── ping ─────────────────────────────────────────────────────────────────
     // Diagnostics: confirms JS→Capacitor→Swift roundtrip.
-    @objc func ping(_ call: CAPPluginCall) {
+    @objc public func ping(_ call: CAPPluginCall) {
         print("[StoreKit] ping called")
         call.resolve([
             "ok": true,
@@ -63,7 +63,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // ── loadProducts ──────────────────────────────────────────────────────────
-    @objc func loadProducts(_ call: CAPPluginCall) {
+    @objc public func loadProducts(_ call: CAPPluginCall) {
         print("[StoreKit] loadProducts called — IDs: \(PRODUCT_IDS.sorted())")
         Task {
             do {
@@ -99,7 +99,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     // product.purchase() is @MainActor — it presents native system UI and must
     // run on the main thread. Task { @MainActor in } guarantees this without
     // putting @MainActor on the whole class (which can break ObjC bridge init).
-    @objc func purchase(_ call: CAPPluginCall) {
+    @objc public func purchase(_ call: CAPPluginCall) {
         // This log is OUTSIDE the Task — appears immediately when the method is called.
         // If you do NOT see this line, the native plugin method is not being invoked.
         guard let productId = call.getString("productId") else {
@@ -180,7 +180,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // ── restore ───────────────────────────────────────────────────────────────
-    @objc func restore(_ call: CAPPluginCall) {
+    @objc public func restore(_ call: CAPPluginCall) {
         print("[StoreKit] restore called")
         Task {
             do {
@@ -202,7 +202,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // ── currentEntitlements ───────────────────────────────────────────────────
-    @objc func currentEntitlements(_ call: CAPPluginCall) {
+    @objc public func currentEntitlements(_ call: CAPPluginCall) {
         print("[StoreKit] currentEntitlements called")
         Task {
             do {
