@@ -31,7 +31,6 @@ private func planForProduct(_ productId: String) -> Plan {
 //     so all async work runs on the main actor without deadlocking
 
 @objc(StoreKitPlugin)
-@MainActor
 public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "StoreKitPlugin"
     public let jsName = "StoreKitPlugin"
@@ -40,11 +39,28 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "purchase",            returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore",             returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "currentEntitlements", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ping",                returnType: CAPPluginReturnPromise),
     ]
 
     // Product cache — populated by loadProducts(), reused by purchase()
     // to avoid a second Product.products(for:) fetch at tap time.
     private var cachedProducts: [String: Product] = [:]
+
+    // Called by Capacitor when the plugin is instantiated/loaded.
+    override public func load() {
+        print("[StoreKit] plugin loaded ✓ (identifier: \(identifier), jsName: \(jsName))")
+    }
+
+    // ── ping ─────────────────────────────────────────────────────────────────
+    // Diagnostics: confirms JS→Capacitor→Swift roundtrip.
+    @objc func ping(_ call: CAPPluginCall) {
+        print("[StoreKit] ping called")
+        call.resolve([
+            "ok": true,
+            "plugin": jsName,
+            "identifier": identifier,
+        ])
+    }
 
     // ── loadProducts ──────────────────────────────────────────────────────────
     @objc func loadProducts(_ call: CAPPluginCall) {
@@ -79,6 +95,10 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // ── purchase ──────────────────────────────────────────────────────────────
+    //
+    // product.purchase() is @MainActor — it presents native system UI and must
+    // run on the main thread. Task { @MainActor in } guarantees this without
+    // putting @MainActor on the whole class (which can break ObjC bridge init).
     @objc func purchase(_ call: CAPPluginCall) {
         // This log is OUTSIDE the Task — appears immediately when the method is called.
         // If you do NOT see this line, the native plugin method is not being invoked.
@@ -89,7 +109,7 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         print("[StoreKit] ── purchase() called — productId: \(productId)")
 
-        Task {
+        Task { @MainActor in
             do {
                 // ── Resolve product (cache first, then fetch) ─────────────────
                 let product: Product

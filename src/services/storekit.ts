@@ -61,12 +61,42 @@ type StoreKitPluginInterface = {
 };
 
 let _plugin: StoreKitPluginInterface | null = null;
+let _readyPromise: Promise<void> | null = null;
 
 async function getPlugin(): Promise<StoreKitPluginInterface> {
   if (_plugin) return _plugin;
   const { registerPlugin } = await import("@capacitor/core");
   _plugin = registerPlugin<StoreKitPluginInterface>("StoreKitPlugin");
   return _plugin;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`[SK_TIMEOUT] ${label} after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  }) as Promise<T>;
+}
+
+async function ensureNativeReady(): Promise<void> {
+  if (!isNativeIOS()) return;
+  if (_readyPromise) return _readyPromise;
+
+  _readyPromise = (async () => {
+    const plugin = await getPlugin();
+    // Optional diagnostic (implemented natively). If missing, we still proceed.
+    const maybePing = (plugin as any)?.ping as undefined | ((opts?: Record<string, never>) => Promise<any>);
+    if (typeof maybePing === "function") {
+      const res = await withTimeout(maybePing({}), 3000, "ping()");
+      console.log("[SK] ping →", res);
+    } else {
+      console.warn("[SK] ping() not available on plugin proxy");
+    }
+  })();
+
+  return _readyPromise;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -78,8 +108,9 @@ async function getPlugin(): Promise<StoreKitPluginInterface> {
 export async function loadProducts(): Promise<SKProduct[]> {
   if (!isNativeIOS()) return [];
   try {
+    await ensureNativeReady();
     const plugin = await getPlugin();
-    const { products } = await plugin.loadProducts();
+    const { products } = await withTimeout(plugin.loadProducts(), 10_000, "loadProducts()");
     console.log("[SK] loadProducts →", products.map((p) => `${p.productId} ${p.priceString}`));
     return products;
   } catch (err) {
@@ -96,8 +127,9 @@ export async function loadProducts(): Promise<SKProduct[]> {
 export async function purchaseProduct(productId: string): Promise<SKPurchaseResult> {
   if (!isNativeIOS()) throw new Error("[SK] purchaseProduct is only available on iOS.");
   console.log("[SK] purchaseProduct →", productId);
+  await ensureNativeReady();
   const plugin = await getPlugin();
-  const result = await plugin.purchase({ productId });
+  const result = await withTimeout(plugin.purchase({ productId }), 120_000, "purchase()");
   console.log("[SK] purchase success →", result.plan, "txId:", result.transactionId);
   return result;
 }
@@ -110,8 +142,9 @@ export async function purchaseProduct(productId: string): Promise<SKPurchaseResu
 export async function restorePurchases(): Promise<SKEntitlementsResult> {
   if (!isNativeIOS()) throw new Error("[SK] restorePurchases is only available on iOS.");
   console.log("[SK] restorePurchases...");
+  await ensureNativeReady();
   const plugin = await getPlugin();
-  const result = await plugin.restore();
+  const result = await withTimeout(plugin.restore(), 60_000, "restore()");
   console.log("[SK] restore → plan:", result.plan, "txCount:", result.transactions.length);
   return result;
 }
@@ -123,8 +156,9 @@ export async function restorePurchases(): Promise<SKEntitlementsResult> {
 export async function checkCurrentPlan(): Promise<SKPlan> {
   if (!isNativeIOS()) return "free";
   try {
+    await ensureNativeReady();
     const plugin = await getPlugin();
-    const result = await plugin.currentEntitlements();
+    const result = await withTimeout(plugin.currentEntitlements(), 10_000, "currentEntitlements()");
     console.log("[SK] currentEntitlements → plan:", result.plan, "txCount:", result.transactions.length);
     return result.plan;
   } catch (err) {
