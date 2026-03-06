@@ -52,8 +52,8 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "",
-              "displayName" : "",
+              "description" : "Access up to 200 AI-generated flashcards per month.",
+              "displayName" : "Soma Starter",
               "locale" : "en_US"
             }
           ],
@@ -80,8 +80,8 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "",
-              "displayName" : "",
+              "description" : "Unlimited AI-generated flashcards.",
+              "displayName" : "Soma Pro",
               "locale" : "en_US"
             }
           ],
