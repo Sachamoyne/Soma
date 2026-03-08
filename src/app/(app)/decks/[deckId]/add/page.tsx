@@ -339,7 +339,7 @@ export default function AddCardsPage() {
 
   return (
     <>
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto space-y-6">
         {/* Header with title and mode toggle */}
         <div className="space-y-4">
           <div className="flex items-start justify-between min-h-[56px]">

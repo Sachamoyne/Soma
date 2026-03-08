@@ -140,33 +140,33 @@ export default function DeckOverviewPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-12">
+    <div className="space-y-6 md:space-y-12 lg:space-y-16">
       {/* Card counts */}
       <div className="flex justify-center">
-        <div className="grid grid-cols-3 gap-6 md:gap-16 py-4 md:py-8">
+        <div className="grid grid-cols-3 gap-6 md:gap-16 lg:gap-24 py-4 md:py-8 lg:py-12">
           <div className="text-center">
-            <div className="text-4xl md:text-6xl font-bold text-blue-600 dark:text-blue-400 mb-1 md:mb-3">
+            <div className="text-4xl md:text-6xl lg:text-7xl font-bold text-blue-600 dark:text-blue-400 mb-1 md:mb-3 lg:mb-4">
               {cardCounts.new}
             </div>
-            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm lg:text-base font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.new")}
             </div>
           </div>
 
           <div className="text-center">
-            <div className="text-4xl md:text-6xl font-bold text-orange-600 dark:text-orange-400 mb-1 md:mb-3">
+            <div className="text-4xl md:text-6xl lg:text-7xl font-bold text-orange-600 dark:text-orange-400 mb-1 md:mb-3 lg:mb-4">
               {cardCounts.learning}
             </div>
-            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm lg:text-base font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.learning")}
             </div>
           </div>
 
           <div className="text-center">
-            <div className="text-4xl md:text-6xl font-bold text-green-600 dark:text-green-400 mb-1 md:mb-3">
+            <div className="text-4xl md:text-6xl lg:text-7xl font-bold text-green-600 dark:text-green-400 mb-1 md:mb-3 lg:mb-4">
               {cardCounts.review}
             </div>
-            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs md:text-sm lg:text-base font-medium text-muted-foreground uppercase tracking-wider">
               {t("deckOverview.toReview")}
             </div>
           </div>
