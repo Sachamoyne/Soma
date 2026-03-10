@@ -6,8 +6,26 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
       "state" : {
-        "revision" : "13a39179b3df796f3bb2e70c47ccdd92593f34d2",
-        "version" : "8.0.2"
+        "revision" : "0e862e6ff13852a710c8a484180ca4d6a2cc9761",
+        "version" : "8.2.0"
+      }
+    },
+    {
+      "identity" : "purchases-hybrid-common",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RevenueCat/purchases-hybrid-common.git",
+      "state" : {
+        "revision" : "2900e6009b63845f8cd8f019dbd79712db1ab479",
+        "version" : "17.42.0"
+      }
+    },
+    {
+      "identity" : "purchases-ios-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RevenueCat/purchases-ios-spm",
+      "state" : {
+        "revision" : "4d75c384d9169316d6aa5b74b541c02dd0e345ec",
+        "version" : "5.60.0"
       }
     }
   ],

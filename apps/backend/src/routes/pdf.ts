@@ -9,6 +9,23 @@ const upload = multer({ storage: multer.memoryStorage() });
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 const MIN_TEXT_LENGTH = 50; // Minimum chars to consider PDF has text layer
 
+const ACCEPTED_IMAGE_MIMETYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/heic",
+  "image/heif",
+  "image/webp",
+]);
+
+function isImageMimetype(mimetype: string): boolean {
+  return ACCEPTED_IMAGE_MIMETYPES.has(mimetype.toLowerCase());
+}
+
+function isImageFilename(filename: string): boolean {
+  return /\.(jpg|jpeg|png|heic|heif|webp)$/i.test(filename);
+}
+
 // Error codes for PDF extraction
 type PDFErrorCode =
   | "PDF_NO_TEXT"
@@ -200,6 +217,94 @@ function normalizeText(text: string): string {
   return normalized.trim();
 }
 
+/**
+ * Extract text from an image buffer using the LLM vision API.
+ * Returns the transcribed/described text content of the image.
+ */
+async function extractTextFromImage(
+  buffer: Buffer,
+  mimetype: string
+): Promise<{ success: true; text: string } | { success: false; code: string; message: string }> {
+  const model = process.env.LLM_MODEL || "gpt-4o-mini";
+  const baseURL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
+
+  // Normalise HEIC/HEIF to jpeg for API compatibility
+  const apiMimetype = mimetype.toLowerCase().startsWith("image/hei") ? "image/jpeg" : mimetype.toLowerCase();
+  const base64 = buffer.toString("base64");
+  const dataUrl = `data:${apiMimetype};base64,${base64}`;
+
+  console.log("[extractTextFromImage] Sending image to vision API:", {
+    mimetype,
+    apiMimetype,
+    bufferSize: buffer.length,
+  });
+
+  try {
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Transcris intégralement le contenu textuel de cette image. Inclus tous les textes visibles : titres, paragraphes, listes, tableaux, annotations. Si l'image contient un schéma ou diagramme, décris-le brièvement en texte. Retourne uniquement le contenu, sans commentaire ni formatage Markdown.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: dataUrl, detail: "high" },
+              },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[extractTextFromImage] Vision API error:", response.status, errorText.substring(0, 200));
+      return {
+        success: false,
+        code: "IMAGE_EXTRACTION_FAILED",
+        message: "Impossible d'extraire le texte de l'image.",
+      };
+    }
+
+    const data = await response.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const text = data.choices?.[0]?.message?.content?.trim() ?? "";
+
+    console.log("[extractTextFromImage] Extraction complete, text length:", text.length);
+
+    if (text.length < MIN_TEXT_LENGTH) {
+      return {
+        success: false,
+        code: "IMAGE_NO_TEXT",
+        message: "L'image ne semble pas contenir assez de texte exploitable.",
+      };
+    }
+
+    return { success: true, text };
+  } catch (err) {
+    console.error("[extractTextFromImage] Unexpected error:", err);
+    return {
+      success: false,
+      code: "IMAGE_EXTRACTION_FAILED",
+      message: "Erreur lors de l'extraction du texte de l'image.",
+    };
+  }
+}
+
 // Helper: Parse cookies from Express request
 function parseCookies(cookieHeader: string | undefined): Map<string, string> {
   const cookies = new Map<string, string>();
@@ -383,14 +488,18 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
     }
 
     // Validate file type
-    if (
-      file.mimetype !== "application/pdf" &&
-      !file.originalname.toLowerCase().endsWith(".pdf")
-    ) {
+    const isPdf =
+      file.mimetype === "application/pdf" ||
+      file.originalname.toLowerCase().endsWith(".pdf");
+    const isImage =
+      isImageMimetype(file.mimetype) ||
+      isImageFilename(file.originalname);
+
+    if (!isPdf && !isImage) {
       return res.status(415).json({
         success: false,
         code: "INVALID_FILE_TYPE",
-        message: "Type de fichier invalide. Seuls les PDF sont supportés.",
+        message: "Type de fichier invalide. Seuls les PDF et images (JPG, PNG, HEIC) sont supportés.",
       });
     }
 
@@ -399,7 +508,7 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       return res.status(413).json({
         success: false,
         code: "PDF_TOO_LARGE",
-        message: "Le PDF est trop volumineux. Taille maximale : 15 MB.",
+        message: "Le fichier est trop volumineux. Taille maximale : 15 MB.",
       });
     }
 
@@ -408,6 +517,7 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       size: file.size,
       sizeMB: (file.size / 1024 / 1024).toFixed(2),
       type: file.mimetype,
+      isImage,
     });
 
     // Create Supabase client for deck verification
@@ -452,56 +562,68 @@ router.post("/generate-cards", upload.single("file"), async (req: Request, res: 
       });
     }
 
-    // Convert file buffer (multer already provides Buffer)
-    const pdfBuffer = file.buffer;
+    // Extract text — route through PDF or image pipeline depending on file type
+    let extractedText: string;
 
-    console.log("[generate-cards-from-pdf] Buffer created:", {
-      bufferLength: pdfBuffer.length,
-      header: pdfBuffer.slice(0, 8).toString("utf8"),
-    });
-
-    // Extract text from PDF
-    console.log("[generate-cards-from-pdf] Extracting text...");
-    const extractionResult = await extractTextFromPdf(pdfBuffer);
-
-    if (!extractionResult.success) {
-      console.log("[generate-cards-from-pdf] Extraction failed:", extractionResult);
-      // Map error codes to HTTP status
-      const statusMap: Record<PDFErrorCode, number> = {
-        PDF_NO_TEXT: 422,
-        PDF_ENCRYPTED: 422,
-        PDF_INVALID: 400,
-        PDF_PARSE_ERROR: 422,
-        PDF_TOO_LARGE: 413,
-      };
-      return res.status(statusMap[extractionResult.code] || 422).json({
-        success: false,
-        code: extractionResult.code,
-        message: extractionResult.message,
-        error: extractionResult.message, // For backward compatibility with front-end
+    if (isImage) {
+      console.log("[generate-cards-from-pdf] Extracting text from image via vision API...");
+      const imageResult = await extractTextFromImage(file.buffer, file.mimetype);
+      if (!imageResult.success) {
+        console.log("[generate-cards-from-pdf] Image extraction failed:", imageResult);
+        return res.status(422).json({
+          success: false,
+          code: imageResult.code,
+          message: imageResult.message,
+          error: imageResult.message,
+        });
+      }
+      extractedText = imageResult.text;
+      console.log("[generate-cards-from-pdf] Image text extracted:", { length: extractedText.length });
+    } else {
+      console.log("[generate-cards-from-pdf] Buffer info:", {
+        bufferLength: file.buffer.length,
+        header: file.buffer.slice(0, 8).toString("utf8"),
       });
-    }
 
-    // Normalize the extracted text
-    const extractedText = normalizeText(extractionResult.text);
+      console.log("[generate-cards-from-pdf] Extracting text from PDF...");
+      const pdfResult = await extractTextFromPdf(file.buffer);
 
-    console.log("[generate-cards-from-pdf] Text extracted successfully:", {
-      pages: extractionResult.pages,
-      rawLength: extractionResult.text.length,
-      normalizedLength: extractedText.length,
-      preview: extractedText.substring(0, 100),
-    });
+      if (!pdfResult.success) {
+        console.log("[generate-cards-from-pdf] PDF extraction failed:", pdfResult);
+        const statusMap: Record<PDFErrorCode, number> = {
+          PDF_NO_TEXT: 422,
+          PDF_ENCRYPTED: 422,
+          PDF_INVALID: 400,
+          PDF_PARSE_ERROR: 422,
+          PDF_TOO_LARGE: 413,
+        };
+        return res.status(statusMap[pdfResult.code] || 422).json({
+          success: false,
+          code: pdfResult.code,
+          message: pdfResult.message,
+          error: pdfResult.message,
+        });
+      }
 
-    // Check if normalized text is sufficient
-    if (extractedText.length < MIN_TEXT_LENGTH) {
-      return res.status(422).json({
-        success: false,
-        code: "PDF_NO_TEXT",
-        message:
-          "Le texte extrait est trop court. Le PDF ne contient peut-être pas assez de texte sélectionnable.",
-        error:
-          "Le texte extrait est trop court. Le PDF ne contient peut-être pas assez de texte sélectionnable.",
+      extractedText = normalizeText(pdfResult.text);
+
+      console.log("[generate-cards-from-pdf] PDF text extracted:", {
+        pages: pdfResult.pages,
+        rawLength: pdfResult.text.length,
+        normalizedLength: extractedText.length,
+        preview: extractedText.substring(0, 100),
       });
+
+      if (extractedText.length < MIN_TEXT_LENGTH) {
+        return res.status(422).json({
+          success: false,
+          code: "PDF_NO_TEXT",
+          message:
+            "Le texte extrait est trop court. Le PDF ne contient peut-être pas assez de texte sélectionnable.",
+          error:
+            "Le texte extrait est trop court. Le PDF ne contient peut-être pas assez de texte sélectionnable.",
+        });
+      }
     }
 
     // Build generation options
