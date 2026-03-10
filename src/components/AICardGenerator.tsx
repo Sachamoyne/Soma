@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Sparkles,
   FileText,
+  Camera,
   Check,
   X,
   CheckCheck,
@@ -22,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import type { DeckMode } from "@/lib/supabase-db";
 import { useTranslation } from "@/i18n";
+import { Capacitor } from "@capacitor/core";
 
 interface CardPreview {
   front: string;
@@ -52,6 +54,7 @@ export function AICardGenerator({
   const [aiError, setAiError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // User-controllable generation options
@@ -513,10 +516,14 @@ export function AICardGenerator({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (
-      file.type !== "application/pdf" &&
-      !file.name.toLowerCase().endsWith(".pdf")
-    ) {
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(jpg|jpeg|png|heic|gif|webp)$/i.test(file.name);
+
+    if (!isPdf && !isImage) {
       setPdfError(t("aiGenerator.errorInvalidFileType"));
       return;
     }
@@ -653,6 +660,74 @@ export function AICardGenerator({
     }
   };
 
+  /**
+   * Opens the device camera (native iOS) or falls back to the file picker (web).
+   * The captured image is converted to a File and sent through the same upload
+   * pipeline as handlePdfUpload — no new backend endpoint needed.
+   */
+  const handleTakePhoto = async () => {
+    if (!canUseAI) return;
+
+    // Web fallback: trigger the existing file input (accepts image/*)
+    if (!Capacitor.isNativePlatform()) {
+      pdfInputRef.current?.click();
+      return;
+    }
+
+    setCameraLoading(true);
+    setPdfError(null);
+
+    try {
+      // Dynamically import so the Camera module is never loaded on the server
+      const { Camera, CameraResultType, CameraSource } = await import(
+        "@capacitor/camera"
+      );
+
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Camera,
+        quality: 90,
+        allowEditing: false,
+        saveToGallery: false,
+      });
+
+      if (!photo.webPath) {
+        setPdfError(t("aiGenerator.errorCamera"));
+        return;
+      }
+
+      // Convert webPath → Blob → File so we can reuse the exact same pipeline
+      const response = await fetch(photo.webPath);
+      const blob = await response.blob();
+      const mimeType = blob.type || "image/jpeg";
+      const ext = mimeType.split("/")[1] || "jpg";
+      const file = new File([blob], `photo.${ext}`, { type: mimeType });
+
+      // Reuse the existing upload handler via a synthetic input-change event
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const syntheticEvent = {
+        target: { files: dt.files },
+      } as React.ChangeEvent<HTMLInputElement>;
+      await handlePdfUpload(syntheticEvent);
+    } catch (err: unknown) {
+      // CameraPluginError: user cancelled — don't show an error
+      const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.toLowerCase().includes("cancelled") ||
+        message.toLowerCase().includes("canceled") ||
+        message.toLowerCase().includes("user cancelled") ||
+        message.toLowerCase().includes("no image")
+      ) {
+        return;
+      }
+      console.error("Camera capture failed:", err);
+      setPdfError(t("aiGenerator.errorCamera"));
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
   const handleGenerateWithAI = async () => {
     if (!canGenerateWithAI) return;
 
@@ -773,7 +848,7 @@ export function AICardGenerator({
                 <input
                   ref={pdfInputRef}
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,image/*"
                   onChange={handlePdfUpload}
                   disabled={!canUseAI || pdfLoading || aiLoading}
                   className="hidden"
@@ -789,12 +864,33 @@ export function AICardGenerator({
                 >
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {pdfLoading ? t("aiGenerator.processingPdf") : t("aiGenerator.importPdf")}
+                    {pdfLoading ? t("aiGenerator.processingFile") : t("aiGenerator.importFile")}
                   </span>
                 </label>
               </div>
+              {/* Take Photo — shown only on native iOS */}
+              {Capacitor.isNativePlatform() && (
+                <button
+                  type="button"
+                  onClick={handleTakePhoto}
+                  disabled={!canUseAI || cameraLoading || pdfLoading || aiLoading}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                    !canUseAI || cameraLoading || pdfLoading || aiLoading
+                      ? "opacity-50 cursor-not-allowed border-muted bg-muted"
+                      : "border-primary/20 bg-primary/5 hover:bg-primary/10"
+                  }`}
+                >
+                  <Camera className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {cameraLoading
+                      ? t("aiGenerator.processingFile")
+                      : t("aiGenerator.takePhoto")}
+                  </span>
+                </button>
+              )}
+
               <p className="text-xs text-muted-foreground">
-                {t("aiGenerator.pdfTip")}
+                {t("aiGenerator.fileTip")}
               </p>
             </div>
 

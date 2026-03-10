@@ -39,6 +39,10 @@
 	<string>Soma uses your calendar only if you choose to schedule study reminders.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Soma uses your calendar only if you choose to schedule study reminders.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Soma needs camera access so you can photograph lecture notes or slides and generate flashcards from them.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Soma needs access to your Photos so you can select screenshots or images of your course material and generate flashcards from them.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
