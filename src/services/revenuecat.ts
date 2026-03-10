@@ -17,7 +17,15 @@
  *   2. offerings.all["default_v3"]  (name-based fallback if Current not set)
  */
 
+import { Capacitor } from "@capacitor/core";
 import { isNativeIOS } from "@/lib/native";
+
+/**
+ * The module specifier is kept in a variable so TypeScript never tries to
+ * resolve it during a web / SSR build.  The string itself is evaluated only
+ * at runtime, after the isNativeIOS() guard has already returned true.
+ */
+const RC_MODULE = "@revenuecat/purchases-capacitor";
 
 // ─── Debug flag ───────────────────────────────────────────────────────────────
 // Set DEBUG_RC = false before production release to suppress verbose logs.
@@ -172,6 +180,10 @@ export async function initRevenueCat(userId: string): Promise<void> {
   console.log("[RC]   _isConfiguring :", _isConfiguring);
   console.log("[RC]   _initFailed    :", _initFailed);
 
+  // ── SSR / build-time guard ──────────────────────────────────────────────
+  // This function must never run on the Next.js server or during Vercel builds.
+  if (typeof window === "undefined") return;
+
   // ── Platform guard ───────────────────────────────────────────────────────
   if (!isNativeIOS()) {
     console.log("[RC] Not native iOS — skipping init.");
@@ -225,11 +237,11 @@ export async function initRevenueCat(userId: string): Promise<void> {
   _isConfiguring = true;
   try {
     // Confirm Capacitor platform (native vs. web context)
-    const { Capacitor } = await import("@capacitor/core");
     console.log("[RC]   Capacitor.getPlatform()       :", Capacitor.getPlatform());
     console.log("[RC]   Capacitor.isNativePlatform()  :", Capacitor.isNativePlatform());
 
-    const { Purchases, LOG_LEVEL } = await import("@revenuecat/purchases-capacitor");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Purchases, LOG_LEVEL } = await import(/* webpackIgnore: true */ RC_MODULE as any);
     console.log("[RC] SDK imported ✓ — setting log level...");
     await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
 
@@ -270,7 +282,7 @@ export async function getOfferings(): Promise<RCOffering | null> {
 
   try {
     await waitForConfigured();
-    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const { Purchases } = await import(/* webpackIgnore: true */ RC_MODULE as any);
 
     let result = await Purchases.getOfferings();
 
@@ -381,7 +393,7 @@ export async function purchasePackage(productId: string): Promise<RCPlan> {
   console.log("[IAP] Waiting for RC SDK to be configured...");
   await waitForConfigured();
   console.log("[IAP] RC SDK is configured ✓");
-  const { Purchases } = await import("@revenuecat/purchases-capacitor");
+  const { Purchases } = await import(/* webpackIgnore: true */ RC_MODULE as any);
 
   // ── Fetch offerings ─────────────────────────────────────────────────────────
   console.log("[IAP] Fetching offerings for purchase...");
@@ -475,7 +487,7 @@ export async function restorePurchases(): Promise<RCPlan> {
   if (!isNativeIOS()) throw new Error("[RC] restorePurchases is only available on iOS.");
 
   await waitForConfigured();
-  const { Purchases } = await import("@revenuecat/purchases-capacitor");
+  const { Purchases } = await import(/* webpackIgnore: true */ RC_MODULE as any);
   console.log("[RC] Restoring purchases...");
 
   const { customerInfo } = await Purchases.restorePurchases();
@@ -499,7 +511,7 @@ export async function checkUserSubscription(): Promise<RCPlan> {
 
   try {
     await waitForConfigured();
-    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const { Purchases } = await import(/* webpackIgnore: true */ RC_MODULE as any);
     const { customerInfo } = await Purchases.getCustomerInfo();
 
     if (DEBUG_RC) {
