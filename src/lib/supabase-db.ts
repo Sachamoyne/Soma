@@ -12,7 +12,7 @@ export type Settings = Database["public"]["Tables"]["settings"]["Row"];
 
 // Re-export scheduler functions for convenience
 export { previewIntervals, formatInterval, formatIntervalDays, parseSteps } from "./scheduler";
-export type { IntervalPreview, SchedulerSettings } from "./scheduler";
+export type { IntervalPreview, SchedulerSettings, SchedulingResult } from "./scheduler";
 
 const DECKS_CACHE_TTL_MS = 30_000;
 const CARDS_CACHE_TTL_MS = 20_000;
@@ -1492,6 +1492,125 @@ export async function reviewCard(
 
   console.log("🔷 reviewCard COMPLETE");
   return updatedCard as Card;
+}
+
+/**
+ * Background card review: accepts a precomputed SchedulingResult so that
+ * the UI can advance instantly without waiting for the network.
+ * Called fire-and-forget from StudyCard after the local SRS computation.
+ */
+export async function reviewCardBackground(
+  cardId: string,
+  deckId: string,
+  rating: "again" | "hard" | "good" | "easy",
+  localResult: import("./scheduler").SchedulingResult,
+  previousState: string,
+  previousInterval: number,
+  elapsedMs: number | undefined,
+  now: Date
+): Promise<void> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+
+  // Start with the locally computed result
+  let finalResult = { ...localResult };
+
+  // Exam mode: optionally cap due_at (non-blocking, won't affect UI)
+  try {
+    const { getDeckSettings } = await import("../store/deck-settings");
+    const deckSpecificSettings = await getDeckSettings(deckId);
+    const examDateStr = deckSpecificSettings.examDate;
+
+    if (examDateStr) {
+      const {
+        getDaysRemaining,
+        getMinimumExposures,
+        getExamPeriodStart,
+        computeCapDueDate,
+      } = await import("./exam-mode");
+
+      const daysRemaining = getDaysRemaining(examDateStr);
+      if (daysRemaining > 0) {
+        const examDate = new Date(examDateStr + "T00:00:00");
+        const minExposures = getMinimumExposures(daysRemaining);
+        const periodStart = getExamPeriodStart(daysRemaining);
+
+        const { count: exposuresInPeriod } = await supabase
+          .from("reviews")
+          .select("*", { count: "exact", head: true })
+          .eq("card_id", cardId)
+          .eq("user_id", userId)
+          .gte("reviewed_at", periodStart.toISOString());
+
+        const totalExposures = (exposuresInPeriod || 0) + 1;
+
+        const cappedDueAt = computeCapDueDate(
+          examDate,
+          totalExposures,
+          minExposures,
+          finalResult.due_at,
+          now
+        );
+
+        if (cappedDueAt) {
+          finalResult = {
+            ...finalResult,
+            due_at: cappedDueAt,
+            interval_days: Math.max(
+              1,
+              Math.round((cappedDueAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            ),
+          };
+        }
+      }
+    }
+  } catch (examErr) {
+    console.warn("⚠️ Exam mode cap failed (non-critical):", examErr);
+  }
+
+  const easeRounded = Number(finalResult.ease.toFixed(2));
+
+  const { error: updateError } = await supabase
+    .from("cards")
+    .update({
+      state: finalResult.state,
+      due_at: finalResult.due_at.toISOString(),
+      interval_days: finalResult.interval_days,
+      ease: easeRounded,
+      learning_step_index: finalResult.learning_step_index,
+      reps: finalResult.reps,
+      lapses: finalResult.lapses,
+      last_reviewed_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq("id", cardId)
+    .eq("user_id", userId);
+
+  if (updateError) throw updateError;
+
+  invalidateCardCaches();
+  invalidateDeckCaches();
+
+  const { error: reviewError } = await supabase.from("reviews").insert({
+    user_id: userId,
+    card_id: cardId,
+    deck_id: deckId,
+    rating,
+    reviewed_at: now.toISOString(),
+    elapsed_ms: elapsedMs || null,
+    previous_state: previousState,
+    previous_interval: previousInterval,
+    new_interval: finalResult.interval_days,
+    new_due_at: finalResult.due_at.toISOString(),
+  });
+
+  if (reviewError) throw reviewError;
+
+  await supabase
+    .from("decks")
+    .update({ updated_at: now.toISOString() })
+    .eq("id", deckId)
+    .eq("user_id", userId);
 }
 
 // Settings functions

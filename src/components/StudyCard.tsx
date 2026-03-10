@@ -15,13 +15,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
-  reviewCard,
+  getDueCards,
   getDueCount,
   updateCard,
   suspendCard,
   previewIntervals,
+  reviewCardBackground,
 } from "@/store/decks";
 import { getSettings } from "@/lib/supabase-db";
+import { gradeCard } from "@/lib/scheduler";
+import type { SchedulerSettings, SchedulingResult } from "@/lib/scheduler";
 import type { Card as CardType, Deck, IntervalPreview } from "@/lib/db";
 import { Edit, Pause, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -38,6 +41,45 @@ import type { CardType as CardTypeEnum } from "@/lib/card-types";
 // Session requeue to mimic Anki learning behavior
 // Cards marked "Again" reappear in the same session after a short delay
 const REINSERT_AFTER = 3;
+
+// Background prefetch: keep the queue stocked so transitions stay instant
+const PREFETCH_THRESHOLD = 10; // start fetching when queue drops below this
+const PREFETCH_BATCH_SIZE = 40; // how many cards to pull per background fetch
+
+const DEFAULT_SCHEDULER_SETTINGS: SchedulerSettings = {
+  starting_ease: 2.5,
+  easy_bonus: 1.3,
+  hard_interval: 1.2,
+};
+
+/**
+ * Fire-and-forget DB sync with retry. Called after the UI has already
+ * advanced to the next card — the user never waits for this.
+ */
+async function syncReviewAsync(
+  cardId: string,
+  deckId: string,
+  rating: "again" | "hard" | "good" | "easy",
+  result: SchedulingResult,
+  previousState: string,
+  previousInterval: number,
+  elapsedMs: number,
+  now: Date
+): Promise<void> {
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      await reviewCardBackground(cardId, deckId, rating, result, previousState, previousInterval, elapsedMs, now);
+      return;
+    } catch (err) {
+      console.error(`❌ Background sync attempt ${attempt + 1} failed:`, err);
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
+  }
+  console.error("❌ Background sync failed after all retries. Review data may not have been saved.");
+}
 
 interface StudyCardProps {
   initialCards: CardType[];
@@ -71,6 +113,12 @@ export function StudyCard({
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSubmitting = useRef(false);
   const cardTimer = useCardTimer();
+  // Cached scheduler settings — loaded once at session start, defaults used until then
+  const cachedSettings = useRef<SchedulerSettings>(DEFAULT_SCHEDULER_SETTINGS);
+  // Prefetch bookkeeping: track every card ID touched this session to prevent duplicates
+  const sessionCardIds = useRef<Set<string>>(new Set(initialCards.map((c) => c.id)));
+  const isPrefetching = useRef(false);
+  const hasMoreCards = useRef(true); // set to false when a prefetch returns no new cards
 
   // Derive currentCard safely
   const currentCard = queue[currentIndex] ?? null;
@@ -104,6 +152,48 @@ export function StudyCard({
     }
   }, [currentCard]);
 
+  // Load scheduler settings once at session start — used for instant local SRS computation
+  useEffect(() => {
+    getSettings().then((settings) => {
+      cachedSettings.current = {
+        starting_ease: settings.starting_ease || 2.5,
+        easy_bonus: settings.easy_bonus || 1.3,
+        hard_interval: settings.hard_interval || 1.2,
+      };
+    }).catch(() => {
+      // Keep defaults on error
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Background prefetch: silently load more cards before the queue runs dry
+  const prefetchMore = useCallback(async () => {
+    if (isPrefetching.current || !hasMoreCards.current) return;
+    isPrefetching.current = true;
+    try {
+      const newCards = await getDueCards(deckId, PREFETCH_BATCH_SIZE);
+      // Filter out any card already seen in this session (in queue, pending, or answered)
+      const fresh = newCards.filter((c) => !sessionCardIds.current.has(c.id));
+      if (fresh.length === 0) {
+        // Quota exhausted — no more cards will be due until tomorrow
+        hasMoreCards.current = false;
+      } else {
+        fresh.forEach((c) => sessionCardIds.current.add(c.id));
+        setQueue((prev) => [...prev, ...fresh]);
+      }
+    } catch (err) {
+      console.error("Background prefetch failed:", err);
+    } finally {
+      isPrefetching.current = false;
+    }
+  }, [deckId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger prefetch when the visible queue drops below the threshold
+  useEffect(() => {
+    if (queue.length > 0 && queue.length < PREFETCH_THRESHOLD && hasMoreCards.current) {
+      prefetchMore();
+    }
+  }, [queue.length, prefetchMore]);
+
   // Reset card timer when the current card changes
   useEffect(() => {
     if (currentCard) {
@@ -112,7 +202,7 @@ export function StudyCard({
   }, [currentCard?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRate = useCallback(
-    async (rating: "again" | "hard" | "good" | "easy") => {
+    (rating: "again" | "hard" | "good" | "easy") => {
       if (!currentCard) return;
 
       // Prevent double submit
@@ -122,106 +212,124 @@ export function StudyCard({
       }
 
       isSubmitting.current = true;
-      const cardId = currentCard.id;
-      const previousState = currentCard.state;
+
+      const now = new Date();
+      const nowMs = now.getTime();
       const elapsedMs = cardTimer.getElapsed();
+      const previousState = currentCard.state;
+      const previousInterval = currentCard.interval_days;
 
-      console.log("🔵 handleRate START", { cardId, rating, previousState, elapsedMs });
+      // ── Step 1: Compute SRS locally — instant, no network ─────────────────
+      const result = gradeCard(currentCard, rating, cachedSettings.current, now);
 
-      try {
-        // Persist review FIRST - wait for completion
-        const updatedCard = await reviewCard(cardId, rating, elapsedMs);
-        console.log("✅ reviewCard completed successfully");
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("soma-counts-updated"));
-        }
+      // Build the locally updated card object for queue management
+      const updatedCard: CardType = {
+        ...currentCard,
+        state: result.state,
+        due_at: result.due_at.toISOString(),
+        interval_days: result.interval_days,
+        ease: Number(result.ease.toFixed(2)),
+        learning_step_index: result.learning_step_index,
+        reps: result.reps,
+        lapses: result.lapses,
+        last_reviewed_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      };
 
-        // THEN update UI
-        const withoutCurrent = queue.filter((_, i) => i !== currentIndex);
-        let newQueue: CardType[] = [];
-        let newIndex = currentIndex;
-        const updatedDueAt = new Date(updatedCard.due_at).getTime();
-        const nowMs = Date.now();
-        const isLearningState =
-          updatedCard.state === "learning" || updatedCard.state === "relearning";
-        const shouldRequeueSoon = updatedDueAt <= nowMs + 60_000;
+      // ── Step 2: Update queue state immediately ─────────────────────────────
+      const withoutCurrent = queue.filter((_, i) => i !== currentIndex);
+      let newQueue: CardType[] = [];
+      let newIndex = currentIndex;
+      const updatedDueAt = result.due_at.getTime();
+      const isLearningState =
+        result.state === "learning" || result.state === "relearning";
+      const shouldRequeueSoon = updatedDueAt <= nowMs + 60_000;
 
-        if (isLearningState && shouldRequeueSoon) {
-          const REINSERT_AFTER_VAL = Math.min(3, withoutCurrent.length);
-          const insertAt = Math.min(
-            withoutCurrent.length,
-            currentIndex + REINSERT_AFTER_VAL
-          );
+      if (isLearningState && shouldRequeueSoon) {
+        const REINSERT_AFTER_VAL = Math.min(3, withoutCurrent.length);
+        const insertAt = Math.min(
+          withoutCurrent.length,
+          currentIndex + REINSERT_AFTER_VAL
+        );
 
-          newQueue = [
-            ...withoutCurrent.slice(0, insertAt),
-            updatedCard as CardType,
-            ...withoutCurrent.slice(insertAt),
-          ];
+        newQueue = [
+          ...withoutCurrent.slice(0, insertAt),
+          updatedCard,
+          ...withoutCurrent.slice(insertAt),
+        ];
 
-          queuedIds.current.add(currentCard.id);
+        queuedIds.current.add(currentCard.id);
 
-          // Handle case when this was the last card - reinserted card becomes index 0
-          if (withoutCurrent.length === 0) {
-            newIndex = 0;
-          } else {
-            newIndex = Math.min(currentIndex, withoutCurrent.length - 1);
-          }
-        } else if (isLearningState && !shouldRequeueSoon) {
-          pendingCards.current.set(updatedCard.id, updatedCard as CardType);
-          setPendingCount(pendingCards.current.size);
-          newQueue = withoutCurrent;
-          queuedIds.current.delete(updatedCard.id);
-
-          if (withoutCurrent.length === 0) {
-            newIndex = 0;
-          } else if (currentIndex >= withoutCurrent.length) {
-            newIndex = withoutCurrent.length - 1;
-          } else {
-            newIndex = currentIndex;
-          }
+        if (withoutCurrent.length === 0) {
+          newIndex = 0;
         } else {
-          newQueue = withoutCurrent;
-          queuedIds.current.delete(currentCard.id);
-
-          if (withoutCurrent.length === 0) {
-            newIndex = 0;
-          } else if (currentIndex >= withoutCurrent.length) {
-            newIndex = withoutCurrent.length - 1;
-          } else {
-            newIndex = currentIndex;
-          }
+          newIndex = Math.min(currentIndex, withoutCurrent.length - 1);
         }
+      } else if (isLearningState && !shouldRequeueSoon) {
+        pendingCards.current.set(updatedCard.id, updatedCard);
+        setPendingCount(pendingCards.current.size);
+        newQueue = withoutCurrent;
+        queuedIds.current.delete(updatedCard.id);
 
-        // Update state immediately
-        setQueue(newQueue);
-        setShowBack(false);
-
-        // Visual feedback (non-blocking)
-        setRatingFlash(rating);
-        setTimeout(() => setRatingFlash(null), 200);
-
-        // Advance to next card immediately
-        if (newQueue.length === 0) {
-          if (pendingCards.current.size === 0) {
-            setCurrentIndex(0);
-            onComplete?.();
-          } else {
-            setCurrentIndex(0);
-          }
+        if (withoutCurrent.length === 0) {
+          newIndex = 0;
+        } else if (currentIndex >= withoutCurrent.length) {
+          newIndex = withoutCurrent.length - 1;
         } else {
-          setCurrentIndex(Math.min(newIndex, Math.max(0, newQueue.length - 1)));
+          newIndex = currentIndex;
         }
+      } else {
+        newQueue = withoutCurrent;
+        queuedIds.current.delete(currentCard.id);
 
-        console.log("🔵 handleRate END - success");
-      } catch (err) {
-        console.error("❌ Error in handleRate:", err);
-        setError(err instanceof Error ? err.message : "Failed to review card");
-      } finally {
-        isSubmitting.current = false;
+        if (withoutCurrent.length === 0) {
+          newIndex = 0;
+        } else if (currentIndex >= withoutCurrent.length) {
+          newIndex = withoutCurrent.length - 1;
+        } else {
+          newIndex = currentIndex;
+        }
       }
+
+      setQueue(newQueue);
+      setShowBack(false);
+
+      // Visual feedback
+      setRatingFlash(rating);
+      setTimeout(() => setRatingFlash(null), 200);
+
+      if (newQueue.length === 0) {
+        if (pendingCards.current.size === 0) {
+          setCurrentIndex(0);
+          onComplete?.();
+        } else {
+          setCurrentIndex(0);
+        }
+      } else {
+        setCurrentIndex(Math.min(newIndex, Math.max(0, newQueue.length - 1)));
+      }
+
+      // Release the lock immediately — next card is ready
+      isSubmitting.current = false;
+
+      // Dispatch counts update for sidebar/badges
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("soma-counts-updated"));
+      }
+
+      // ── Step 3: Persist to Supabase in the background ─────────────────────
+      syncReviewAsync(
+        currentCard.id,
+        currentCard.deck_id,
+        rating,
+        result,
+        previousState,
+        previousInterval,
+        elapsedMs,
+        now
+      );
     },
-    [queue, currentIndex, currentCard, onComplete, deckId]
+    [queue, currentIndex, currentCard, onComplete] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => {
@@ -324,35 +432,14 @@ export function StudyCard({
   // Note: Keyboard shortcuts are now handled by individual card type components
   // to support different interaction patterns (e.g., typed cards need input focus)
 
-  // Calculate interval previews when card changes
-  // Each card type component decides when to display them
+  // Calculate interval previews when card changes — uses cached settings, no async needed
   useEffect(() => {
     if (!currentCard) {
       setIntervalPreviews(null);
       return;
     }
-
-    async function loadPreviews() {
-      if (!currentCard) return;
-
-      try {
-        const settings = await getSettings();
-        const schedulerSettings = {
-          starting_ease: settings.starting_ease || 2.5,
-          easy_bonus: settings.easy_bonus || 1.3,
-          hard_interval: settings.hard_interval || 1.2,
-        };
-
-        const previews = previewIntervals(currentCard, schedulerSettings);
-        setIntervalPreviews(previews);
-      } catch (error) {
-        console.error("Error loading interval previews:", error);
-        setIntervalPreviews(null);
-      }
-    }
-
-    loadPreviews();
-  }, [currentCard]);
+    setIntervalPreviews(previewIntervals(currentCard, cachedSettings.current));
+  }, [currentCard?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (queue.length === 0 || !currentCard) {
     if (pendingCount > 0) {
