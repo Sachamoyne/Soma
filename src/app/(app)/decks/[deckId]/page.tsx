@@ -59,6 +59,9 @@ export default function DeckOverviewPage() {
   }
 
   useEffect(() => {
+    // Always bust the card cache when returning to the overview so we never
+    // display counts that were cached before the last study session ended.
+    invalidateCardCaches();
     loadData();
   }, [deckId]);
 

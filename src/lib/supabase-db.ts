@@ -1591,6 +1591,12 @@ export async function reviewCardBackground(
   invalidateCardCaches();
   invalidateDeckCaches();
 
+  // Notify any mounted UI (e.g. deck overview) that counts are now stale.
+  // This fires AFTER the DB write so the re-fetch will see the updated due_at.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("soma-counts-updated"));
+  }
+
   const { error: reviewError } = await supabase.from("reviews").insert({
     user_id: userId,
     card_id: cardId,
