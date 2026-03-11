@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Upload, PenLine, Sparkles } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { createCard, invalidateDeckCaches, invalidateCardCaches, listDecks, type Deck } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTypeEnum } from "@/lib/card-types";
@@ -339,50 +340,91 @@ export default function AddCardsPage() {
       <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto space-y-6">
         {/* Header with title and mode toggle */}
         <div className="space-y-4">
-          <div className="flex items-start justify-between min-h-[56px]">
-            <div>
-              <h2 className="text-2xl font-semibold">{t("addCards.title")}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("addCards.subtitle")}
-              </p>
-            </div>
-            {/* Import buttons — only visible in AI mode; reserved space prevents header reflow */}
-            <div className="flex gap-2 shrink-0">
-              {/* Vocabulary import — shown in all environments; iOS uses native Camera picker */}
-              {creationMode === "ai" && deckMode === "languages" && deck && (
-                <Button variant="outline" onClick={() => setVocabImportDialogOpen(true)}>
+          <div>
+            <h2 className="text-2xl font-semibold">{t("addCards.title")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("addCards.subtitle")}
+            </p>
+          </div>
+
+          {Capacitor.isNativePlatform() ? (
+            /* iOS: clean 2×2 button grid — no layout overflow */
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant={creationMode === "manual" ? "default" : "outline"}
+                onClick={() => setCreationMode("manual")}
+                className="w-full"
+              >
+                <PenLine className="mr-2 h-4 w-4" />
+                {t("addCards.modeManual")}
+              </Button>
+              <Button
+                variant={creationMode === "ai" ? "default" : "outline"}
+                onClick={() => setCreationMode("ai")}
+                className="w-full"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {t("addCards.modeAI")}
+              </Button>
+              {deckMode === "languages" && deck && (
+                <Button
+                  variant="outline"
+                  onClick={() => setVocabImportDialogOpen(true)}
+                  className="w-full"
+                >
                   <Camera className="mr-2 h-4 w-4" />
                   {t("vocabularyImport.title")}
                 </Button>
               )}
-              {creationMode === "ai" && (
-                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  {t("addCards.importFromFile")}
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+                className={`w-full ${!(deckMode === "languages" && deck) ? "col-span-2" : ""}`}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {t("addCards.importFromFile")}
+              </Button>
             </div>
-          </div>
+          ) : (
+            /* Web: original layout — title row with right-aligned import buttons + mode toggle row */
+            <>
+              <div className="flex items-center justify-end gap-2 min-h-[40px]">
+                {/* Vocabulary import — only visible in AI mode */}
+                {creationMode === "ai" && deckMode === "languages" && deck && (
+                  <Button variant="outline" onClick={() => setVocabImportDialogOpen(true)}>
+                    <Camera className="mr-2 h-4 w-4" />
+                    {t("vocabularyImport.title")}
+                  </Button>
+                )}
+                {creationMode === "ai" && (
+                  <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {t("addCards.importFromFile")}
+                  </Button>
+                )}
+              </div>
 
-          {/* Mode toggle buttons */}
-          <div className="flex gap-2">
-            <Button
-              variant={creationMode === "manual" ? "default" : "outline"}
-              onClick={() => setCreationMode("manual")}
-              className="flex-1 sm:flex-none"
-            >
-              <PenLine className="mr-2 h-4 w-4" />
-              {t("addCards.modeManual")}
-            </Button>
-            <Button
-              variant={creationMode === "ai" ? "default" : "outline"}
-              onClick={() => setCreationMode("ai")}
-              className="flex-1 sm:flex-none"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {t("addCards.modeAI")}
-            </Button>
-          </div>
+              {/* Mode toggle buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant={creationMode === "manual" ? "default" : "outline"}
+                  onClick={() => setCreationMode("manual")}
+                  className="flex-1 sm:flex-none"
+                >
+                  <PenLine className="mr-2 h-4 w-4" />
+                  {t("addCards.modeManual")}
+                </Button>
+                <Button
+                  variant={creationMode === "ai" ? "default" : "outline"}
+                  onClick={() => setCreationMode("ai")}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {t("addCards.modeAI")}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Manual card creation */}

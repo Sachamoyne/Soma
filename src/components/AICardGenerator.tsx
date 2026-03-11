@@ -842,68 +842,52 @@ export function AICardGenerator({
         {/* Input - hide when preview is showing */}
         {!generatedCards && (
           <div className="space-y-4">
-            {/* PDF Upload Option */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  ref={pdfInputRef}
-                  type="file"
-                  accept=".pdf,image/*"
-                  onChange={handlePdfUpload}
-                  disabled={!canUseAI || pdfLoading || aiLoading}
-                  className="hidden"
-                  id="pdf-upload"
-                />
-                <label
-                  htmlFor="pdf-upload"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
-                    !canUseAI || pdfLoading || aiLoading
-                      ? "opacity-50 cursor-not-allowed border-muted bg-muted"
-                      : "border-primary/20 bg-primary/5 hover:bg-primary/10"
-                  }`}
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {pdfLoading ? t("aiGenerator.processingFile") : t("aiGenerator.importFile")}
-                  </span>
-                </label>
-              </div>
-              {/* Take Photo — shown only on native iOS */}
-              {Capacitor.isNativePlatform() && (
-                <button
-                  type="button"
-                  onClick={handleTakePhoto}
-                  disabled={!canUseAI || cameraLoading || pdfLoading || aiLoading}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                    !canUseAI || cameraLoading || pdfLoading || aiLoading
-                      ? "opacity-50 cursor-not-allowed border-muted bg-muted"
-                      : "border-primary/20 bg-primary/5 hover:bg-primary/10"
-                  }`}
-                >
-                  <Camera className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {cameraLoading
-                      ? t("aiGenerator.processingFile")
-                      : t("aiGenerator.takePhoto")}
-                  </span>
-                </button>
-              )}
+            {/* PDF / photo upload — hidden on iOS native (handled by Import Vocabulary button) */}
+            {!Capacitor.isNativePlatform() && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={pdfInputRef}
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={handlePdfUpload}
+                      disabled={!canUseAI || pdfLoading || aiLoading}
+                      className="hidden"
+                      id="pdf-upload"
+                    />
+                    <label
+                      htmlFor="pdf-upload"
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                        !canUseAI || pdfLoading || aiLoading
+                          ? "opacity-50 cursor-not-allowed border-muted bg-muted"
+                          : "border-primary/20 bg-primary/5 hover:bg-primary/10"
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {pdfLoading ? t("aiGenerator.processingFile") : t("aiGenerator.importFile")}
+                      </span>
+                    </label>
+                  </div>
 
-              <p className="text-xs text-muted-foreground">
-                {t("aiGenerator.fileTip")}
-              </p>
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("aiGenerator.fileTip")}
+                  </p>
+                </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-muted/30 px-2 text-muted-foreground">
-                  {t("aiGenerator.or")}
-                </span>
-              </div>
-            </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-muted/30 px-2 text-muted-foreground">
+                      {t("aiGenerator.or")}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
 
             <Textarea
               value={aiText}
