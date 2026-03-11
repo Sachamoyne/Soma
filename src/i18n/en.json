@@ -627,7 +627,8 @@
     "noEntriesFound": "No entries found. Check the photo or add manually.",
     "cardsGenerated": "{count} cards generated!",
     "ocrFailed": "Failed to extract text. Try a clearer photo.",
-    "parsingFailed": "Failed to parse. Make sure the photo contains a vocabulary list."
+    "parsingFailed": "Failed to parse. Make sure the photo contains a vocabulary list.",
+    "choosePhoto": "Choose photo"
   },
   "moveCards": {
     "title": "Move cards",

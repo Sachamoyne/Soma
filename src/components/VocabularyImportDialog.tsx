@@ -17,6 +17,7 @@ import { type Deck, type VocabDirection, type LanguagesConfig } from "@/store/de
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
+import { Capacitor } from "@capacitor/core";
 
 // Dynamic imports for SSR compatibility
 let Tesseract: any = null;
@@ -56,6 +57,8 @@ export function VocabularyImportDialog({
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isNativeCapacitor = typeof window !== "undefined" && Capacitor.isNativePlatform();
+
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [extractionProgress, setExtractionProgress] = useState(0);
@@ -63,6 +66,7 @@ export function VocabularyImportDialog({
   const [entries, setEntries] = useState<VocabularyEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCount, setGeneratedCount] = useState(0);
+  const [isPickingPhoto, setIsPickingPhoto] = useState(false);
 
   // Get languages config from deck
   const config = deck.config as LanguagesConfig | null;
@@ -92,6 +96,45 @@ export function VocabularyImportDialog({
     if (selectedFile) {
       setFile(selectedFile);
       setError(null);
+    }
+  };
+
+  const handlePickPhotoNative = async () => {
+    setError(null);
+    setIsPickingPhoto(true);
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Prompt,
+        quality: 90,
+        allowEditing: false,
+      });
+
+      if (!photo.webPath) {
+        setError(t("vocabularyImport.ocrFailed"));
+        return;
+      }
+
+      const response = await fetch(photo.webPath);
+      const blob = await response.blob();
+      const mimeType = blob.type || "image/jpeg";
+      const ext = mimeType.split("/")[1] || "jpg";
+      const pickedFile = new File([blob], `photo.${ext}`, { type: mimeType });
+      setFile(pickedFile);
+      setError(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.toLowerCase().includes("cancelled") ||
+        message.toLowerCase().includes("canceled") ||
+        message.toLowerCase().includes("no image")
+      ) {
+        return;
+      }
+      setError(t("vocabularyImport.ocrFailed"));
+    } finally {
+      setIsPickingPhoto(false);
     }
   };
 
@@ -333,22 +376,46 @@ export function VocabularyImportDialog({
               <p className="text-sm text-muted-foreground mb-2">
                 {t("vocabularyImport.uploadHint")}
               </p>
-              <div className="mt-2 flex items-center gap-4">
-                <Input
-                  id="vocab-file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
-                  onChange={handleFileSelect}
-                  ref={fileInputRef}
-                  className="cursor-pointer"
-                />
-                {file && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <ImageIcon className="h-4 w-4" />
-                    {file.name}
-                  </div>
-                )}
-              </div>
+              {isNativeCapacitor ? (
+                <div className="mt-2 space-y-2">
+                  <Button
+                    variant="outline"
+                    onClick={handlePickPhotoNative}
+                    disabled={isPickingPhoto}
+                    className="w-full"
+                  >
+                    {isPickingPhoto ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                    )}
+                    {t("vocabularyImport.choosePhoto")}
+                  </Button>
+                  {file && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                      {file.name}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-4">
+                  <Input
+                    id="vocab-file"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
+                    onChange={handleFileSelect}
+                    ref={fileInputRef}
+                    className="cursor-pointer"
+                  />
+                  {file && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                      {file.name}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-md bg-muted/50 p-3 text-sm">

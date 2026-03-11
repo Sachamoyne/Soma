@@ -627,7 +627,8 @@
     "noEntriesFound": "Aucune entree trouvee. Verifiez la photo ou ajoutez manuellement.",
     "cardsGenerated": "{count} cartes generees !",
     "ocrFailed": "Echec de l'extraction du texte. Essayez une photo plus nette.",
-    "parsingFailed": "Echec de l'analyse. Verifiez que la photo contient une liste de vocabulaire."
+    "parsingFailed": "Echec de l'analyse. Verifiez que la photo contient une liste de vocabulaire.",
+    "choosePhoto": "Choisir une photo"
   },
   "moveCards": {
     "title": "Deplacer les cartes",
