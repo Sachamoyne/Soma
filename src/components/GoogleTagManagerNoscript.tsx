@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCookieConsent } from "@/lib/cookie-consent";
+import { getCookieConsent, GTM_ID } from "@/lib/cookie-consent";
 
 export function GoogleTagManagerNoscript() {
   const [shouldRender, setShouldRender] = useState(false);
@@ -42,7 +42,7 @@ export function GoogleTagManagerNoscript() {
   return (
     <noscript>
       <iframe
-        src="https://www.googletagmanager.com/ns.html?id=GTM-PSFK9VWM"
+        src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
         height="0"
         width="0"
         style={{ display: "none", visibility: "hidden" }}

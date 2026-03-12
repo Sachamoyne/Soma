@@ -1,11 +1,9 @@
 /**
- * Gestion du consentement aux cookies et chargement conditionnel de Google Tag Manager
- * 
- * Note: Google Analytics est géré par le composant GoogleAnalyticsScript
+ * Gestion du consentement aux cookies et chargement conditionnel de Google Tag Manager.
  */
 
 const COOKIE_CONSENT_KEY = "cookie-consent";
-const GTM_ID = "GTM-PSFK9VWM";
+export const GTM_ID = "GTM-K5H2BQ2F";
 
 export type CookieConsent = "accepted" | "rejected" | null;
 
@@ -33,6 +31,7 @@ export function setCookieConsent(consent: "accepted" | "rejected"): void {
  */
 export function loadGoogleTagManager(): void {
   if (typeof window === "undefined") return;
+  if ((window as any).Capacitor?.isNativePlatform?.()) return;
   
   const consent = getCookieConsent();
   if (consent !== "accepted") return;
