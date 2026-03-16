@@ -125,20 +125,19 @@ export function VocabularyImportDialog({
     try {
       const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
       const photo = await Camera.getPhoto({
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Photos,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Prompt,
         quality: 90,
         allowEditing: false,
       });
 
-      const photoDataUrl = photo.dataUrl || null;
       const photoUrl = photo.webPath || (photo.path ? Capacitor.convertFileSrc(photo.path) : null);
-      if (!photoDataUrl && !photoUrl) {
+      if (!photoUrl) {
         // Picker can return no path when user cancels/dismisses.
         return;
       }
 
-      const response = await fetch(photoDataUrl || photoUrl!);
+      const response = await fetch(photoUrl);
       const blob = await response.blob();
       const mimeType = blob.type || "image/jpeg";
       const ext = mimeType.split("/")[1] || "jpg";
@@ -149,12 +148,18 @@ export function VocabularyImportDialog({
       if (isPhotoPickerCancelError(err)) {
         return;
       }
+      // Fallback for environments where Camera plugin picker is unreliable:
+      // trigger a native file input chooser instead of failing silently.
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+        return;
+      }
       if (isPhotoAccessError(err)) {
         setError(t("importDialog.errorCamera"));
         return;
       }
-      // Unknown picker error: avoid showing a false "permission/access" message.
       console.error("[VocabularyImport] Native photo picker failed:", err);
+      setError(t("importDialog.errorCamera"));
     } finally {
       setIsPickingPhoto(false);
     }
@@ -416,6 +421,14 @@ export function VocabularyImportDialog({
               </p>
               {isNativeCapacitor ? (
                 <div className="mt-2 space-y-2">
+                  <Input
+                    id="vocab-file-native"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    ref={fileInputRef}
+                    className="hidden"
+                  />
                   <Button
                     variant="outline"
                     onClick={handlePickPhotoNative}
