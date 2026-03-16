@@ -366,7 +366,7 @@ export default function AddCardsPage() {
                 <Sparkles className="mr-2 h-4 w-4" />
                 {t("addCards.modeAI")}
               </Button>
-              {deckMode === "languages" && deck && (
+              {creationMode === "ai" && deckMode === "languages" && deck && (
                 <Button
                   variant="outline"
                   onClick={() => setVocabImportDialogOpen(true)}
@@ -376,14 +376,16 @@ export default function AddCardsPage() {
                   {t("vocabularyImport.title")}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                onClick={() => setImportDialogOpen(true)}
-                className={`w-full ${!(deckMode === "languages" && deck) ? "col-span-2" : ""}`}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {t("addCards.importFromFile")}
-              </Button>
+              {creationMode === "ai" && (
+                <Button
+                  variant="outline"
+                  onClick={() => setImportDialogOpen(true)}
+                  className={`w-full ${!(deckMode === "languages" && deck) ? "col-span-2" : ""}`}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("addCards.importFromFile")}
+                </Button>
+              )}
             </div>
           ) : (
             /* Web: original layout — title row with right-aligned import buttons + mode toggle row */
