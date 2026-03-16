@@ -38,6 +38,20 @@ interface VocabularyImportDialogProps {
 
 type Step = "upload" | "extracting" | "parsing" | "review" | "generating";
 
+function isPhotoPickerCancelError(err: unknown): boolean {
+  if (!err) return false;
+  const message = err instanceof Error ? err.message : String(err);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("cancel") ||
+    normalized.includes("cancelled") ||
+    normalized.includes("canceled") ||
+    normalized.includes("no image") ||
+    normalized.includes("user denied") ||
+    normalized.includes("user dismissed")
+  );
+}
+
 export function VocabularyImportDialog({
   open,
   onOpenChange,
@@ -83,11 +97,13 @@ export function VocabularyImportDialog({
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setError(null);
+    if (!selectedFile) {
+      // User canceled picker on web; no-op.
+      return;
     }
+    setFile(selectedFile);
   };
 
   const handlePickPhotoNative = async () => {
@@ -103,7 +119,7 @@ export function VocabularyImportDialog({
       });
 
       if (!photo.webPath) {
-        setError(t("vocabularyImport.ocrFailed"));
+        // Picker can return no path when user cancels/dismisses.
         return;
       }
 
@@ -115,15 +131,11 @@ export function VocabularyImportDialog({
       setFile(pickedFile);
       setError(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (
-        message.toLowerCase().includes("cancelled") ||
-        message.toLowerCase().includes("canceled") ||
-        message.toLowerCase().includes("no image")
-      ) {
+      if (isPhotoPickerCancelError(err)) {
         return;
       }
-      setError(t("vocabularyImport.ocrFailed"));
+      // Photo picker error (permissions/plugin), not OCR failure.
+      setError(t("importDialog.errorCamera"));
     } finally {
       setIsPickingPhoto(false);
     }
