@@ -20,7 +20,6 @@ import { getCardTypesForMode, getDefaultCardTypeForMode, type CardType as CardTy
 import { isLawCardType, isMedicineCardType } from "@/lib/card-types";
 import { DiagramEditor, type DiagramData } from "@/components/DiagramEditor";
 import type { DeckMode } from "@/lib/supabase-db";
-import { ImportDialog } from "@/components/ImportDialog";
 import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
 import { AICardGenerator } from "@/components/AICardGenerator";
 import { useTranslation } from "@/i18n";
@@ -85,9 +84,9 @@ export default function AddCardsPage() {
   const [diagramData, setDiagramData] = useState<DiagramData | null>(null);
   const [cardType, setCardType] = useState<CardTypeEnum>("basic");
   const [creating, setCreating] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [vocabImportDialogOpen, setVocabImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [openAIPdfImport, setOpenAIPdfImport] = useState<(() => void) | null>(null);
   // Check if current type is property (needs special form)
   const isPropertyType = cardType === "property";
   const isPhilosophyConceptType = cardType === "philosophy_concept";
@@ -323,12 +322,6 @@ export default function AddCardsPage() {
     }
   };
 
-  const handleImportSuccess = () => {
-    invalidateDeckCaches();
-    invalidateCardCaches();
-    setImportDialogOpen(false);
-  };
-
   const handleVocabImportSuccess = () => {
     invalidateDeckCaches();
     invalidateCardCaches();
@@ -379,7 +372,7 @@ export default function AddCardsPage() {
               {creationMode === "ai" && (
                 <Button
                   variant="outline"
-                  onClick={() => setImportDialogOpen(true)}
+                  onClick={() => openAIPdfImport?.()}
                   className={`w-full ${!(deckMode === "languages" && deck) ? "col-span-2" : ""}`}
                 >
                   <Upload className="mr-2 h-4 w-4" />
@@ -399,7 +392,7 @@ export default function AddCardsPage() {
                   </Button>
                 )}
                 {creationMode === "ai" && (
-                  <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => openAIPdfImport?.()}>
                     <Upload className="mr-2 h-4 w-4" />
                     {t("addCards.importFromFile")}
                   </Button>
@@ -940,17 +933,13 @@ export default function AddCardsPage() {
 
         {/* AI card generation */}
         {creationMode === "ai" && (
-          <AICardGenerator deckId={deckId} deckMode={deckMode} />
+          <AICardGenerator
+            deckId={deckId}
+            deckMode={deckMode}
+            onRegisterPdfImportTrigger={setOpenAIPdfImport}
+          />
         )}
       </div>
-
-      {/* Import dialog */}
-      <ImportDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-        initialDeckId={deckId}
-        onSuccess={handleImportSuccess}
-      />
 
       {/* Vocabulary import dialog for languages mode */}
       {deck && deckMode === "languages" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +38,7 @@ interface AICardGeneratorProps {
   deckMode?: DeckMode;
   onCardsConfirmed?: (importedCount: number) => void;
   className?: string;
+  onRegisterPdfImportTrigger?: (trigger: (() => void) | null) => void;
 }
 
 export function AICardGenerator({
@@ -45,6 +46,7 @@ export function AICardGenerator({
   deckMode,
   onCardsConfirmed,
   className,
+  onRegisterPdfImportTrigger,
 }: AICardGeneratorProps) {
   const router = useRouter();
 
@@ -98,6 +100,17 @@ export function AICardGenerator({
   const userPlan = useUserPlan();
   const canUseAI = userPlan?.canUseAI ?? false;
   const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && canUseAI;
+
+  useEffect(() => {
+    if (!onRegisterPdfImportTrigger) return;
+
+    onRegisterPdfImportTrigger(() => {
+      if (!canUseAI || pdfLoading || aiLoading) return;
+      pdfInputRef.current?.click();
+    });
+
+    return () => onRegisterPdfImportTrigger(null);
+  }, [onRegisterPdfImportTrigger, canUseAI, pdfLoading, aiLoading]);
 
   // Reset preview state
   const resetPreview = () => {
@@ -519,11 +532,7 @@ export function AICardGenerator({
     const isPdf =
       file.type === "application/pdf" ||
       file.name.toLowerCase().endsWith(".pdf");
-    const isImage =
-      file.type.startsWith("image/") ||
-      /\.(jpg|jpeg|png|heic|gif|webp)$/i.test(file.name);
-
-    if (!isPdf && !isImage) {
+    if (!isPdf) {
       setPdfError(t("aiGenerator.errorInvalidFileType"));
       return;
     }
@@ -842,20 +851,21 @@ export function AICardGenerator({
         {/* Input - hide when preview is showing */}
         {!generatedCards && (
           <div className="space-y-4">
-            {/* PDF / photo upload — hidden on iOS native (handled by Import Vocabulary button) */}
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handlePdfUpload}
+              disabled={!canUseAI || pdfLoading || aiLoading}
+              className="hidden"
+              id="pdf-upload"
+            />
+
+            {/* PDF upload UI on web */}
             {!Capacitor.isNativePlatform() && (
               <>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <input
-                      ref={pdfInputRef}
-                      type="file"
-                      accept=".pdf,image/*"
-                      onChange={handlePdfUpload}
-                      disabled={!canUseAI || pdfLoading || aiLoading}
-                      className="hidden"
-                      id="pdf-upload"
-                    />
                     <label
                       htmlFor="pdf-upload"
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${

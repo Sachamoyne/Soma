@@ -738,6 +738,9 @@
     "errorPdfCorrupted": "Ce fichier PDF semble corrompu ou mal forme. Veuillez essayer un autre fichier.",
     "errorPdfGeneration": "Echec de la generation de cartes depuis le PDF"
   },
+  "importDialog": {
+    "errorCamera": "Impossible d'acceder a la camera ou a la bibliotheque de photos. Verifiez les permissions et reessayez."
+  },
   "paywall": {
     "currentPlan": "Plan actuel",
     "perMonth": "/mois",

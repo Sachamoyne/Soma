@@ -738,6 +738,9 @@
     "errorPdfCorrupted": "This PDF file seems corrupted or malformed. Please try another file.",
     "errorPdfGeneration": "Failed to generate cards from PDF"
   },
+  "importDialog": {
+    "errorCamera": "Unable to access the camera or photo library. Please check permissions and try again."
+  },
   "paywall": {
     "currentPlan": "Current plan",
     "perMonth": "/month",
