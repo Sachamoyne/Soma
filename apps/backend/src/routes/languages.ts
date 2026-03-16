@@ -1,9 +1,175 @@
 import express, { Request, Response } from "express";
+import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 const LLM_MODEL = process.env.LLM_MODEL || "gpt-4o-mini";
 const LLM_BASE_URL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
+const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15 MB
+const MIN_OCR_TEXT_LENGTH = 10;
+
+const ACCEPTED_IMAGE_MIMETYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/heic",
+  "image/heif",
+  "image/webp",
+]);
+
+function isImageMimetype(mimetype: string): boolean {
+  return ACCEPTED_IMAGE_MIMETYPES.has(mimetype.toLowerCase());
+}
+
+function isImageFilename(filename: string): boolean {
+  return /\.(jpg|jpeg|png|heic|heif|webp)$/i.test(filename);
+}
+
+function normalizeExtractedText(text: string): string {
+  let normalized = text.replace(/\r\n/g, "\n");
+  normalized = normalized.replace(/[ \t]+/g, " ");
+  normalized = normalized.replace(/\n{3,}/g, "\n\n");
+  return normalized.trim();
+}
+
+async function extractTextFromImage(
+  buffer: Buffer,
+  mimetype: string
+): Promise<{ success: true; text: string } | { success: false; code: string; message: string }> {
+  const model = process.env.LLM_MODEL || "gpt-4o-mini";
+  const baseURL = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
+
+  // Normalize HEIC/HEIF label for API compatibility.
+  const apiMimetype = mimetype.toLowerCase().startsWith("image/hei") ? "image/jpeg" : mimetype.toLowerCase();
+  const base64 = buffer.toString("base64");
+  const dataUrl = `data:${apiMimetype};base64,${base64}`;
+
+  try {
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Transcribe all visible text from this vocabulary photo exactly as written. Preserve line breaks and table/column reading order as much as possible. Return only raw text, no markdown, no explanation.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: dataUrl, detail: "high" },
+              },
+            ],
+          },
+        ],
+        temperature: 0,
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[LANGUAGES/OCR] Vision API error:", response.status, errorText.substring(0, 300));
+      return {
+        success: false,
+        code: "OCR_FAILED",
+        message: "Failed to extract text from image",
+      };
+    }
+
+    const data = await response.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const rawText = data.choices?.[0]?.message?.content?.trim() ?? "";
+    const text = normalizeExtractedText(rawText);
+
+    if (text.length < MIN_OCR_TEXT_LENGTH) {
+      return {
+        success: false,
+        code: "OCR_NO_TEXT",
+        message: "Not enough text detected in image",
+      };
+    }
+
+    return { success: true, text };
+  } catch (error) {
+    console.error("[LANGUAGES/OCR] Unexpected error:", error);
+    return {
+      success: false,
+      code: "OCR_FAILED",
+      message: "Failed to extract text from image",
+    };
+  }
+}
+
+/**
+ * POST /languages/extract-vocabulary-text
+ *
+ * Extract raw text from an uploaded vocabulary image using vision OCR.
+ *
+ * multipart/form-data:
+ * - file: image (jpg/png/webp/heic/heif)
+ */
+router.post("/extract-vocabulary-text", upload.single("file"), async (req: Request, res: Response) => {
+  try {
+    console.log("[LANGUAGES/OCR] Request received");
+
+    const userId = (req as any).userId;
+    if (!userId) {
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Invalid or missing authentication token",
+      });
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({
+        error: "NO_FILE",
+        message: "No image file provided",
+      });
+    }
+
+    const isImage = isImageMimetype(file.mimetype) || isImageFilename(file.originalname);
+    if (!isImage) {
+      return res.status(415).json({
+        error: "INVALID_FILE_TYPE",
+        message: "Invalid image type. Supported: JPG, PNG, WEBP, HEIC.",
+      });
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      return res.status(413).json({
+        error: "FILE_TOO_LARGE",
+        message: "Image too large (max 15 MB).",
+      });
+    }
+
+    const result = await extractTextFromImage(file.buffer, file.mimetype);
+    if (!result.success) {
+      return res.status(422).json({
+        error: result.code,
+        message: result.message,
+      });
+    }
+
+    return res.json({ text: result.text });
+  } catch (error) {
+    console.error("[LANGUAGES/OCR] Unexpected error:", error);
+    return res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: error instanceof Error ? error.message : "Failed to extract text",
+    });
+  }
+});
 
 interface VocabularyEntry {
   wordSource: string;

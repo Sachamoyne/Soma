@@ -19,15 +19,6 @@ import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
 import { Capacitor } from "@capacitor/core";
 
-// Dynamic imports for SSR compatibility
-let Tesseract: any = null;
-
-if (typeof window !== "undefined") {
-  import("tesseract.js").then((tesseract) => {
-    Tesseract = tesseract;
-  });
-}
-
 /** Vocabulary entry structure */
 export interface VocabularyEntry {
   wordSource: string;
@@ -138,20 +129,35 @@ export function VocabularyImportDialog({
     }
   };
 
-  const extractTextFromImage = async (file: File): Promise<string> => {
-    if (!Tesseract) {
-      throw new Error("Tesseract.js not loaded");
+  const extractTextFromImage = async (imageFile: File): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error("Not authenticated");
     }
 
-    const { data } = await Tesseract.recognize(file, "fra+eng+deu+spa+ita+por+lat", {
-      logger: (m: any) => {
-        if (m.status === "recognizing text") {
-          setExtractionProgress(m.progress * 100);
-        }
+    const formData = new FormData();
+    formData.append("file", imageFile);
+
+    const response = await fetch(`${BACKEND_URL}/languages/extract-vocabulary-text`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
       },
+      body: formData,
     });
 
-    return data.text;
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.message || t("vocabularyImport.ocrFailed"));
+    }
+
+    if (!result.text || typeof result.text !== "string") {
+      throw new Error(t("vocabularyImport.ocrFailed"));
+    }
+
+    return result.text;
   };
 
   const parseVocabulary = async (text: string): Promise<VocabularyEntry[]> => {
@@ -188,11 +194,12 @@ export function VocabularyImportDialog({
 
     setError(null);
     setStep("extracting");
-    setExtractionProgress(0);
+    setExtractionProgress(10);
 
     try {
       // Step 1: OCR
       const text = await extractTextFromImage(file);
+      setExtractionProgress(100);
 
       if (!text.trim()) {
         throw new Error(t("vocabularyImport.ocrFailed"));
