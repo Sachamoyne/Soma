@@ -132,12 +132,13 @@ export function VocabularyImportDialog({
       });
 
       const photoDataUrl = photo.dataUrl || null;
-      if (!photoDataUrl) {
+      const photoUrl = photo.webPath || (photo.path ? Capacitor.convertFileSrc(photo.path) : null);
+      if (!photoDataUrl && !photoUrl) {
         // Picker can return no path when user cancels/dismisses.
         return;
       }
 
-      const response = await fetch(photoDataUrl);
+      const response = await fetch(photoDataUrl || photoUrl!);
       const blob = await response.blob();
       const mimeType = blob.type || "image/jpeg";
       const ext = mimeType.split("/")[1] || "jpg";
