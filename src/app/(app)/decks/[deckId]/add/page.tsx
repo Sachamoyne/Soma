@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ import { isLawCardType, isMedicineCardType } from "@/lib/card-types";
 import { DiagramEditor, type DiagramData } from "@/components/DiagramEditor";
 import type { DeckMode } from "@/lib/supabase-db";
 import { VocabularyImportDialog } from "@/components/VocabularyImportDialog";
-import { AICardGenerator } from "@/components/AICardGenerator";
+import { AICardGenerator, type AICardGeneratorHandle } from "@/components/AICardGenerator";
 import { useTranslation } from "@/i18n";
 import { Camera } from "lucide-react";
 
@@ -86,7 +86,7 @@ export default function AddCardsPage() {
   const [creating, setCreating] = useState(false);
   const [vocabImportDialogOpen, setVocabImportDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [openAIPdfImport, setOpenAIPdfImport] = useState<(() => void) | null>(null);
+  const aiGeneratorRef = useRef<AICardGeneratorHandle | null>(null);
   // Check if current type is property (needs special form)
   const isPropertyType = cardType === "property";
   const isPhilosophyConceptType = cardType === "philosophy_concept";
@@ -372,7 +372,7 @@ export default function AddCardsPage() {
               {creationMode === "ai" && (
                 <Button
                   variant="outline"
-                  onClick={() => openAIPdfImport?.()}
+                  onClick={() => aiGeneratorRef.current?.openPdfPicker()}
                   className={`w-full ${!(deckMode === "languages" && deck) ? "col-span-2" : ""}`}
                 >
                   <Upload className="mr-2 h-4 w-4" />
@@ -392,7 +392,7 @@ export default function AddCardsPage() {
                   </Button>
                 )}
                 {creationMode === "ai" && (
-                  <Button variant="outline" onClick={() => openAIPdfImport?.()}>
+                  <Button variant="outline" onClick={() => aiGeneratorRef.current?.openPdfPicker()}>
                     <Upload className="mr-2 h-4 w-4" />
                     {t("addCards.importFromFile")}
                   </Button>
@@ -934,9 +934,9 @@ export default function AddCardsPage() {
         {/* AI card generation */}
         {creationMode === "ai" && (
           <AICardGenerator
+            ref={aiGeneratorRef}
             deckId={deckId}
             deckMode={deckMode}
-            onRegisterPdfImportTrigger={setOpenAIPdfImport}
           />
         )}
       </div>

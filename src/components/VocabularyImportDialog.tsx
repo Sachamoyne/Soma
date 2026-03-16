@@ -111,19 +111,35 @@ export function VocabularyImportDialog({
     setIsPickingPhoto(true);
     try {
       const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
+      const currentPermissions = await Camera.checkPermissions();
+      const currentPhotosPermission = currentPermissions?.photos;
+
+      // Request photos permission explicitly on iOS when needed.
+      if (currentPhotosPermission === "prompt") {
+        const requested = await Camera.requestPermissions({ permissions: ["photos"] });
+        if (requested?.photos === "denied") {
+          setError(t("importDialog.errorCamera"));
+          return;
+        }
+      } else if (currentPhotosPermission === "denied") {
+        setError(t("importDialog.errorCamera"));
+        return;
+      }
+
       const photo = await Camera.getPhoto({
         resultType: CameraResultType.Uri,
-        source: CameraSource.Prompt,
+        source: CameraSource.Photos,
         quality: 90,
         allowEditing: false,
       });
 
-      if (!photo.webPath) {
+      const photoUrl = photo.webPath || (photo.path ? Capacitor.convertFileSrc(photo.path) : null);
+      if (!photoUrl) {
         // Picker can return no path when user cancels/dismisses.
         return;
       }
 
-      const response = await fetch(photo.webPath);
+      const response = await fetch(photoUrl);
       const blob = await response.blob();
       const mimeType = blob.type || "image/jpeg";
       const ext = mimeType.split("/")[1] || "jpg";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useImperativeHandle, forwardRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,16 +38,18 @@ interface AICardGeneratorProps {
   deckMode?: DeckMode;
   onCardsConfirmed?: (importedCount: number) => void;
   className?: string;
-  onRegisterPdfImportTrigger?: (trigger: (() => void) | null) => void;
 }
 
-export function AICardGenerator({
+export interface AICardGeneratorHandle {
+  openPdfPicker: () => void;
+}
+
+export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGeneratorProps>(function AICardGenerator({
   deckId,
   deckMode,
   onCardsConfirmed,
   className,
-  onRegisterPdfImportTrigger,
-}: AICardGeneratorProps) {
+}, ref) {
   const router = useRouter();
 
   // AI card generation state
@@ -101,16 +103,12 @@ export function AICardGenerator({
   const canUseAI = userPlan?.canUseAI ?? false;
   const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && canUseAI;
 
-  useEffect(() => {
-    if (!onRegisterPdfImportTrigger) return;
-
-    onRegisterPdfImportTrigger(() => {
+  useImperativeHandle(ref, () => ({
+    openPdfPicker: () => {
       if (!canUseAI || pdfLoading || aiLoading) return;
       pdfInputRef.current?.click();
-    });
-
-    return () => onRegisterPdfImportTrigger(null);
-  }, [onRegisterPdfImportTrigger, canUseAI, pdfLoading, aiLoading]);
+    },
+  }), [canUseAI, pdfLoading, aiLoading]);
 
   // Reset preview state
   const resetPreview = () => {
@@ -857,7 +855,7 @@ export function AICardGenerator({
               accept=".pdf,application/pdf"
               onChange={handlePdfUpload}
               disabled={!canUseAI || pdfLoading || aiLoading}
-              className="hidden"
+              className="absolute h-px w-px opacity-0"
               id="pdf-upload"
             />
 
@@ -1251,4 +1249,4 @@ export function AICardGenerator({
       />
     </>
   );
-}
+});
