@@ -58,7 +58,7 @@ export default function DeckLayout({ children }: { children: React.ReactNode }) 
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Minimal header - just back link */}
       <div className="border-b bg-background">
-        <div className="max-w-6xl mx-auto px-4 md:px-10 py-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-10 py-4">
           <Link
             href={appHref("/decks", isApp)}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -71,7 +71,7 @@ export default function DeckLayout({ children }: { children: React.ReactNode }) 
 
       {/* Deck title - large, centered */}
       <div className="border-b bg-background">
-        <div className="max-w-6xl mx-auto px-4 py-4 md:px-10 md:py-8">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:px-10 md:py-8">
           <h1 className="text-2xl md:text-3xl font-bold text-center">{deck.name}</h1>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function DeckLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main content area */}
       <div className="flex-1 overflow-y-auto bg-muted/25">
-        <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-4 md:px-10 md:py-10">
+        <div className="max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 py-4 md:px-10 md:py-10">
           {children}
         </div>
       </div>

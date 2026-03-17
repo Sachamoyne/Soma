@@ -98,7 +98,7 @@ function NativeAppLayout({ children }: { children: React.ReactNode }) {
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <div
-        className="flex flex-1 flex-col overflow-hidden min-w-0 w-full max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto"
+        className="flex flex-1 flex-col overflow-hidden min-w-0 w-full"
         style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         {children}
