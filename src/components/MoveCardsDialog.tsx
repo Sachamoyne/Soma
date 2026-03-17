@@ -9,6 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { listDecksWithPaths, moveCardsToDeck } from "@/store/decks";
@@ -97,25 +104,27 @@ export function MoveCardsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="targetDeck">{t("moveCards.selectDeck")}</Label>
-            <select
-              id="targetDeck"
-              value={selectedDeckId}
-              onChange={(e) => {
-                setSelectedDeckId(e.target.value);
+            <Select
+              value={selectedDeckId || undefined}
+              onValueChange={(value) => {
+                setSelectedDeckId(value);
                 if (error) setError(null);
               }}
-              className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               disabled={loading}
             >
-              <option value="">{t("moveCards.selectDeckPlaceholder")}</option>
-              {decksWithPaths.map(({ deck, path }) => (
-                <option key={deck.id} value={deck.id}>
-                  {path}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="targetDeck">
+                <SelectValue placeholder={t("moveCards.selectDeckPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {decksWithPaths.map(({ deck, path }) => (
+                  <SelectItem key={deck.id} value={deck.id}>
+                    {path}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import { Trash2, Edit, Pause, Play, Save, X, ArrowLeft, ChevronRight } from "luc
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
   listCardsForDeckTree,
+  listDecksWithPaths,
   deleteCard,
   updateCard,
   suspendCard,
@@ -88,8 +89,15 @@ export default function BrowseCardsPage() {
   const params = useParams();
   const deckId = params.deckId as string;
   const [cards, setCards] = useState<CardType[]>([]);
+  const [deckPaths, setDeckPaths] = useState<Array<{ deckId: string; path: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const deckPathById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of deckPaths) map.set(entry.deckId, entry.path);
+    return map;
+  }, [deckPaths]);
   const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
   const [activeCardId, setActiveCardId] = useState<string | null>(null); // Currently previewed card
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -123,7 +131,10 @@ export default function BrowseCardsPage() {
 
     try {
       const normalizedDeckId = String(deckId);
-      const allCards = await listCardsForDeckTree(normalizedDeckId);
+      const [allCards, decks] = await Promise.all([
+        listCardsForDeckTree(normalizedDeckId),
+        listDecksWithPaths(),
+      ]);
 
       // Sort by creation date (newest first) - like Anki
       allCards.sort((a, b) =>
@@ -131,6 +142,7 @@ export default function BrowseCardsPage() {
       );
 
       setCards(allCards);
+      setDeckPaths(decks.map((d) => ({ deckId: d.deck.id, path: d.path })));
     } catch (err) {
       console.error("Error loading cards:", err);
       setError("Failed to load cards. Please try again.");
@@ -415,6 +427,10 @@ export default function BrowseCardsPage() {
                   </div>
                   <Separator />
                   <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Deck:</span>
+                      <span className="font-medium text-right">{deckPathById.get(activeCard.deck_id) ?? "—"}</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Type:</span>
                       <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
@@ -744,6 +760,10 @@ export default function BrowseCardsPage() {
 
                       {/* Card metadata */}
                       <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Deck:</span>
+                          <span className="font-medium text-right">{deckPathById.get(activeCard.deck_id) ?? "—"}</span>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Type:</span>
                           <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
