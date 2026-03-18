@@ -53,6 +53,43 @@
     "aboutP1": "Soma is built to help you learn better, not more. We focus on clarity, cognitive science, and spaced repetition to make every review session count.",
     "aboutP2": "The product is designed as a quiet companion for serious learners. Every surface stays minimal so your attention stays on what matters."
   },
+  "landingSeo": {
+    "title": "Soma: the spaced repetition app to study smarter and learn faster",
+    "p1": "Soma is a modern spaced repetition app built for students who want high retention without heavy workflows. It combines evidence-based review scheduling, a clean interface, and practical automation so daily revision stays simple. If you are searching for a tool that helps you study smarter, Soma focuses on one promise: less friction, more recall. Instead of spending hours organizing notes, you open your deck, review what matters now, and move forward with confidence. This is especially useful for demanding programs where memory quality matters as much as motivation. The experience is intentionally calm so your attention stays on learning, not on menus, plugins, or technical setup.",
+    "p2": "Spaced repetition works because your brain remembers information better when review sessions are timed around forgetting. Reviewing too early wastes time, and reviewing too late increases errors. Soma schedules each card at the right moment so difficult concepts return sooner and mastered concepts appear less often. Over weeks and months, this creates stronger long-term memory while reducing total study load. For students preparing exams, this means more stable recall under pressure and fewer last-minute cram sessions. In practice, you are not just reviewing more, you are reviewing better. This timing discipline is one of the most reliable ways to improve recall without increasing total study hours.",
+    "p3": "Many learners start with Anki and appreciate its power, but they eventually want a smoother day-to-day experience. Soma is designed as a practical Anki alternative: less setup, more flow, and a polished interface that works well on web and iOS. You keep the core advantage of spaced repetition while reducing technical overhead. Import support makes transition easier, and the product stays focused on study outcomes rather than configuration complexity. If your goal is to maintain consistency, Soma helps remove the friction that often causes people to stop reviewing after a few weeks.",
+    "p4": "Soma also includes AI flashcards generation to speed up the most time-consuming part of active recall: creating high-quality cards. Instead of manually rewriting entire chapters, you can transform notes, lectures, or course material into usable prompts in minutes. The AI focuses on clarity, concise phrasing, and question formats that improve retrieval. You still control and edit your decks, but the first draft arrives much faster. This balance lets serious learners spend more time practicing memory and less time formatting content, which is a major advantage during busy semesters.",
+    "p5": "The platform is built for real academic workloads: university students, prepa classes, medical school, law, engineering, and language learning. It is equally useful for anyone preparing selective exams where precision and speed matter. Whether you revise definitions, mechanisms, cases, formulas, or vocabulary, Soma adapts to your pace and keeps priorities visible each day. The objective is not to overload your schedule with endless tasks; it is to protect momentum. Small, focused sessions repeated consistently lead to better retention than occasional marathon study days. This approach helps you preserve energy across long semesters while keeping high-value topics active in memory.",
+    "p6": "If you want to learn faster in a sustainable way, Soma gives you a structured routine that compounds over time. Daily reviews become predictable, progress stays measurable, and confidence grows because you can see what is mastered and what needs work. In short, Soma brings together the core strengths students need today: a reliable spaced repetition app, a practical Anki alternative, and AI flashcards that reduce prep time. The result is a smarter study system that helps you study smarter now and perform better when exams arrive. Over a full term, these small daily gains stack into a major advantage in both recall quality and study efficiency every week.",
+    "faqTitle": "Frequently asked questions",
+    "productDescription": "Soma is a spaced repetition app and Anki alternative with AI flashcards to help students study smarter and learn faster.",
+    "faq": {
+      "bestSpacedRepetitionApp": {
+        "q": "What is the best spaced repetition app?",
+        "a": "The best spaced repetition app is the one you can use consistently. Soma is built for consistency with fast daily reviews, clean design, and AI support that helps you keep decks updated without extra friction."
+      },
+      "betterThanAnki": {
+        "q": "Is Soma better than Anki?",
+        "a": "Soma is a strong Anki alternative for learners who want less setup and a smoother experience. You keep core spaced repetition benefits while gaining a more guided workflow, modern interface, and built-in AI flashcards."
+      },
+      "aiFlashcards": {
+        "q": "How does AI generate flashcards in Soma?",
+        "a": "Soma analyzes your source material and drafts question-answer pairs focused on active recall. You can review and edit each card before studying, so the final deck stays accurate and adapted to your course goals."
+      },
+      "ankiImport": {
+        "q": "Can I import my Anki decks?",
+        "a": "Yes. Soma supports Anki import so you can move existing work without starting from zero. After import, your decks can continue in the same spaced repetition workflow inside Soma."
+      },
+      "freePlan": {
+        "q": "Is Soma free?",
+        "a": "Soma includes a free plan to get started, with paid options for learners who need higher flashcard limits and advanced AI usage. You can begin at no cost and upgrade only when your workload grows."
+      },
+      "spacedRepetitionHowItWorks": {
+        "q": "How does spaced repetition work?",
+        "a": "Spaced repetition schedules each review near the point where forgetting begins. Hard cards return sooner, easy cards return later, and this timing improves long-term memory while reducing wasted study time."
+      }
+    }
+  },
   "auth": {
     "signIn": "Login to {appName}",
     "signUp": "Sign up for {appName}",

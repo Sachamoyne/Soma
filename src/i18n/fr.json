@@ -53,6 +53,43 @@
     "aboutP1": "Soma est concu pour vous aider a mieux apprendre, pas plus. Nous nous concentrons sur la clarte, les sciences cognitives et la repetition espacee pour que chaque session de revision compte.",
     "aboutP2": "Le produit est concu comme un compagnon discret pour les apprenants serieux. Chaque interface reste minimale pour que votre attention reste sur l'essentiel."
   },
+  "landingSeo": {
+    "title": "Soma: repetition espacee, IA et une vraie alternative a Anki",
+    "p1": "Soma est une application de repetition espacee pensee pour les etudiants qui veulent memoriser durablement sans perdre du temps en configuration. Si vous cherchez une solution pour study smarter, vous avez besoin d'un outil qui transforme la revision en routine claire. Soma combine un planning de revision base sur la science cognitive, une interface epuree et des automatisations utiles pour garder le focus sur l'apprentissage. Chaque session est guidee, concise et orientee resultat. Vous passez moins de temps a organiser vos cartes, et plus de temps a renforcer votre memoire sur le long terme. L'experience reste volontairement sobre pour concentrer votre energie sur le contenu, pas sur les reglages techniques.",
+    "p2": "La repetition espacee fonctionne car le cerveau consolide mieux une information quand elle est revue juste avant l'oubli. Revoir trop tot augmente la charge de travail sans gain reel, revoir trop tard augmente le taux d'erreur. Soma ajuste le timing de chaque carte selon votre niveau de maitrise: les notions fragiles reviennent rapidement, les notions solides reviennent plus tard. Ce rythme intelligent reduit la fatigue et ameliore la retention durable. Pour un examen, cela veut dire moins de bachotage de derniere minute et une memoire plus fiable le jour J, meme sous pression. Cette discipline de timing est l'une des methodes les plus solides pour progresser sans allonger le temps total de revision.",
+    "p3": "Beaucoup d'etudiants commencent avec Anki, puis recherchent une experience plus fluide au quotidien. Soma se positionne comme une Anki alternative moderne: moins de friction technique, plus de regularite, et une interface propre sur web et iOS. Vous conservez la puissance de la repetition espacee sans passer votre energie a parametrer l'outil. L'import Anki permet de reutiliser vos contenus existants, puis de continuer votre progression dans un environnement plus direct. Si votre objectif est la constance sur plusieurs mois, Soma supprime les obstacles qui freinent souvent la revision.",
+    "p4": "Soma integre aussi la generation de AI flashcards pour accelerer la creation de cartes, souvent la partie la plus chronophage. Au lieu de reformuler manuellement des chapitres entiers, vous pouvez transformer vos notes de cours en cartes exploitables en quelques minutes. L'IA produit une base claire, orientee rappel actif, que vous pouvez corriger et affiner. Vous gardez toujours le controle du contenu final, mais vous gagnez un temps considerable sur la preparation. Ce gain est critique pendant les periodes chargees, quand il faut maintenir la qualite d'apprentissage tout en tenant un planning serre.",
+    "p5": "La plateforme est adaptee aux usages academiques exigeants: licence, prepa, medecine, droit, ingenierie, langues et concours selectifs. Que vous deviez retenir des definitions, des mecanismes, des formules, des cas pratiques ou du vocabulaire, Soma vous aide a prioriser les bonnes revisions chaque jour. L'objectif n'est pas de remplir votre agenda de taches infinies, mais de proteger votre progression avec des sessions courtes et regulieres. Sur la duree, cette methode est plus efficace que les grosses sessions occasionnelles, et elle stabilise votre niveau de rappel sur tous les chapitres. Elle vous aide aussi a tenir sur un semestre complet sans perdre en qualite de memorisation.",
+    "p6": "Si vous voulez learn faster sans sacrifier votre energie, Soma vous donne un cadre durable qui s'ameliore avec le temps. Vos revisions deviennent previsibles, vos priorites restent visibles, et votre confiance augmente parce que vous savez ce qui est acquis et ce qui doit etre renforce. En pratique, Soma reunit trois avantages cles: un vrai spaced repetition app, une Anki alternative orientee simplicite, et des AI flashcards qui reduisent fortement le temps de preparation. Le resultat est un systeme d'etude plus intelligent, qui vous aide a study smarter et a mieux performer aux examens. Sur un semestre complet, ces petits gains quotidiens deviennent un avantage net en retention et en productivite.",
+    "faqTitle": "Questions frequentes",
+    "productDescription": "Soma est une application de repetition espacee et une alternative a Anki avec AI flashcards pour study smarter et learn faster.",
+    "faq": {
+      "bestSpacedRepetitionApp": {
+        "q": "Quelle est la meilleure application de repetition espacee ?",
+        "a": "La meilleure application est celle que vous utilisez vraiment chaque jour. Soma est pensee pour la regularite avec des revisions rapides, une interface claire et une aide IA qui simplifie la mise a jour des cartes."
+      },
+      "betterThanAnki": {
+        "q": "Soma est-elle meilleure qu'Anki ?",
+        "a": "Soma est une alternative solide a Anki pour les etudiants qui veulent moins de configuration et plus de fluidite. Vous gardez les benefices de la repetition espacee avec une experience plus directe et des AI flashcards integrees."
+      },
+      "aiFlashcards": {
+        "q": "Comment Soma genere-t-elle des AI flashcards ?",
+        "a": "Soma analyse votre contenu source et propose des paires question-reponse concues pour le rappel actif. Vous pouvez ensuite relire, corriger et adapter chaque carte avant de lancer vos revisions."
+      },
+      "ankiImport": {
+        "q": "Puis-je importer mes decks Anki ?",
+        "a": "Oui. Soma permet l'import Anki pour reutiliser votre travail existant. Une fois importes, vos decks continuent dans le meme flux de repetition espacee au sein de Soma."
+      },
+      "freePlan": {
+        "q": "Soma est-elle gratuite ?",
+        "a": "Soma propose une offre gratuite pour commencer, puis des offres payantes si vous avez besoin de limites plus elevees et d'un usage IA plus intensif. Vous pouvez debuter sans frais et evoluer ensuite."
+      },
+      "spacedRepetitionHowItWorks": {
+        "q": "Comment fonctionne la repetition espacee ?",
+        "a": "La repetition espacee planifie chaque revision proche du moment ou l'oubli commence. Les cartes difficiles reviennent plus vite, les cartes faciles plus tard, ce qui ameliore la retention et reduit le temps perdu."
+      }
+    }
+  },
   "auth": {
     "signIn": "Connexion a Soma",
     "signUp": "Inscription a {appName}",

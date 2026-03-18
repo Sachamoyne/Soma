@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +16,28 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { isNativeIOS } from "@/lib/native";
 
 const playfair = Playfair_Display({ subsets: ["latin"] });
+const SEO_PARAGRAPH_KEYS = ["p1", "p2", "p3", "p4", "p5", "p6"] as const;
+const FAQ_KEYS = [
+  "bestSpacedRepetitionApp",
+  "betterThanAnki",
+  "aiFlashcards",
+  "ankiImport",
+  "freePlan",
+  "spacedRepetitionHowItWorks",
+] as const;
+
+function upsertJsonLd(id: string, data: Record<string, unknown>) {
+  if (typeof document === "undefined") return;
+
+  let script = document.getElementById(id) as HTMLScriptElement | null;
+  if (!script) {
+    script = document.createElement("script");
+    script.id = id;
+    script.type = "application/ld+json";
+    document.head.appendChild(script);
+  }
+  script.text = JSON.stringify(data);
+}
 
 export default function LandingPage() {
   const { t } = useTranslation();
@@ -23,6 +45,20 @@ export default function LandingPage() {
   const nativeIOS = isNativeIOS();
   const [userPresent, setUserPresent] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const seoParagraphs = useMemo(
+    () => SEO_PARAGRAPH_KEYS.map((key) => t(`landingSeo.${key}`)),
+    [t],
+  );
+  const faqItems = useMemo(
+    () =>
+      FAQ_KEYS.map((key) => ({
+        question: t(`landingSeo.faq.${key}.q`),
+        answer: t(`landingSeo.faq.${key}.a`),
+      })),
+    [t],
+  );
+  const productDescription = t("landingSeo.productDescription");
 
   useEffect(() => {
     let active = true;
@@ -49,6 +85,43 @@ export default function LandingPage() {
       active = false;
     };
   }, [nativeIOS, router]);
+
+  useEffect(() => {
+    const faqSchema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    };
+
+    const productSchema = {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: APP_NAME,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web, iOS",
+      description: productDescription,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+      },
+    };
+
+    upsertJsonLd("soma-faq-schema", faqSchema);
+    upsertJsonLd("soma-product-schema", productSchema);
+
+    return () => {
+      document.getElementById("soma-faq-schema")?.remove();
+      document.getElementById("soma-product-schema")?.remove();
+    };
+  }, [faqItems, productDescription]);
 
   if (nativeIOS) {
     return <div className="min-h-screen bg-background" />;
@@ -180,6 +253,39 @@ export default function LandingPage() {
           <div className="space-y-4 text-muted-foreground">
             <p>{t("landing.aboutP1")}</p>
             <p>{t("landing.aboutP2")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <h2 className={`${playfair.className} text-2xl font-medium text-foreground sm:text-3xl`}>
+            {t("landingSeo.title")}
+          </h2>
+          <div className="mt-8 space-y-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {seoParagraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <h3 className={`${playfair.className} text-2xl font-medium text-foreground sm:text-3xl`}>
+            {t("landingSeo.faqTitle")}
+          </h3>
+          <div className="mt-8 divide-y divide-border rounded-xl border border-border bg-card/30">
+            {faqItems.map((item) => (
+              <details key={item.question} className="group px-5 py-4">
+                <summary className="cursor-pointer list-none pr-6 text-sm font-medium text-foreground sm:text-base">
+                  {item.question}
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
