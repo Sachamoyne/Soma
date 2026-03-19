@@ -37,7 +37,7 @@ export interface IntervalPreview {
   easy: string;
 }
 
-const DEFAULT_LEARNING_STEPS_MINUTES = [1];
+const DEFAULT_LEARNING_STEPS_MINUTES = [1, 10]; // Anki default: 1m then 10m before graduating
 const DEFAULT_GRADUATING_INTERVAL_DAYS = 1;
 const DEFAULT_SETTINGS: SchedulerSettings = {
   starting_ease: 2.5,
@@ -253,8 +253,21 @@ function scheduleLearning(
     };
   }
 
+  // Hard: repeat the current step (card needs more drilling, stays in session)
+  if (rating === "hard") {
+    return {
+      state: "learning",
+      due_at: calculateDueDate(steps[currentStepIndex], now),
+      interval_days: 0,
+      ease: card.ease,
+      learning_step_index: currentStepIndex,
+      reps: card.reps + 1,
+      lapses: card.lapses,
+    };
+  }
+
   // Good: advance to next step or graduate
-  if (rating === "good" || rating === "hard") {
+  if (rating === "good") {
     const nextStepIndex = currentStepIndex + 1;
 
     if (nextStepIndex >= steps.length) {

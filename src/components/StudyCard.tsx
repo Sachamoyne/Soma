@@ -243,7 +243,7 @@ export function StudyCard({
       const updatedDueAt = result.due_at.getTime();
       const isLearningState =
         result.state === "learning" || result.state === "relearning";
-      const shouldRequeueSoon = updatedDueAt <= nowMs + 60_000;
+      const shouldRequeueSoon = updatedDueAt <= nowMs + 90_000; // 90s covers the 1-minute learning step with margin
 
       if (isLearningState && shouldRequeueSoon) {
         const REINSERT_AFTER_VAL = Math.min(3, withoutCurrent.length);
