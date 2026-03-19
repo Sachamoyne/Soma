@@ -108,10 +108,12 @@ export function StudyCard({
   const [ratingFlash, setRatingFlash] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingUntil, setWaitingUntil] = useState<Date | null>(null);
+  const isMounted = useRef(true);
   const queuedIds = useRef<Set<string>>(new Set(initialCards.map((c) => c.id)));
   const pendingCards = useRef<Map<string, CardType>>(new Map());
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSubmitting = useRef(false);
+  const isRequeueing = useRef(false);
   const cardTimer = useCardTimer();
   // Cached scheduler settings — loaded once at session start, defaults used until then
   const cachedSettings = useRef<SchedulerSettings>(DEFAULT_SCHEDULER_SETTINGS);
@@ -151,6 +153,13 @@ export function StudyCard({
       }
     }
   }, [currentCard]);
+
+  // Mark as unmounted to prevent async requeue updates after navigation.
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Load scheduler settings once at session start — used for instant local SRS computation
   useEffect(() => {
@@ -301,7 +310,39 @@ export function StudyCard({
       if (newQueue.length === 0) {
         if (pendingCards.current.size === 0) {
           setCurrentIndex(0);
-          onComplete?.();
+          // Local queue is empty: before ending the session, re-check the DB
+          // for any card that is due now / quasi-now (especially Learning due soon).
+          // This prevents the "return to deck overview between learning steps" bug.
+          if (!isRequeueing.current) {
+            isRequeueing.current = true;
+            void (async () => {
+              try {
+                const freshDue = await getDueCards(
+                  deckId,
+                  PREFETCH_BATCH_SIZE
+                );
+
+                if (!isMounted.current) return;
+
+                if (freshDue.length > 0) {
+                  queuedIds.current = new Set(freshDue.map((c) => c.id));
+                  freshDue.forEach((c) => sessionCardIds.current.add(c.id));
+                  pendingCards.current.clear();
+                  setPendingCount(0);
+                  setQueue(freshDue);
+                  setShowBack(false);
+                  setCurrentIndex(0);
+                } else {
+                  onComplete?.();
+                }
+              } catch (err) {
+                console.error("[STUDY CARD] Reload due cards failed:", err);
+                if (isMounted.current) onComplete?.();
+              } finally {
+                isRequeueing.current = false;
+              }
+            })();
+          }
         } else {
           setCurrentIndex(0);
         }
