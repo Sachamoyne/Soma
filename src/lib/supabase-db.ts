@@ -798,6 +798,9 @@ export async function getDueCards(
   });
 
   // 1. Get learning/relearning cards (priority 1)
+  // Include cards due within the next 20 minutes so that intra-session learning cards
+  // (due in ~1 min) are always served even if the user navigates away and comes back.
+  const learningDueCutoff = new Date(nowDate.getTime() + 20 * 60 * 1000).toISOString();
   const { data: learningCards, error: learningError } = await supabase
     .from("cards")
     .select("*")
@@ -805,7 +808,7 @@ export async function getDueCards(
     .eq("user_id", userId)
     .eq("suspended", false)
     .in("state", ["learning", "relearning"])
-    .lte("due_at", now)
+    .lte("due_at", learningDueCutoff)
     .order("due_at", { ascending: true })
     .limit(limit);
 

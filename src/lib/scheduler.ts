@@ -37,7 +37,7 @@ export interface IntervalPreview {
   easy: string;
 }
 
-const DEFAULT_LEARNING_STEPS_MINUTES = [1, 10]; // Anki default: 1m then 10m before graduating
+const DEFAULT_LEARNING_STEPS_MINUTES = [1, 1]; // Two 1-minute steps: both reinserted in-session, 2 Good presses required to graduate
 const DEFAULT_GRADUATING_INTERVAL_DAYS = 1;
 const DEFAULT_SETTINGS: SchedulerSettings = {
   starting_ease: 2.5,
