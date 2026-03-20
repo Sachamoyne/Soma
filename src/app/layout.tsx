@@ -13,6 +13,8 @@ const geist = Geist({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
   viewportFit: "cover",
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {

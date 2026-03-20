@@ -6,6 +6,8 @@ const config: CapacitorConfig = {
   webDir: "public",
   ios: {
     scheme: "soma",
+    contentInset: "automatic",
+    allowsLinkPreview: false,
   },
   server: {
     url: "https://soma-edu.com/decks?app=1",

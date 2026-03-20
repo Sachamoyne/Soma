@@ -144,9 +144,23 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    touch-action: manipulation;
+    overscroll-behavior: none;
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  input,
+  textarea {
+    font-size: 16px;
   }
 }
 
