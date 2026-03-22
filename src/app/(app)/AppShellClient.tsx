@@ -76,10 +76,12 @@ function NativeAppLayout({ children }: { children: React.ReactNode }) {
       const handleResize = () => {
         const keyboardOpen = vv.height < window.innerHeight * 0.75;
         document.body.classList.toggle("keyboard-open", keyboardOpen);
-        if (keyboardOpen) {
-          document.documentElement.style.setProperty("--vvh", `${vv.height}px`);
-        }
+        // Always sync --vvh regardless of keyboard state so that the
+        // dialog max-height CSS has an accurate value on both open and close.
+        document.documentElement.style.setProperty("--vvh", `${vv.height}px`);
       };
+      // Set initial value so --vvh is never undefined on first render.
+      document.documentElement.style.setProperty("--vvh", `${vv.height}px`);
       vv.addEventListener("resize", handleResize);
       return () => {
         document.body.classList.remove("native-ios", "keyboard-open");

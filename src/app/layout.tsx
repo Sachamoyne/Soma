@@ -12,9 +12,11 @@ import { NativeAuthCallbackHandler } from "@/components/NativeAuthCallbackHandle
 const geist = Geist({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
-  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {

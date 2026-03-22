@@ -144,7 +144,10 @@
 @layer base {
   * {
     @apply border-border;
+    /* Prevent blue flash on tap (iOS WebView) */
     -webkit-tap-highlight-color: transparent;
+    /* Prevent long-press callout (link preview, "Open in Safari", etc.) */
+    -webkit-touch-callout: none;
   }
   html,
   body {
@@ -157,22 +160,40 @@
   button,
   a {
     touch-action: manipulation;
+    cursor: pointer;
   }
   input,
-  textarea {
+  textarea,
+  [contenteditable] {
+    /* Allow standard text selection callout for inputs (copy/paste) */
+    -webkit-touch-callout: default;
     font-size: 16px;
   }
 }
 
-/* iOS native: reposition dialogs when virtual keyboard is open */
-body.native-ios.keyboard-open [role="dialog"] {
-  top: 1rem !important;
-  transform: translateX(-50%) translateY(0) !important;
-  max-height: calc(var(--vvh, 50vh) - 2rem) !important;
-  overflow-y: auto !important;
+/* ── iOS native: subtle press feedback on touch devices ────────────────────── */
+/* Scoped to touch-primary devices to avoid affecting desktop hover states.     */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  [role="button"]:active {
+    opacity: 0.7;
+    transform: scale(0.97);
+    transition: transform 0.08s ease, opacity 0.08s ease;
+  }
 }
 
-/* iOS native: ensure inputs inside dialogs scroll into view */
+/*
+  iOS native: constrain dialog content height to the visible viewport when the
+  keyboard is open. No `top` or `transform` overrides — the dialog is now
+  centered via a flex wrapper in dialog.tsx, so position must not be touched here.
+  `--vvh` is kept in sync by AppShellClient's visualViewport listener.
+*/
+body.native-ios.keyboard-open [role="dialog"] {
+  max-height: calc(var(--vvh, 100dvh) - 2rem);
+  overflow-y: auto;
+}
+
+/* iOS native: smooth scrolling inside dialogs */
 body.native-ios [role="dialog"] {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
