@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { getPlanLimit } from "./plan-limits";
+import { getPlanLimit, FREE_TRIAL_LIMIT } from "./plan-limits";
 
 const MAX_TEXT_LENGTH = 20000;
 const MAX_PDF_ANALYSIS_LENGTH = 8000;
@@ -1038,7 +1038,7 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   // Get user profile to check plan and role
   const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
-    .select("plan, role")
+    .select("plan, role, ai_free_trial_used")
     .eq("id", userId)
     .single();
 
@@ -1079,20 +1079,32 @@ async function checkUserQuota(userId: string, cardCount: number = 10): Promise<{
   const isFounderOrAdmin = role === "founder" || role === "admin";
   const hasAIAccess = isPremium || isFounderOrAdmin;
 
-  // Free plan: no AI access
+  // Free plan: check free trial allowance (FREE_TRIAL_LIMIT cards lifetime)
   if (!hasAIAccess) {
-    return {
-      canGenerate: false,
-      isFounderOrAdmin: false,
-      error: {
-        success: false,
-        error: "QUOTA_FREE_PLAN",
-        message:
-          "AI flashcard generation is not available on the free plan. Please upgrade to Starter or Pro.",
-        plan: "free",
-        status: 403,
-      },
-    };
+    const trialUsed = (profile.ai_free_trial_used as number) ?? 0;
+    const trialRemaining = Math.max(0, FREE_TRIAL_LIMIT - trialUsed);
+
+    if (trialUsed + cardCount > FREE_TRIAL_LIMIT) {
+      return {
+        canGenerate: false,
+        isFounderOrAdmin: false,
+        error: {
+          success: false,
+          error: trialUsed >= FREE_TRIAL_LIMIT ? "FREE_TRIAL_LIMIT_REACHED" : "QUOTA_FREE_PLAN",
+          message: trialUsed >= FREE_TRIAL_LIMIT
+            ? `You've used your ${FREE_TRIAL_LIMIT} free AI-generated cards. Upgrade your plan to continue generating cards.`
+            : `You only have ${trialRemaining} free card${trialRemaining === 1 ? "" : "s"} remaining. Reduce the number of cards requested.`,
+          plan: "free",
+          used: trialUsed,
+          limit: FREE_TRIAL_LIMIT,
+          remaining: trialRemaining,
+          status: 403,
+        },
+      };
+    }
+
+    // Trial not exhausted — allow generation, return trial info for counter increment
+    return { canGenerate: true, isFounderOrAdmin: false, profile };
   }
 
   // Founders/admins: unlimited
@@ -1506,12 +1518,33 @@ export async function confirmAndInsertCards(
     insertedIds: insertedCards?.map(c => c.id),
   });
 
-  // Card count is now tracked dynamically (total cards in DB), no increment needed.
+  // For free plan users: atomically increment the lifetime free trial counter.
+  // Uses a DB function to prevent double-counting on concurrent requests.
+  const insertedCount = insertedCards?.length || 0;
+  const userPlan: string = quotaCheck.profile?.plan ?? "unknown";
+
+  if (userPlan === "free" && insertedCount > 0) {
+    const { data: newTrialValue, error: trialError } = await adminSupabase.rpc(
+      "increment_ai_free_trial_used",
+      { p_user_id: userId, p_count: insertedCount, p_limit: FREE_TRIAL_LIMIT }
+    );
+
+    if (trialError) {
+      // Non-fatal: cards are already inserted. Log and continue.
+      console.error("[confirmAndInsertCards] Failed to increment free trial counter:", trialError);
+    } else if (newTrialValue === -1) {
+      // Race condition: another request already consumed the remaining trial quota.
+      // Cards are inserted; log a warning. This edge case is rare (concurrent confirms).
+      console.warn("[confirmAndInsertCards] Free trial counter race condition: cards inserted but trial already exhausted. Cards kept.");
+    } else {
+      console.log("[confirmAndInsertCards] Free trial counter updated:", { newTrialValue, inserted: insertedCount });
+    }
+  }
 
   return {
     success: true,
     deckId,
-    imported: insertedCards?.length || 0,
+    imported: insertedCount,
     cards,
   };
 }

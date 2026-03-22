@@ -12,6 +12,9 @@ interface PlanInfo {
   limit?: number;
   remaining?: number;
   reset_at?: string;
+  free_trial_used?: number;
+  free_trial_limit?: number;
+  free_trial_remaining?: number;
 }
 
 /**
@@ -28,7 +31,7 @@ export function useUserPlan(): PlanInfo | null {
         if (response.ok) {
           const data = await response.json();
           const plan = (data.plan || "free") as Plan;
-          // Use has_ai_access from API (includes premium plans OR founder/admin role)
+          // has_ai_access: true for paid plans, founder/admin, or free plan with remaining trial
           const canUseAI = Boolean(data.has_ai_access);
           
           // Debug log (dev only)
@@ -52,6 +55,9 @@ export function useUserPlan(): PlanInfo | null {
             limit: data.limit,
             remaining: data.remaining,
             reset_at: data.reset_at,
+            free_trial_used: data.free_trial_used,
+            free_trial_limit: data.free_trial_limit,
+            free_trial_remaining: data.free_trial_remaining,
           });
         } else {
           // Default to free if quota check fails

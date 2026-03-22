@@ -1,6 +1,9 @@
 export type PlanName = "free" | "starter" | "pro";
 export type PaidPlanName = Exclude<PlanName, "free">;
 
+/** Lifetime AI card generation allowance for free-plan users (free trial). */
+export const FREE_TRIAL_LIMIT = 30;
+
 export const PLAN_LIMITS: Readonly<Record<PlanName, number>> = {
   free: 0,
   starter: 200,

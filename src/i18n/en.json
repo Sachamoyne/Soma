@@ -773,7 +773,9 @@
     "errorPdfNoText": "This PDF does not contain selectable text. It is probably a scanned PDF (image). Please use a PDF with text.",
     "errorPdfEncrypted": "This PDF is password protected. Please unlock it before importing.",
     "errorPdfCorrupted": "This PDF file seems corrupted or malformed. Please try another file.",
-    "errorPdfGeneration": "Failed to generate cards from PDF"
+    "errorPdfGeneration": "Failed to generate cards from PDF",
+    "freeTrialExhaustedPlaceholder": "Free trial ended. Upgrade to keep generating AI cards.",
+    "freeTrialExhausted": "You've used your 30 free AI-generated cards."
   },
   "importDialog": {
     "errorCamera": "Unable to access the camera or photo library. Please check permissions and try again."
@@ -808,6 +810,11 @@
       "webQuotaTitle": "Card Limit Reached",
       "iosFreePlanDesc": "AI generation requires a Starter or Pro subscription.",
       "iosStarterLimitDesc": "You've reached the {limit}-card limit on the Starter plan.",
+      "iosFreeTrialTitle": "Free trial limit reached",
+      "iosFreeTrialDesc": "You've used your 30 free AI-generated cards. Subscribe to Starter or Pro to continue.",
+      "webFreeTrialTitle": "Free trial limit reached",
+      "webFreeTrialDesc1": "You've used your 30 free AI-generated cards.",
+      "webFreeTrialDesc2": "Upgrade to Starter or Pro to continue generating cards.",
       "webFreePlanDesc1": "AI flashcard generation is not available on the free plan.",
       "webFreePlanDesc2": "Upgrade to Starter (200 cards) or Pro (unlimited cards) to unlock AI-powered flashcard generation.",
       "webStarterLimitDesc1": "You've reached the limit of {limit} cards on the Starter plan ({used} cards).",
@@ -815,8 +822,10 @@
       "webProLimitDesc": "You've reached your card limit ({used} / {limit} cards).",
       "viewSubscriptions": "View subscriptions",
       "upgradeToPro": "Upgrade to Pro",
+      "upgrade": "Upgrade",
       "continueManual": "Continue without subscription",
-      "viewPlans": "View plans"
+      "viewPlans": "View plans",
+      "maybeLater": "Maybe later"
     },
     "legalPrefix": "By subscribing, you agree to our",
     "legalTerms": "Terms of Use",

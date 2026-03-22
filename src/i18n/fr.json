@@ -773,7 +773,9 @@
     "errorPdfNoText": "Ce PDF ne contient pas de texte selectionnable. Il s'agit probablement d'un PDF scanne (image). Veuillez utiliser un PDF avec du texte.",
     "errorPdfEncrypted": "Ce PDF est protege par un mot de passe. Veuillez le deverrouiller avant de l'importer.",
     "errorPdfCorrupted": "Ce fichier PDF semble corrompu ou mal forme. Veuillez essayer un autre fichier.",
-    "errorPdfGeneration": "Echec de la generation de cartes depuis le PDF"
+    "errorPdfGeneration": "Echec de la generation de cartes depuis le PDF",
+    "freeTrialExhaustedPlaceholder": "Essai gratuit termine. Passe a un abonnement pour continuer a generer des cartes IA.",
+    "freeTrialExhausted": "Tu as utilise tes 30 cartes IA gratuites."
   },
   "importDialog": {
     "errorCamera": "Impossible d'acceder a la camera ou a la bibliotheque de photos. Verifiez les permissions et reessayez."
@@ -808,6 +810,11 @@
       "webQuotaTitle": "Limite de cartes atteinte",
       "iosFreePlanDesc": "La generation IA necessite un abonnement Starter ou Pro.",
       "iosStarterLimitDesc": "Tu as atteint la limite de {limit} cartes sur le plan Starter.",
+      "iosFreeTrialTitle": "Limite d'essai gratuit atteinte",
+      "iosFreeTrialDesc": "Tu as utilise tes 30 cartes IA gratuites. Abonne-toi a Starter ou Pro pour continuer.",
+      "webFreeTrialTitle": "Limite d'essai gratuit atteinte",
+      "webFreeTrialDesc1": "Tu as utilise tes 30 cartes IA gratuites.",
+      "webFreeTrialDesc2": "Passe a Starter ou Pro pour continuer a generer des cartes.",
       "webFreePlanDesc1": "La generation IA n'est pas disponible sur le plan gratuit.",
       "webFreePlanDesc2": "Passez a Starter (200 cartes) ou Pro (cartes illimitees) pour debloquer la generation IA.",
       "webStarterLimitDesc1": "Vous avez atteint la limite de {limit} cartes sur le plan Starter ({used} cartes).",
@@ -815,8 +822,10 @@
       "webProLimitDesc": "Vous avez atteint votre limite de cartes ({used} / {limit} cartes).",
       "viewSubscriptions": "Voir les abonnements",
       "upgradeToPro": "Passer a Pro",
+      "upgrade": "S'abonner",
       "continueManual": "Continuer sans abonnement",
-      "viewPlans": "Voir les plans"
+      "viewPlans": "Voir les plans",
+      "maybeLater": "Peut-etre plus tard"
     },
     "legalPrefix": "En vous abonnant, vous acceptez nos",
     "legalTerms": "Conditions d'utilisation",

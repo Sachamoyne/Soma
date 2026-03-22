@@ -90,8 +90,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
   // Paywall state
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallReason, setPaywallReason] = useState<
-    "free_plan" | "quota_exceeded"
-  >("free_plan");
+    "free_plan" | "quota_exceeded" | "free_trial_limit_reached"
+  >("free_trial_limit_reached");
   const [paywallPlan, setPaywallPlan] = useState<
     "starter" | "pro" | undefined
   >(undefined);
@@ -102,6 +102,26 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
   const userPlan = useUserPlan();
   const canUseAI = userPlan?.canUseAI ?? false;
   const canGenerateWithAI = aiText.trim().length > 0 && !aiLoading && canUseAI;
+
+  // Helper: open paywall for a given backend error code
+  const openPaywallForError = (data: { error?: string; plan?: string }) => {
+    if (data.error === "FREE_TRIAL_LIMIT_REACHED") {
+      setPaywallReason("free_trial_limit_reached");
+    } else if (data.error === "QUOTA_FREE_PLAN") {
+      setPaywallReason("free_plan");
+    } else {
+      setPaywallReason("quota_exceeded");
+    }
+    setPaywallPlan(
+      data.plan === "starter" ? "starter" : data.plan === "pro" ? "pro" : undefined
+    );
+    setPaywallOpen(true);
+  };
+
+  const isQuotaError = (errorCode?: string) =>
+    errorCode === "QUOTA_FREE_PLAN" ||
+    errorCode === "QUOTA_EXCEEDED" ||
+    errorCode === "FREE_TRIAL_LIMIT_REACHED";
 
   useImperativeHandle(ref, () => ({
     openPdfPicker: () => {
@@ -248,21 +268,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
       const data = await response.json();
 
       if (!response.ok) {
-        if (
-          data.error === "QUOTA_FREE_PLAN" ||
-          data.error === "QUOTA_EXCEEDED"
-        ) {
-          setPaywallReason(
-            data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded"
-          );
-          setPaywallPlan(
-            data.plan === "starter"
-              ? "starter"
-              : data.plan === "pro"
-                ? "pro"
-                : undefined
-          );
-          setPaywallOpen(true);
+        if (isQuotaError(data.error)) {
+          openPaywallForError(data);
           return;
         }
         setAiError(
@@ -353,21 +360,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
       const data = await response.json();
 
       if (!response.ok) {
-        if (
-          data.error === "QUOTA_FREE_PLAN" ||
-          data.error === "QUOTA_EXCEEDED"
-        ) {
-          setPaywallReason(
-            data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded"
-          );
-          setPaywallPlan(
-            data.plan === "starter"
-              ? "starter"
-              : data.plan === "pro"
-                ? "pro"
-                : undefined
-          );
-          setPaywallOpen(true);
+        if (isQuotaError(data.error)) {
+          openPaywallForError(data);
           return;
         }
         setAiError(
@@ -465,21 +459,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
         console.log(
           "[handleConfirmCards] Response NOT OK, handling error"
         );
-        if (
-          data.error === "QUOTA_FREE_PLAN" ||
-          data.error === "QUOTA_EXCEEDED"
-        ) {
-          setPaywallReason(
-            data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded"
-          );
-          setPaywallPlan(
-            data.plan === "starter"
-              ? "starter"
-              : data.plan === "pro"
-                ? "pro"
-                : undefined
-          );
-          setPaywallOpen(true);
+        if (isQuotaError(data.error)) {
+          openPaywallForError(data);
           return;
         }
         setAiError(
@@ -606,21 +587,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
       }
 
       if (!response.ok) {
-        if (
-          data.error === "QUOTA_FREE_PLAN" ||
-          data.error === "QUOTA_EXCEEDED"
-        ) {
-          setPaywallReason(
-            data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded"
-          );
-          setPaywallPlan(
-            data.plan === "starter"
-              ? "starter"
-              : data.plan === "pro"
-                ? "pro"
-                : undefined
-          );
-          setPaywallOpen(true);
+        if (isQuotaError(data.error)) {
+          openPaywallForError(data);
           return;
         }
 
@@ -788,21 +756,8 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
       const data = await response.json();
 
       if (!response.ok) {
-        if (
-          data.error === "QUOTA_FREE_PLAN" ||
-          data.error === "QUOTA_EXCEEDED"
-        ) {
-          setPaywallReason(
-            data.error === "QUOTA_FREE_PLAN" ? "free_plan" : "quota_exceeded"
-          );
-          setPaywallPlan(
-            data.plan === "starter"
-              ? "starter"
-              : data.plan === "pro"
-                ? "pro"
-                : undefined
-          );
-          setPaywallOpen(true);
+        if (isQuotaError(data.error)) {
+          openPaywallForError(data);
           return;
         }
         setAiError(data.error || "Failed to generate cards");
@@ -904,14 +859,33 @@ export const AICardGenerator = forwardRef<AICardGeneratorHandle, AICardGenerator
               className="bg-background"
               placeholder={
                 !canUseAI
-                  ? t("aiGenerator.subscriberOnlyPlaceholder")
+                  ? userPlan?.plan === "free"
+                    ? t("aiGenerator.freeTrialExhaustedPlaceholder")
+                    : t("aiGenerator.subscriberOnlyPlaceholder")
                   : t("aiGenerator.textPlaceholder")
               }
               disabled={!canUseAI}
             />
             {!canUseAI ? (
-              <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-                {t("aiGenerator.subscriberOnly")}
+              <div className="rounded-lg border border-muted bg-muted/50 p-4 text-center text-sm text-muted-foreground space-y-2">
+                {userPlan?.plan === "free" ? (
+                  <>
+                    <p>{t("aiGenerator.freeTrialExhausted")}</p>
+                    <button
+                      type="button"
+                      className="text-primary underline text-sm font-medium"
+                      onClick={() => {
+                        setPaywallReason("free_trial_limit_reached");
+                        setPaywallPlan(undefined);
+                        setPaywallOpen(true);
+                      }}
+                    >
+                      {t("paywall.modal.upgrade")}
+                    </button>
+                  </>
+                ) : (
+                  t("aiGenerator.subscriberOnly")
+                )}
               </div>
             ) : (
               <>

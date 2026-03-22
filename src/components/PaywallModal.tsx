@@ -11,7 +11,7 @@ import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 interface PaywallModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  reason: "free_plan" | "quota_exceeded";
+  reason: "free_plan" | "quota_exceeded" | "free_trial_limit_reached";
   plan?: "starter" | "pro";
   used?: number;
   limit?: number;
@@ -31,6 +31,7 @@ export function PaywallModal({
   const isNativeIOS = useIsNativeIOS();
 
   const isFreePlan = reason === "free_plan";
+  const isFreeTrial = reason === "free_trial_limit_reached";
   const isStarter = plan === "starter";
 
   return (
@@ -39,9 +40,13 @@ export function PaywallModal({
         <DialogHeader>
           <DialogTitle>
             {isNativeIOS
-              ? isFreePlan
+              ? isFreeTrial
+                ? t("paywall.modal.iosFreeTrialTitle")
+                : isFreePlan
                 ? t("paywall.modal.iosFreePlanTitle")
                 : t("paywall.modal.iosQuotaTitle")
+              : isFreeTrial
+              ? t("paywall.modal.webFreeTrialTitle")
               : isFreePlan
               ? t("paywall.modal.webFreePlanTitle")
               : t("paywall.modal.webQuotaTitle")}
@@ -50,10 +55,17 @@ export function PaywallModal({
             {isNativeIOS ? (
               <div className="space-y-4">
                 <p>
-                  {isFreePlan
+                  {isFreeTrial
+                    ? t("paywall.modal.iosFreeTrialDesc")
+                    : isFreePlan
                     ? t("paywall.modal.iosFreePlanDesc")
                     : t("paywall.modal.iosStarterLimitDesc", { limit: limit ?? 0 })}
                 </p>
+              </div>
+            ) : isFreeTrial ? (
+              <div className="space-y-4">
+                <p>{t("paywall.modal.webFreeTrialDesc1")}</p>
+                <p>{t("paywall.modal.webFreeTrialDesc2")}</p>
               </div>
             ) : isFreePlan ? (
               <div className="space-y-4">
@@ -77,7 +89,7 @@ export function PaywallModal({
             <>
               <Link href="/billing" className="w-full" onClick={() => onOpenChange(false)}>
                 <Button className="w-full">
-                  {isFreePlan ? t("paywall.modal.viewSubscriptions") : t("paywall.modal.upgradeToPro")}
+                  {isFreeTrial || isFreePlan ? t("paywall.modal.viewSubscriptions") : t("paywall.modal.upgradeToPro")}
                 </Button>
               </Link>
               <Button
@@ -85,7 +97,22 @@ export function PaywallModal({
                 className="w-full"
                 onClick={() => onOpenChange(false)}
               >
-                {t("paywall.modal.continueManual")}
+                {t("paywall.modal.maybeLater")}
+              </Button>
+            </>
+          ) : isFreeTrial ? (
+            <>
+              <Link href={appHref("/pricing", isApp)} className="w-full">
+                <Button className="w-full" onClick={() => onOpenChange(false)}>
+                  {t("paywall.modal.upgrade")}
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => onOpenChange(false)}
+              >
+                {t("paywall.modal.maybeLater")}
               </Button>
             </>
           ) : isFreePlan ? (
