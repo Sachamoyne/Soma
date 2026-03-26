@@ -130,7 +130,14 @@
     "termsOfService": "Terms of Service",
     "ofApp": "of {appName}.",
     "andOur": "and our",
-    "finalizingAuthentication": "Finalizing authentication..."
+    "finalizingAuthentication": "Finalizing authentication...",
+    "checkYourEmailTitle": "Check your email",
+    "checkYourEmailDescription": "Check your email to confirm your account.",
+    "resendVerificationEmail": "Resend email",
+    "backToLogin": "Back to login",
+    "verificationEmailResent": "Verification email sent again.",
+    "verificationEmailResendError": "Unable to resend verification email.",
+    "missingEmailForResend": "Missing email. Please go back to signup."
   },
   "pricing": {
     "title": "Pricing",

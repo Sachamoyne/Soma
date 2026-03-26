@@ -130,7 +130,14 @@
     "termsOfService": "CGU/CGV",
     "ofApp": "de {appName}.",
     "andOur": "et nos",
-    "finalizingAuthentication": "Finalisation de l'authentification..."
+    "finalizingAuthentication": "Finalisation de l'authentification...",
+    "checkYourEmailTitle": "Verifiez votre email",
+    "checkYourEmailDescription": "Verifiez votre email pour confirmer votre compte.",
+    "resendVerificationEmail": "Renvoyer l'email",
+    "backToLogin": "Retour a la connexion",
+    "verificationEmailResent": "Email de verification renvoye.",
+    "verificationEmailResendError": "Impossible de renvoyer l'email de verification.",
+    "missingEmailForResend": "Email manquant. Revenez a l'inscription."
   },
   "pricing": {
     "title": "Tarifs",

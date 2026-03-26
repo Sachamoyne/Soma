@@ -12,6 +12,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { getEmailRedirectTo } from "@/lib/auth-callback";
 
 export default function SignupClient() {
   const { t } = useTranslation();
@@ -24,14 +25,12 @@ export default function SignupClient() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
       if (!acceptedTerms) {
@@ -39,8 +38,7 @@ export default function SignupClient() {
         return;
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      const emailRedirectTo = `${baseUrl.replace(/\/$/, "")}/login`;
+      const emailRedirectTo = getEmailRedirectTo();
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -59,9 +57,7 @@ export default function SignupClient() {
         throw new Error("User not created");
       }
 
-      setSuccess(t("auth.accountCreatedCheckEmail"));
-      router.replace("/login");
-      router.refresh();
+      router.push(`/auth/check-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(t("auth.accountCreationError"));
     } finally {
@@ -134,12 +130,6 @@ export default function SignupClient() {
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                {success}
               </div>
             )}
 
