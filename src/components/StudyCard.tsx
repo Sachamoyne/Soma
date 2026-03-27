@@ -612,6 +612,7 @@ export function StudyCard({
           // ── Diagram: full-height container, DiagramCard manages scroll + sticky buttons ──
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <DiagramCard
+              key={currentCard.id}
               card={currentCard}
               onRate={handleRate}
               intervalPreviews={intervalPreviews}
@@ -628,6 +629,7 @@ export function StudyCard({
                 case "reversible":
                   return (
                     <ReversibleCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
@@ -638,6 +640,7 @@ export function StudyCard({
                 case "typed":
                   return (
                     <TypedCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
@@ -648,6 +651,7 @@ export function StudyCard({
                 case "philosophy_concept":
                   return (
                     <PhilosophyConceptCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
@@ -660,6 +664,7 @@ export function StudyCard({
                 case "practical_case":
                   return (
                     <LawCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
@@ -674,6 +679,7 @@ export function StudyCard({
                 case "med_clinical_case":
                   return (
                     <MedicineCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
@@ -685,6 +691,7 @@ export function StudyCard({
                 default:
                   return (
                     <BasicCard
+                      key={currentCard.id}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}

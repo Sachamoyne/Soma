@@ -298,7 +298,11 @@
     "congratulations": "Congratulations!",
     "allUpToDate": "All cards in this deck are up to date.",
     "deleteDeck": "Delete Deck",
-    "deleteConfirm": "Delete this deck and all its cards and sub-decks?"
+    "deleteConfirm": "Delete this deck and all its cards and sub-decks?",
+    "resetDeck": "Reset deck",
+    "resetDeckTitle": "Reset deck",
+    "resetDeckConfirm": "Are you sure you want to reset this deck?",
+    "resettingDeck": "Resetting..."
   },
   "examMode": {
     "scheduleExam": "Schedule for exam",

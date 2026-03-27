@@ -12,6 +12,7 @@ export {
   listAllCards,
   setCardDueDate,
   forgetCard,
+  resetDeckProgress,
   setCardMarked,
   createCard,
   deleteCard,

@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BookOpen, CalendarDays, Trash2 } from "lucide-react";
-import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches, getExamStats } from "@/store/decks";
+import { getAnkiCountsForDecks, deleteDeck, invalidateCardCaches, getExamStats, resetDeckProgress } from "@/store/decks";
 import { getDeckSettings, setExamDate } from "@/store/deck-settings";
 import { useTranslation } from "@/i18n";
 import type { ExamStats } from "@/lib/supabase-db";
@@ -37,6 +37,8 @@ export default function DeckOverviewPage() {
   const [examDialogOpen, setExamDialogOpen] = useState(false);
   const [examDateInput, setExamDateInput] = useState("");
   const [savingExam, setSavingExam] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resettingDeck, setResettingDeck] = useState(false);
 
   async function loadData() {
     try {
@@ -86,6 +88,23 @@ export default function DeckOverviewPage() {
       router.push("/decks");
     } catch (error) {
       console.error("Error deleting deck:", error);
+    }
+  };
+
+  const handleResetDeck = async () => {
+    setResettingDeck(true);
+    try {
+      await resetDeckProgress(String(deckId));
+      setResetDialogOpen(false);
+      setLoading(true);
+      await loadData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("soma-counts-updated"));
+      }
+    } catch (error) {
+      console.error("Error resetting deck:", error);
+    } finally {
+      setResettingDeck(false);
     }
   };
 
@@ -278,16 +297,52 @@ export default function DeckOverviewPage() {
 
       {/* Delete deck */}
       <div className="pt-6 md:pt-12 border-t flex justify-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDeleteDeck}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          {t("deckOverview.deleteDeck")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setResetDialogOpen(true)}
+            className="text-muted-foreground"
+            disabled={resettingDeck}
+          >
+            {t("deckOverview.resetDeck")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDeleteDeck}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("deckOverview.deleteDeck")}
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("deckOverview.resetDeckTitle")}</DialogTitle>
+            <DialogDescription>{t("deckOverview.resetDeckConfirm")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setResetDialogOpen(false)}
+              disabled={resettingDeck}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleResetDeck}
+              disabled={resettingDeck}
+            >
+              {resettingDeck ? t("deckOverview.resettingDeck") : t("deckOverview.resetDeck")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Exam date picker dialog */}
       <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>

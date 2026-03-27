@@ -342,6 +342,41 @@ export async function forgetCard(cardId: string): Promise<void> {
   invalidateCardCaches();
 }
 
+export async function resetDeckProgress(deckId: string): Promise<void> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+  const deckIds = await getDeckAndAllChildren(deckId);
+  const nowIso = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("cards")
+    .update({
+      state: "new",
+      due_at: nowIso,
+      interval_days: 0,
+      ease: 2.5,
+      reps: 0,
+      lapses: 0,
+      learning_step_index: 0,
+      last_reviewed_at: null,
+      suspended: false,
+      updated_at: nowIso,
+    })
+    .in("deck_id", deckIds)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+
+  await supabase
+    .from("decks")
+    .update({ updated_at: nowIso })
+    .in("id", deckIds)
+    .eq("user_id", userId);
+
+  invalidateCardCaches();
+  invalidateDeckCaches();
+}
+
 export async function setCardMarked(cardId: string, marked: boolean): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();

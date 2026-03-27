@@ -298,7 +298,11 @@
     "congratulations": "Felicitations !",
     "allUpToDate": "Toutes les cartes de ce paquet sont a jour.",
     "deleteDeck": "Supprimer le paquet",
-    "deleteConfirm": "Supprimer ce paquet et toutes ses cartes et sous-paquets ?"
+    "deleteConfirm": "Supprimer ce paquet et toutes ses cartes et sous-paquets ?",
+    "resetDeck": "Reinitialiser le deck",
+    "resetDeckTitle": "Reinitialiser le deck",
+    "resetDeckConfirm": "Voulez-vous vraiment reinitialiser ce deck ?",
+    "resettingDeck": "Reinitialisation..."
   },
   "examMode": {
     "scheduleExam": "Planifier pour un examen",
