@@ -27,7 +27,9 @@
     "minutes": "minutes",
     "minute": "minute",
     "seconds": "seconds",
-    "second": "second"
+    "second": "second",
+    "networkError": "Network error. Please check your connection and retry.",
+    "networkErrorTitle": "Network error"
   },
   "nav": {
     "decks": "Decks",
@@ -280,7 +282,10 @@
     "vocabDirectionReversed": "Reversed (target → source)",
     "vocabDirectionBoth": "Both directions",
     "sourceLanguagePlaceholder": "E.g., French",
-    "targetLanguagePlaceholder": "E.g., English"
+    "targetLanguagePlaceholder": "E.g., English",
+    "sourceTargetRequired": "Source language / target language required",
+    "errorCreatingDeck": "Error creating deck: {message}",
+    "addSubDeck": "Add sub-deck"
   },
   "deckOverview": {
     "new": "New",
@@ -326,7 +331,16 @@
     "optionsTitle": "Deck options: {deckName}",
     "optionsDesc": "Customize settings for this deck. Settings not defined will inherit from global settings.",
     "errorTableMissing": "The deck_settings table does not exist in your Supabase database. Please create the table by running the SQL provided in Supabase Dashboard.",
-    "errorLoading": "Error loading settings: {message}"
+    "errorLoading": "Error loading settings: {message}",
+    "renameError": "Error renaming deck: {message}",
+    "deleteError": "Error deleting deck: {message}",
+    "saveError": "Error saving settings: {message}",
+    "resetError": "Error resetting settings: {message}",
+    "setupTitle": "To create the deck_settings table:",
+    "setupStep1": "Open the SUPABASE_CLOUD_SETUP.sql file.",
+    "setupStep2": "Go to Supabase Dashboard > SQL Editor.",
+    "setupStep3": "Paste the SQL and click Run.",
+    "setupHelp": "See SETUP_DECK_SETTINGS_CLOUD.md for more details."
   },
   "browse": {
     "title": "Browse",
@@ -350,7 +364,15 @@
     "questionPlaceholder": "Question or front text",
     "answerPlaceholder": "Answer or back text",
     "cardType": "Card Type",
-    "failedToLoad": "Failed to load cards. Please try again."
+    "failedToLoad": "Failed to load cards. Please try again.",
+    "deleteCardConfirm": "Delete this card?",
+    "noCardsInDeck": "No cards in this deck yet.",
+    "noCardsInDeckHint": "Use the {add} tab to create cards.",
+    "setDueDateTitle": "Set due date",
+    "setDueDateDesc": "Choose a new due date for this card.",
+    "cardActionsAria": "Card actions",
+    "backToDecks": "Back to Decks",
+    "selectedCount": "{count} selected"
   },
   "cardStates": {
     "new": "New",
@@ -493,7 +515,13 @@
     "correct": "Correct!",
     "incorrect": "Incorrect",
     "yourAnswer": "Your answer",
-    "correctAnswer": "Correct answer"
+    "correctAnswer": "Correct answer",
+    "failedToUpdateCard": "Failed to update card",
+    "failedToSuspendCard": "Failed to suspend card",
+    "pressEnterToSubmit": "Press Enter to submit",
+    "correctRateHint": "Correct! Rate how well you knew this card.",
+    "frontToBack": "Front → Back",
+    "backToFront": "Back → Front"
   },
   "import": {
     "title": "Import Document",
@@ -523,7 +551,12 @@
     "llmUnavailable": "LLM unavailable. Using local heuristic cards.",
     "cardsSelected": "{selected} of {total} cards selected",
     "successImport": "Successfully imported {cards} cards from {decks} decks",
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "selectAnkiFileError": "Please select an Anki (.apkg) file.",
+    "extractionFailed": "Extraction failed",
+    "failedToGenerateCards": "Failed to generate cards: {message}",
+    "failedToAddCards": "Failed to add cards: {message}",
+    "importingProgress": "Importing cards... {imported} / {total}"
   },
   "addCards": {
     "title": "Add Cards",
@@ -629,7 +662,8 @@
     "medCaseExplanation": "Explanation (optional)",
     "medCaseExplanationPlaceholder": "Key reasoning elements supporting the diagnosis",
     "diagramTitle": "Title",
-    "diagramTitlePlaceholder": "E.g., Heart anatomy, Cell structure"
+    "diagramTitlePlaceholder": "E.g., Heart anatomy, Cell structure",
+    "createError": "Failed to create card. Please try again."
   },
   "deckTree": {
     "newSubDeck": "New sub-deck",
@@ -672,7 +706,10 @@
     "cardsGenerated": "{count} cards generated!",
     "ocrFailed": "Failed to extract text. Try a clearer photo.",
     "parsingFailed": "Failed to parse. Make sure the photo contains a vocabulary list.",
-    "choosePhoto": "Choose photo"
+    "choosePhoto": "Choose photo",
+    "genderPlaceholder": "m/f/n",
+    "pluralPlaceholder": "Plural form",
+    "notePlaceholder": "Optional note"
   },
   "moveCards": {
     "title": "Move cards",
@@ -838,5 +875,42 @@
     "legalTerms": "Terms of Use",
     "legalAnd": "and",
     "legalPrivacy": "Privacy Policy"
+  },
+  "appError": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred."
+  },
+  "media": {
+    "mustBeLoggedIn": "You must be logged in to upload images",
+    "bucketMissing": "Storage bucket \"card-media\" not found. Please create it in Supabase Dashboard (Storage > New bucket, name: card-media, public: ON).",
+    "uploadFailed": "Upload failed: {message}",
+    "publicUrlFailed": "Failed to generate public URL for image",
+    "uploadError": "Upload error: {message}",
+    "unknownError": "Unknown error",
+    "uploadingImage": "Uploading image...",
+    "defaultPlaceholder": "Enter text or drag an image..."
+  },
+  "generatedCard": {
+    "cardNumber": "Card {number}"
+  },
+  "offline": {
+    "banner": "No internet connection",
+    "title": "You're offline",
+    "description": "Check your internet connection"
+  },
+  "nativeSubscriptions": {
+    "title": "Subscriptions unavailable in the iOS app",
+    "description": "You can continue using Soma on the free plan in the iOS app.",
+    "continue": "Continue on Free plan"
+  },
+  "heatmap": {
+    "tooltip": "{date}: {count} {count, plural, one {review} other {reviews}}",
+    "less": "Less",
+    "more": "More",
+    "totalOverDays": "{total} {total, plural, one {review} other {reviews}} over {days} days"
+  },
+  "sidebar": {
+    "toggle": "Toggle sidebar",
+    "close": "Close sidebar"
   }
 }

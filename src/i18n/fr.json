@@ -27,7 +27,9 @@
     "minutes": "minutes",
     "minute": "minute",
     "seconds": "secondes",
-    "second": "seconde"
+    "second": "seconde",
+    "networkError": "Erreur reseau. Verifiez votre connexion et reessayez.",
+    "networkErrorTitle": "Erreur reseau"
   },
   "nav": {
     "decks": "Paquets",
@@ -280,7 +282,10 @@
     "vocabDirectionReversed": "Inverse (cible → source)",
     "vocabDirectionBoth": "Les deux directions",
     "sourceLanguagePlaceholder": "Ex: Francais",
-    "targetLanguagePlaceholder": "Ex: Anglais"
+    "targetLanguagePlaceholder": "Ex: Anglais",
+    "sourceTargetRequired": "Langue source / langue cible requises",
+    "errorCreatingDeck": "Erreur lors de la creation du paquet : {message}",
+    "addSubDeck": "Ajouter un sous-paquet"
   },
   "deckOverview": {
     "new": "Nouvelles",
@@ -326,7 +331,16 @@
     "optionsTitle": "Options du paquet : {deckName}",
     "optionsDesc": "Personnalisez les parametres pour ce paquet. Les parametres non definis heritent des parametres globaux.",
     "errorTableMissing": "La table deck_settings n'existe pas dans votre base de donnees Supabase. Veuillez creer la table en executant le SQL fourni dans Supabase Dashboard.",
-    "errorLoading": "Erreur lors du chargement des parametres : {message}"
+    "errorLoading": "Erreur lors du chargement des parametres : {message}",
+    "renameError": "Erreur lors du renommage du paquet : {message}",
+    "deleteError": "Erreur lors de la suppression du paquet : {message}",
+    "saveError": "Erreur lors de l'enregistrement des parametres : {message}",
+    "resetError": "Erreur lors de la reinitialisation des parametres : {message}",
+    "setupTitle": "Pour creer la table deck_settings :",
+    "setupStep1": "Ouvrez le fichier SUPABASE_CLOUD_SETUP.sql.",
+    "setupStep2": "Allez sur Supabase Dashboard > SQL Editor.",
+    "setupStep3": "Collez le SQL puis cliquez sur Run.",
+    "setupHelp": "Consultez SETUP_DECK_SETTINGS_CLOUD.md pour plus de details."
   },
   "browse": {
     "title": "Parcourir",
@@ -350,7 +364,15 @@
     "questionPlaceholder": "Question ou texte du recto",
     "answerPlaceholder": "Reponse ou texte du verso",
     "cardType": "Type de carte",
-    "failedToLoad": "Echec du chargement des cartes. Veuillez reessayer."
+    "failedToLoad": "Echec du chargement des cartes. Veuillez reessayer.",
+    "deleteCardConfirm": "Supprimer cette carte ?",
+    "noCardsInDeck": "Aucune carte dans ce paquet pour le moment.",
+    "noCardsInDeckHint": "Utilisez l'onglet {add} pour creer des cartes.",
+    "setDueDateTitle": "Definir la date d'echeance",
+    "setDueDateDesc": "Choisissez une nouvelle date d'echeance pour cette carte.",
+    "cardActionsAria": "Actions de carte",
+    "backToDecks": "Retour aux paquets",
+    "selectedCount": "{count} selectionnees"
   },
   "cardStates": {
     "new": "Nouvelle",
@@ -493,7 +515,13 @@
     "correct": "Correct !",
     "incorrect": "Incorrect",
     "yourAnswer": "Votre reponse",
-    "correctAnswer": "Reponse correcte"
+    "correctAnswer": "Reponse correcte",
+    "failedToUpdateCard": "Echec de la mise a jour de la carte",
+    "failedToSuspendCard": "Echec de la suspension de la carte",
+    "pressEnterToSubmit": "Appuyez sur Entree pour valider",
+    "correctRateHint": "Correct ! Evaluez a quel point vous connaissiez cette carte.",
+    "frontToBack": "Recto → Verso",
+    "backToFront": "Verso → Recto"
   },
   "import": {
     "title": "Importer un document",
@@ -523,7 +551,12 @@
     "llmUnavailable": "LLM indisponible. Utilisation de cartes heuristiques locales.",
     "cardsSelected": "{selected} sur {total} cartes selectionnees",
     "successImport": "{cards} cartes importees depuis {decks} paquets",
-    "importFailed": "Echec de l'import"
+    "importFailed": "Echec de l'import",
+    "selectAnkiFileError": "Veuillez selectionner un fichier Anki (.apkg).",
+    "extractionFailed": "Echec de l'extraction",
+    "failedToGenerateCards": "Echec de la generation des cartes : {message}",
+    "failedToAddCards": "Echec de l'ajout des cartes : {message}",
+    "importingProgress": "Import des cartes... {imported} / {total}"
   },
   "addCards": {
     "title": "Ajouter des cartes",
@@ -629,7 +662,8 @@
     "medCaseExplanation": "Explication (optionnel)",
     "medCaseExplanationPlaceholder": "Elements cles du raisonnement soutenant le diagnostic",
     "diagramTitle": "Titre",
-    "diagramTitlePlaceholder": "Ex : Anatomie du coeur, Structure cellulaire"
+    "diagramTitlePlaceholder": "Ex : Anatomie du coeur, Structure cellulaire",
+    "createError": "Echec de la creation de la carte. Veuillez reessayer."
   },
   "deckTree": {
     "newSubDeck": "Nouveau sous-paquet",
@@ -672,7 +706,10 @@
     "cardsGenerated": "{count} cartes generees !",
     "ocrFailed": "Echec de l'extraction du texte. Essayez une photo plus nette.",
     "parsingFailed": "Echec de l'analyse. Verifiez que la photo contient une liste de vocabulaire.",
-    "choosePhoto": "Choisir une photo"
+    "choosePhoto": "Choisir une photo",
+    "genderPlaceholder": "m/f/n",
+    "pluralPlaceholder": "Forme au pluriel",
+    "notePlaceholder": "Note optionnelle"
   },
   "moveCards": {
     "title": "Deplacer les cartes",
@@ -838,5 +875,42 @@
     "legalTerms": "Conditions d'utilisation",
     "legalAnd": "et notre",
     "legalPrivacy": "Politique de confidentialité"
+  },
+  "appError": {
+    "title": "Un probleme est survenu",
+    "description": "Une erreur inattendue est survenue."
+  },
+  "media": {
+    "mustBeLoggedIn": "Vous devez etre connecte pour televerser des images",
+    "bucketMissing": "Le bucket de stockage \"card-media\" est introuvable. Creez-le dans Supabase Dashboard (Storage > New bucket, nom : card-media, public : ON).",
+    "uploadFailed": "Echec de l'envoi : {message}",
+    "publicUrlFailed": "Impossible de generer l'URL publique de l'image",
+    "uploadError": "Erreur d'envoi : {message}",
+    "unknownError": "Erreur inconnue",
+    "uploadingImage": "Envoi de l'image...",
+    "defaultPlaceholder": "Saisissez du texte ou glissez une image..."
+  },
+  "generatedCard": {
+    "cardNumber": "Carte {number}"
+  },
+  "offline": {
+    "banner": "Pas de connexion internet",
+    "title": "Vous etes hors ligne",
+    "description": "Verifiez votre connexion internet"
+  },
+  "nativeSubscriptions": {
+    "title": "Abonnements indisponibles dans l'app iOS",
+    "description": "Vous pouvez continuer a utiliser Soma sur le plan gratuit dans l'app iOS.",
+    "continue": "Continuer avec le plan gratuit"
+  },
+  "heatmap": {
+    "tooltip": "{date} : {count} {count, plural, one {revision} other {revisions}}",
+    "less": "Moins",
+    "more": "Plus",
+    "totalOverDays": "{total} {total, plural, one {revision} other {revisions}} sur {days} jours"
+  },
+  "sidebar": {
+    "toggle": "Afficher/masquer la barre laterale",
+    "close": "Fermer la barre laterale"
   }
 }
