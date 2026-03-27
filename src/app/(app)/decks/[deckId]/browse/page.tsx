@@ -39,20 +39,24 @@ import type { Card as CardType } from "@/lib/db";
 import { CARD_TYPES, type CardType as CardTypeEnum } from "@/lib/card-types";
 import { MoveCardsDialog } from "@/components/MoveCardsDialog";
 import { CardContextMenu } from "@/components/cards/CardContextMenu";
+import { useTranslation } from "@/i18n";
 
 // Helper to get next review text
-function getNextReviewText(card: CardType): string {
+function getNextReviewText(
+  card: CardType,
+  t: (key: string, params?: Record<string, string | number>) => string
+): string {
   const now = Date.now();
   const dueTime = new Date(card.due_at).getTime();
 
   if (dueTime <= now) {
-    return "Due now";
+    return t("browse.cardState.dueNow");
   }
 
   const diffMs = dueTime - now;
   const diffMinutes = diffMs / (1000 * 60);
 
-  return `In ${formatInterval(diffMinutes)}`;
+  return t("browse.cardState.inTime", { time: formatInterval(diffMinutes) });
 }
 
 // Helper to strip HTML and truncate text
@@ -62,19 +66,22 @@ function stripAndTruncate(html: string, maxLength: number = 80): string {
 }
 
 // Helper to get state badge styling
-function getStateBadge(card: CardType): { label: string; color: string } {
+function getStateBadge(
+  card: CardType,
+  t: (key: string, params?: Record<string, string | number>) => string
+): { label: string; color: string } {
   if (card.suspended) {
-    return { label: "Suspended", color: "bg-muted text-muted-foreground" };
+    return { label: t("browse.cardState.suspended"), color: "bg-muted text-muted-foreground" };
   }
 
   switch (card.state) {
     case "new":
-      return { label: "New", color: "bg-sky-500/10 text-sky-600" };
+      return { label: t("browse.cardState.new"), color: "bg-sky-500/10 text-sky-600" };
     case "learning":
     case "relearning":
-      return { label: "Learning", color: "bg-amber-500/10 text-amber-600" };
+      return { label: t("browse.cardState.learning"), color: "bg-amber-500/10 text-amber-600" };
     case "review":
-      return { label: "Review", color: "bg-emerald-500/10 text-emerald-600" };
+      return { label: t("browse.cardState.review"), color: "bg-emerald-500/10 text-emerald-600" };
     default:
       return { label: card.state, color: "bg-muted text-muted-foreground" };
   }
@@ -86,6 +93,7 @@ function capitalizeValue(value: string): string {
 }
 
 export default function BrowseCardsPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const deckId = params.deckId as string;
   const [cards, setCards] = useState<CardType[]>([]);
@@ -145,7 +153,7 @@ export default function BrowseCardsPage() {
       setDeckPaths(decks.map((d) => ({ deckId: d.deck.id, path: d.path })));
     } catch (err) {
       console.error("Error loading cards:", err);
-      setError("Failed to load cards. Please try again.");
+      setError(t("browse.failedToLoad"));
       setCards([]);
     } finally {
       setLoading(false);
@@ -184,7 +192,7 @@ export default function BrowseCardsPage() {
   }, [contextMenu]);
 
   const handleDeleteCard = async (cardId: string) => {
-    if (!confirm("Delete this card?")) return;
+    if (!confirm(t("browse.deleteCardConfirm"))) return;
 
     try {
       await deleteCard(cardId);
@@ -343,7 +351,7 @@ export default function BrowseCardsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading cards...</p>
+        <p className="text-muted-foreground">{t("browse.loadingCards")}</p>
       </div>
     );
   }
@@ -353,7 +361,7 @@ export default function BrowseCardsPage() {
       <div className="flex flex-col items-center justify-center py-12">
         <p className="text-destructive mb-4">{error}</p>
         <Button variant="outline" onClick={loadCards}>
-          Retry
+          {t("common.retry")}
         </Button>
       </div>
     );
@@ -376,7 +384,7 @@ export default function BrowseCardsPage() {
                 }}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
+                {t("common.back")}
               </Button>
               <div className="flex-1" />
               {!isEditing ? (
@@ -404,7 +412,7 @@ export default function BrowseCardsPage() {
                 <>
                   <Button size="sm" onClick={handleSaveEdit}>
                     <Save className="h-4 w-4 mr-1" />
-                    Save
+                    {t("common.save")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
                     <X className="h-4 w-4" />
@@ -417,38 +425,38 @@ export default function BrowseCardsPage() {
               {!isEditing ? (
                 <>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Front</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">{t("browse.table.front")}</p>
                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.front }} />
                   </div>
                   <Separator />
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Back</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">{t("browse.table.back")}</p>
                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: activeCard.back }} />
                   </div>
                   <Separator />
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Deck:</span>
+                      <span className="text-muted-foreground">{t("browse.preview.deck")}:</span>
                       <span className="font-medium text-right">{deckPathById.get(activeCard.deck_id) ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type:</span>
+                      <span className="text-muted-foreground">{t("browse.preview.type")}:</span>
                       <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">State:</span>
-                      <span className="font-medium">{capitalizeValue(getStateBadge(activeCard).label)}</span>
+                      <span className="text-muted-foreground">{t("browse.table.state")}:</span>
+                      <span className="font-medium">{capitalizeValue(getStateBadge(activeCard, t).label)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Due:</span>
-                      <span className="font-medium">{getNextReviewText(activeCard)}</span>
+                      <span className="text-muted-foreground">{t("browse.table.due")}:</span>
+                      <span className="font-medium">{getNextReviewText(activeCard, t)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Interval:</span>
-                      <span className="font-medium">{activeCard.interval_days} days</span>
+                      <span className="text-muted-foreground">{t("browse.preview.interval")}:</span>
+                      <span className="font-medium">{activeCard.interval_days} {activeCard.interval_days === 1 ? t("common.day") : t("common.days")}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Reviews:</span>
+                      <span className="text-muted-foreground">{t("browse.preview.reviews")}:</span>
                       <span className="font-medium">{activeCard.reps}</span>
                     </div>
                   </div>
@@ -456,7 +464,7 @@ export default function BrowseCardsPage() {
               ) : (
                 <>
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Card Type</label>
+                    <label className="mb-2 block text-sm font-medium">{t("browse.preview.cardType")}</label>
                     <Select
                       value={editCardType}
                       onValueChange={(value) => setEditCardType(value as CardTypeEnum)}
@@ -469,8 +477,8 @@ export default function BrowseCardsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <RichCardInput label="Front" value={editFront} onChange={setEditFront} placeholder="Question or front text" />
-                  <RichCardInput label="Back" value={editBack} onChange={setEditBack} placeholder="Answer or back text" />
+                  <RichCardInput label={t("browse.table.front")} value={editFront} onChange={setEditFront} placeholder={t("browse.preview.questionPlaceholder")} />
+                  <RichCardInput label={t("browse.table.back")} value={editBack} onChange={setEditBack} placeholder={t("browse.preview.answerPlaceholder")} />
                 </>
               )}
             </div>
@@ -480,21 +488,21 @@ export default function BrowseCardsPage() {
           <>
             <div className="mb-3">
               <p className="text-sm text-muted-foreground">
-                {cards.length} {cards.length === 1 ? "card" : "cards"} total
+                {t("browse.cardsTotal", { count: cards.length })}
               </p>
             </div>
 
             {cards.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground text-lg mb-3">No cards in this deck yet.</p>
+                <p className="text-muted-foreground text-lg mb-3">{t("browse.noCardsInDeck")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Use the <strong>Add</strong> tab to create cards.
+                  {t("browse.noCardsInDeckHint", { add: t("deckOverview.add") })}
                 </p>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
                 {cards.map((card) => {
-                  const badge = getStateBadge(card);
+                  const badge = getStateBadge(card, t);
                   return (
                     <div
                       key={card.id}
@@ -515,7 +523,7 @@ export default function BrowseCardsPage() {
                             {badge.label}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {getNextReviewText(card)}
+                            {getNextReviewText(card, t)}
                           </span>
                         </div>
                       </div>
@@ -539,15 +547,15 @@ export default function BrowseCardsPage() {
         <Dialog open={dueDateDialogOpen} onOpenChange={setDueDateDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Set due date</DialogTitle>
-              <DialogDescription>Choose a new due date for this card.</DialogDescription>
+              <DialogTitle>{t("browse.preview.setDueDateTitle")}</DialogTitle>
+              <DialogDescription>{t("browse.preview.setDueDateDesc")}</DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDueDateDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSetDueDate} disabled={!dueDateValue}>Save</Button>
+              <Button variant="outline" onClick={() => setDueDateDialogOpen(false)}>{t("common.cancel")}</Button>
+              <Button onClick={handleSetDueDate} disabled={!dueDateValue}>{t("common.save")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -562,7 +570,7 @@ export default function BrowseCardsPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            {cards.length} {cards.length === 1 ? "card" : "cards"} total
+            {t("browse.cardsTotal", { count: cards.length })}
           </p>
         </div>
 
@@ -570,13 +578,13 @@ export default function BrowseCardsPage() {
         {selectedCardIds.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">
-              {selectedCardIds.size} selected
+              {t("browse.actions.selectedCount", { count: selectedCardIds.size })}
             </span>
             <Button variant="outline" size="sm" onClick={selectAllCards}>
-              Select all
+              {t("browse.actions.selectAll")}
             </Button>
             <Button variant="outline" size="sm" onClick={clearSelection}>
-              Clear
+              {t("browse.actions.clear")}
             </Button>
             <Button
               variant="default"
@@ -586,7 +594,7 @@ export default function BrowseCardsPage() {
                 setMoveDialogOpen(true);
               }}
             >
-              Move to...
+              {t("browse.actions.moveTo")}
             </Button>
           </div>
         )}
@@ -594,9 +602,9 @@ export default function BrowseCardsPage() {
 
       {cards.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground text-lg mb-3">No cards in this deck yet.</p>
+          <p className="text-muted-foreground text-lg mb-3">{t("browse.noCardsInDeck")}</p>
           <p className="text-sm text-muted-foreground">
-            Use the <strong>Add</strong> tab to create cards.
+            {t("browse.noCardsInDeckHint", { add: t("deckOverview.add") })}
           </p>
         </div>
       ) : (
@@ -606,9 +614,9 @@ export default function BrowseCardsPage() {
           <div className="flex-1 border rounded-lg overflow-hidden flex flex-col bg-background">
             {/* Table header */}
             <div className="border-b bg-muted/50 px-4 py-2 flex items-center text-xs font-medium text-muted-foreground">
-            <div className="flex-1">Front</div>
-            <div className="w-24">State</div>
-            <div className="w-32">Due</div>
+            <div className="flex-1">{t("browse.table.front")}</div>
+            <div className="w-24">{t("browse.table.state")}</div>
+            <div className="w-32">{t("browse.table.due")}</div>
             </div>
 
             {/* Table body - scrollable */}
@@ -616,7 +624,7 @@ export default function BrowseCardsPage() {
               {cards.map((card, index) => {
                 const isSelected = selectedCardIds.has(card.id);
                 const isActive = activeCardId === card.id;
-                const badge = getStateBadge(card);
+                const badge = getStateBadge(card, t);
 
                 return (
                   <div
@@ -646,7 +654,7 @@ export default function BrowseCardsPage() {
 
                     {/* Due date */}
                     <div className="w-32 text-sm text-muted-foreground">
-                      {getNextReviewText(card)}
+                      {getNextReviewText(card, t)}
                     </div>
 
                     <div className="ml-2 sm:hidden">
@@ -654,7 +662,7 @@ export default function BrowseCardsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11"
-                        aria-label="Card actions"
+                        aria-label={t("browse.actions.cardActions")}
                         onClick={(e) => handleOpenContextMenuButton(e, card.id)}
                       >
                         <span className="text-lg leading-none">⋯</span>
@@ -672,7 +680,7 @@ export default function BrowseCardsPage() {
               <>
                 {/* Preview header */}
                 <div className="border-b px-4 py-3 flex items-center justify-between bg-muted/30">
-                  <h3 className="font-medium text-sm">Card Preview</h3>
+                  <h3 className="font-medium text-sm">{t("browse.preview.title")}</h3>
                   <div className="flex gap-1">
                     {!isEditing ? (
                       <>
@@ -682,7 +690,7 @@ export default function BrowseCardsPage() {
                           onClick={handleStartEdit}
                         >
                           <Edit className="h-4 w-4 mr-1" />
-                          Edit
+                          {t("browse.preview.edit")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -715,7 +723,7 @@ export default function BrowseCardsPage() {
                           onClick={handleSaveEdit}
                         >
                           <Save className="h-4 w-4 mr-1" />
-                          Save
+                          {t("common.save")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -736,7 +744,7 @@ export default function BrowseCardsPage() {
                       {/* View mode */}
                       <div>
                         <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-                          Front
+                          {t("browse.table.front")}
                         </p>
                         <div
                           className="prose prose-sm max-w-none"
@@ -748,7 +756,7 @@ export default function BrowseCardsPage() {
 
                       <div>
                         <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-                          Back
+                          {t("browse.table.back")}
                         </p>
                         <div
                           className="prose prose-sm max-w-none"
@@ -761,29 +769,29 @@ export default function BrowseCardsPage() {
                       {/* Card metadata */}
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Deck:</span>
+                          <span className="text-muted-foreground">{t("browse.preview.deck")}:</span>
                           <span className="font-medium text-right">{deckPathById.get(activeCard.deck_id) ?? "—"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Type:</span>
+                          <span className="text-muted-foreground">{t("browse.preview.type")}:</span>
                           <span className="font-medium">{capitalizeValue(activeCard.type)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">State:</span>
+                          <span className="text-muted-foreground">{t("browse.table.state")}:</span>
                           <span className="font-medium">
-                            {capitalizeValue(getStateBadge(activeCard).label)}
+                            {capitalizeValue(getStateBadge(activeCard, t).label)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Due:</span>
-                          <span className="font-medium">{getNextReviewText(activeCard)}</span>
+                          <span className="text-muted-foreground">{t("browse.table.due")}:</span>
+                          <span className="font-medium">{getNextReviewText(activeCard, t)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Interval:</span>
-                          <span className="font-medium">{activeCard.interval_days} days</span>
+                          <span className="text-muted-foreground">{t("browse.preview.interval")}:</span>
+                          <span className="font-medium">{activeCard.interval_days} {activeCard.interval_days === 1 ? t("common.day") : t("common.days")}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Reviews:</span>
+                          <span className="text-muted-foreground">{t("browse.preview.reviews")}:</span>
                           <span className="font-medium">{activeCard.reps}</span>
                         </div>
                       </div>
@@ -792,7 +800,7 @@ export default function BrowseCardsPage() {
                     <>
                       {/* Edit mode */}
                       <div>
-                        <label className="mb-2 block text-sm font-medium">Card Type</label>
+                        <label className="mb-2 block text-sm font-medium">{t("browse.preview.cardType")}</label>
                         <Select
                           value={editCardType}
                           onValueChange={(value) => setEditCardType(value as CardTypeEnum)}
@@ -811,17 +819,17 @@ export default function BrowseCardsPage() {
                       </div>
 
                       <RichCardInput
-                        label="Front"
+                        label={t("browse.table.front")}
                         value={editFront}
                         onChange={setEditFront}
-                        placeholder="Question or front text"
+                        placeholder={t("browse.preview.questionPlaceholder")}
                       />
 
                       <RichCardInput
-                        label="Back"
+                        label={t("browse.table.back")}
                         value={editBack}
                         onChange={setEditBack}
-                        placeholder="Answer or back text"
+                        placeholder={t("browse.preview.answerPlaceholder")}
                       />
                     </>
                   )}
@@ -831,9 +839,9 @@ export default function BrowseCardsPage() {
               /* No card selected */
               <div className="flex-1 flex items-center justify-center text-center p-8">
                 <div>
-                  <p className="text-muted-foreground mb-2">No card selected</p>
+                  <p className="text-muted-foreground mb-2">{t("browse.preview.noCardSelected")}</p>
                   <p className="text-sm text-muted-foreground">
-                    Click a card from the list to preview it
+                    {t("browse.preview.clickToPreview")}
                   </p>
                 </div>
               </div>
@@ -911,9 +919,9 @@ export default function BrowseCardsPage() {
       <Dialog open={dueDateDialogOpen} onOpenChange={setDueDateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Set due date</DialogTitle>
+            <DialogTitle>{t("browse.preview.setDueDateTitle")}</DialogTitle>
             <DialogDescription>
-              Choose a new due date for this card.
+              {t("browse.preview.setDueDateDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -925,10 +933,10 @@ export default function BrowseCardsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDueDateDialogOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSetDueDate} disabled={!dueDateValue}>
-              Save
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

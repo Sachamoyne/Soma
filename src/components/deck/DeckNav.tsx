@@ -8,12 +8,14 @@ import { cn } from "@/lib/cn";
 import { useIsApp } from "@/hooks/useIsApp";
 import { appHref } from "@/lib/appHref";
 import { useAppRouter } from "@/hooks/useAppRouter";
+import { useTranslation } from "@/i18n";
 
 interface DeckNavProps {
   deckId: string;
 }
 
 export function DeckNav({ deckId }: DeckNavProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useAppRouter();
   const isApp = useIsApp();
@@ -21,28 +23,28 @@ export function DeckNav({ deckId }: DeckNavProps) {
   const navItems = useMemo(
     () => [
       {
-        label: "Overview",
+        label: t("deck.tabs.overview"),
         href: `/decks/${deckId}`,
         icon: null,
         exact: true,
       },
       {
-        label: "Add",
+        label: t("deck.tabs.add"),
         href: `/decks/${deckId}/add`,
         icon: Plus,
       },
       {
-        label: "Browse",
+        label: t("deck.tabs.browse"),
         href: `/decks/${deckId}/browse`,
         icon: List,
       },
       {
-        label: "Stats",
+        label: t("deck.tabs.stats"),
         href: `/decks/${deckId}/stats`,
         icon: BarChart3,
       },
     ],
-    [deckId]
+    [deckId, t]
   );
 
   useEffect(() => {

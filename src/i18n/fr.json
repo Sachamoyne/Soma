@@ -372,7 +372,43 @@
     "setDueDateDesc": "Choisissez une nouvelle date d'echeance pour cette carte.",
     "cardActionsAria": "Actions de carte",
     "backToDecks": "Retour aux paquets",
-    "selectedCount": "{count} selectionnees"
+    "selectedCount": "{count} selectionnees",
+    "table": {
+      "front": "Recto",
+      "back": "Verso",
+      "state": "Statut",
+      "due": "Echeance"
+    },
+    "actions": {
+      "selectAll": "Tout selectionner",
+      "clear": "Effacer",
+      "moveTo": "Deplacer vers...",
+      "selectedCount": "{count} selectionnees",
+      "cardActions": "Actions de carte"
+    },
+    "preview": {
+      "title": "Apercu de la carte",
+      "edit": "Modifier",
+      "deck": "Paquet",
+      "type": "Type",
+      "interval": "Intervalle",
+      "reviews": "Revisions",
+      "cardType": "Type de carte",
+      "questionPlaceholder": "Question ou texte du recto",
+      "answerPlaceholder": "Reponse ou texte du verso",
+      "noCardSelected": "Aucune carte selectionnee",
+      "clickToPreview": "Cliquez sur une carte pour la previsualiser",
+      "setDueDateTitle": "Definir la date d'echeance",
+      "setDueDateDesc": "Choisissez une nouvelle date d'echeance pour cette carte."
+    },
+    "cardState": {
+      "new": "Nouveau",
+      "learning": "En cours",
+      "review": "A revoir",
+      "suspended": "Suspendue",
+      "dueNow": "A revoir",
+      "inTime": "Dans {time}"
+    }
   },
   "cardStates": {
     "new": "Nouvelle",
@@ -912,5 +948,13 @@
   "sidebar": {
     "toggle": "Afficher/masquer la barre laterale",
     "close": "Fermer la barre laterale"
+  },
+  "deck": {
+    "tabs": {
+      "overview": "Apercu",
+      "add": "Ajouter",
+      "browse": "Parcourir",
+      "stats": "Statistiques"
+    }
   }
 }

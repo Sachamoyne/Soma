@@ -372,7 +372,43 @@
     "setDueDateDesc": "Choose a new due date for this card.",
     "cardActionsAria": "Card actions",
     "backToDecks": "Back to Decks",
-    "selectedCount": "{count} selected"
+    "selectedCount": "{count} selected",
+    "table": {
+      "front": "Front",
+      "back": "Back",
+      "state": "State",
+      "due": "Due"
+    },
+    "actions": {
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "moveTo": "Move to...",
+      "selectedCount": "{count} selected",
+      "cardActions": "Card actions"
+    },
+    "preview": {
+      "title": "Card Preview",
+      "edit": "Edit",
+      "deck": "Deck",
+      "type": "Type",
+      "interval": "Interval",
+      "reviews": "Reviews",
+      "cardType": "Card Type",
+      "questionPlaceholder": "Question or front text",
+      "answerPlaceholder": "Answer or back text",
+      "noCardSelected": "No card selected",
+      "clickToPreview": "Click a card from the list to preview it",
+      "setDueDateTitle": "Set due date",
+      "setDueDateDesc": "Choose a new due date for this card."
+    },
+    "cardState": {
+      "new": "New",
+      "learning": "Learning",
+      "review": "Review",
+      "suspended": "Suspended",
+      "dueNow": "Due now",
+      "inTime": "In {time}"
+    }
   },
   "cardStates": {
     "new": "New",
@@ -912,5 +948,13 @@
   "sidebar": {
     "toggle": "Toggle sidebar",
     "close": "Close sidebar"
+  },
+  "deck": {
+    "tabs": {
+      "overview": "Overview",
+      "add": "Add",
+      "browse": "Browse",
+      "stats": "Stats"
+    }
   }
 }
