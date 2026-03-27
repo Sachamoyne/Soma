@@ -8,7 +8,6 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useTranslation } from "@/i18n";
 import { useIsApp } from "@/hooks/useIsApp";
 import { appHref } from "@/lib/appHref";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -74,9 +73,8 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Language and theme toggle at bottom */}
-      <div className="p-4 border-t border-border flex items-center justify-between">
-        <LanguageToggle />
+      {/* Theme toggle at bottom */}
+      <div className="p-4 border-t border-border flex items-center justify-end">
         <ThemeToggle variant="minimal" />
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { DeckNav } from "@/components/deck/DeckNav";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { listDecks } from "@/store/decks";
 import type { Deck } from "@/lib/db";
 import { useIsApp } from "@/hooks/useIsApp";
@@ -58,7 +59,7 @@ export default function DeckLayout({ children }: { children: React.ReactNode }) 
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Minimal header - just back link */}
       <div className="border-b bg-background">
-        <div className="max-w-7xl mx-auto px-4 md:px-10 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-10">
           <Link
             href={appHref("/decks", isApp)}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -66,6 +67,7 @@ export default function DeckLayout({ children }: { children: React.ReactNode }) 
             <ArrowLeft className="h-4 w-4" />
             Back to Decks
           </Link>
+          <LanguageToggle variant="minimal" className="shrink-0 min-h-10 px-2" />
         </div>
       </div>
 

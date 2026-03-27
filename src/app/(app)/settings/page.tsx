@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { getSettings, updateSettings, type Settings } from "@/store/settings";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut, Trash2, AlertTriangle } from "lucide-react";
-import { useTranslation } from "@/i18n";
+import { useLanguage, useTranslation } from "@/i18n";
 import { useIsNativeIOS } from "@/hooks/useIsNativeIOS";
 import { IOSPaywall } from "@/components/IOSPaywall";
 
@@ -120,6 +120,7 @@ function DeleteAccountModal({ onConfirm, onCancel, deleting, error }: DeleteModa
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const isNativeIOS = useIsNativeIOS();
   const [settings, setSettings] = useState<Partial<Settings>>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -292,6 +293,35 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* iOS language selector */}
+          {isNativeIOS && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">{t("language.toggle")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={language === "en" ? "default" : "outline"}
+                    className="h-11"
+                    onClick={() => setLanguage("en")}
+                  >
+                    {t("language.en")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={language === "fr" ? "default" : "outline"}
+                    className="h-11"
+                    onClick={() => setLanguage("fr")}
+                  >
+                    {t("language.fr")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* iOS in-app subscription paywall */}
           {isNativeIOS && (

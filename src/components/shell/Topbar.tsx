@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Plus, Upload, Menu } from "lucide-react";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTranslation } from "@/i18n";
@@ -35,19 +36,22 @@ export function Topbar({
       className="flex flex-col gap-3 border-b border-border bg-background px-4 pb-3 pt-[calc(var(--sat)+0.75rem)] min-h-[calc(var(--sat)+3.5rem)] md:min-h-0 md:h-20 md:flex-row md:items-center md:justify-between md:px-10 md:py-0"
       style={{ "--sat": isNative ? "0px" : "env(safe-area-inset-top, 0px)" } as React.CSSProperties}
     >
-      <div className="flex items-center gap-4">
-        {!isNative && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            className="shrink-0 text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
-            aria-label="Toggle sidebar"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        )}
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
+      <div className="flex w-full min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          {!isNative && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              className="shrink-0 text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <h2 className="truncate text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
+        </div>
+        <LanguageToggle variant="minimal" className="shrink-0 min-h-10 px-2 md:hidden" />
       </div>
 
       {/* Actions - mobile layout */}
@@ -73,6 +77,7 @@ export function Topbar({
 
       {/* Actions - desktop layout (unchanged visually) */}
       <div className="hidden gap-2 md:flex">
+        <LanguageToggle variant="minimal" className="min-h-9 px-1" />
         {actions}
         {showImport && onImport && (
           <Button variant="outline" onClick={onImport}>
