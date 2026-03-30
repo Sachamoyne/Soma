@@ -55,8 +55,8 @@ export function DeckNav({ deckId }: DeckNavProps) {
 
   return (
     <nav className="border-b bg-background">
-      {/* Center the tabs using flex + justify-center */}
-      <div className="flex items-center justify-center gap-1">
+      {/* Mobile: equal-width tabs with wrapping labels. Desktop: centered auto-width tabs. */}
+      <div className="mx-auto flex w-full items-stretch gap-1 px-2 md:w-auto md:justify-center md:px-0">
         {navItems.map((item) => {
           const isActive = item.exact
             ? pathname === item.href
@@ -68,14 +68,14 @@ export function DeckNav({ deckId }: DeckNavProps) {
               key={item.href}
               href={appHref(item.href, isApp)}
               className={cn(
-                "flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors",
+                "flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3 text-center text-xs font-medium leading-tight border-b-2 transition-colors sm:text-sm md:flex-none md:px-6",
                 isActive
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              {Icon && <Icon className="h-4 w-4" />}
-              {item.label}
+              {Icon && <Icon className="hidden h-4 w-4 shrink-0 sm:block" />}
+              <span className="min-w-0 whitespace-normal break-words md:whitespace-nowrap">{item.label}</span>
             </Link>
           );
         })}
