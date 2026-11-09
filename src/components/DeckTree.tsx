@@ -212,8 +212,7 @@ export function DeckTree({
               <Plus className="h-3.5 w-3.5" />
             </Button>
             <DeckSettingsMenu
-              deckId={deck.id}
-              deckName={deck.name}
+              deck={deck}
               onUpdate={onDeckDeleted}
             />
           </div>

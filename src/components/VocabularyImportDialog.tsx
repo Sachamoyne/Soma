@@ -323,7 +323,7 @@ export function VocabularyImportDialog({
       if (entry.note) extra.note = entry.note;
       if (entry.example) extra.example = entry.example;
 
-      if (vocabDirection === "normal" || vocabDirection === "both") {
+      if (vocabDirection !== "reversed") {
         allCards.push({
           front: escapeVocabularyText(entry.wordSource),
           back: buildCardBack(entry, false),
@@ -504,6 +504,7 @@ export function VocabularyImportDialog({
                 {vocabDirection === "normal" && t("decks.vocabDirectionNormal")}
                 {vocabDirection === "reversed" && t("decks.vocabDirectionReversed")}
                 {vocabDirection === "both" && t("decks.vocabDirectionBoth")}
+                {vocabDirection === "random" && t("decks.vocabDirectionRandom")}
               </p>
             </div>
 

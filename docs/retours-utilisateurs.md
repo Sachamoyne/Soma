@@ -17,3 +17,17 @@ Deux symptômes signalés le 9 novembre 2026. Des mots peuvent se retrouver dans
 - `apps/backend/src/routes/pdf.ts` conserve la mise en page extraite avec `/pdf/import?layout=vocabulary`. Les PDF doivent contenir du texte sélectionnable. Le parseur PDF peut restituer certains espaces entre colonnes comme un espace simple.
 - `src/components/VocabularyImportDialog.tsx` propose le PDF et demande de confirmer ou retirer chaque paire signalée avant la création des cartes.
 - Tests du backend depuis `apps/backend` avec `npm run build && node --test test/vocabulary.test.cjs`. Le modèle est simulé pour les images. Le test PDF extrait le texte d'un petit document généré dans le test.
+
+### Révision
+
+- Le menu d'un paquet de langues et la création d'un paquet proposent Aléatoire. Le réglage est stocké dans `decks.config.vocabDirection`. Le champ JSONB et les droits existants suffisent.
+- `src/app/(app)/study/[deckId]/page.tsx` transmet les paquets chargés à `StudyCard`. Le réglage est lu sur le paquet de la carte, y compris lors d'une révision depuis un paquet parent. `getStudyCardType` dirige les cartes de vocabulaire et les anciennes cartes simples vers le composant réversible en mode Aléatoire.
+- Le composant choisit le côté au montage de chaque présentation. La note et la progression utilisent l'identifiant de la carte stockée. Les nouveaux imports en mode Aléatoire créent une carte par paire. Les deux directions continue de créer deux cartes indépendantes. Les trois autres choix utilisent les côtés enregistrés pour les cartes déjà présentes.
+
+### Vérifications et reprise
+
+- Node 22 local. `npm run typecheck -- --incremental false` passe à la racine.
+- Le build Express et les 3 tests du backend passent. Le verrou npm d'Express est désynchronisé sur `main` pour Stripe. Pour la vérification, les dépendances ont été installées avec `npm install --ignore-scripts` dans une copie temporaire du backend.
+- Avec Vitest 3.2.7, `npm run test:run -- --dir src` donne 32 réussites et 13 échecs. Les mêmes 13 tests de `scheduler.test.ts` échouent sur `main`, qui compte 29 réussites. Le filtre `--dir src` exclut les anciens worktrees locaux. Les 3 nouveaux tests sont dans `src/lib/card-types.test.ts`. Vitest a été installé dans un dossier temporaire car il manque au manifeste racine.
+- Vérification dans Chromium à largeur iPhone, avec Supabase et les réponses IA simulés. Changement de direction sur un paquet existant, recto et verso choisis à deux présentations, côté stable au moment de révéler la réponse, sélection d'un PDF, confirmation d'une paire signalée et sauvegarde d'une seule carte.
+- Pour la mise en ligne, déployer le backend Railway avant le frontend Vercel. Tester ensuite l'import d'une photo ou du JPG original sur iPhone, l'import d'un PDF avec texte et le réglage Aléatoire sur un paquet existant. Le fichier original du signalement est à récupérer pour reproduire précisément son résultat OCR.

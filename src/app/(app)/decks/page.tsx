@@ -211,8 +211,7 @@ export default function DecksPage() {
                         </div>
                         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                           <DeckSettingsMenu
-                            deckId={deck.id}
-                            deckName={deck.name}
+                            deck={deck}
                             onUpdate={loadDecks}
                           />
                         </div>
@@ -369,6 +368,7 @@ export default function DecksPage() {
                       <SelectItem value="normal">{t("decks.vocabDirectionNormal")}</SelectItem>
                       <SelectItem value="reversed">{t("decks.vocabDirectionReversed")}</SelectItem>
                       <SelectItem value="both">{t("decks.vocabDirectionBoth")}</SelectItem>
+                      <SelectItem value="random">{t("decks.vocabDirectionRandom")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

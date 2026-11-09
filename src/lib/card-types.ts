@@ -5,6 +5,8 @@
  * Each card type has different behavior during study sessions.
  */
 
+import type { Deck, LanguagesConfig } from "@/lib/supabase-db";
+
 // Classic mode card types
 export type ClassicCardType = "basic" | "reversible" | "typed";
 
@@ -316,6 +318,18 @@ const ALL_CARD_TYPES: CardType[] = [
  */
 export function isValidCardType(type: string): type is CardType {
   return ALL_CARD_TYPES.includes(type as CardType);
+}
+
+export function getStudyCardType(type: CardType, deck?: Pick<Deck, "mode" | "config"> | null): CardType {
+  const config = deck?.config as LanguagesConfig | null | undefined;
+  if (
+    deck?.mode === "languages" &&
+    config?.vocabDirection === "random" &&
+    (type === "vocabulary" || type === "basic")
+  ) {
+    return "reversible";
+  }
+  return type;
 }
 
 /**

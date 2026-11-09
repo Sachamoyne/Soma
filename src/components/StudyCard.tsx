@@ -36,7 +36,7 @@ import { PhilosophyConceptCard } from "@/components/cards/PhilosophyConceptCard"
 import { LawCard } from "@/components/cards/LawCard";
 import { MedicineCard } from "@/components/cards/MedicineCard";
 import { DiagramCard } from "@/components/cards/DiagramCard";
-import type { CardType as CardTypeEnum } from "@/lib/card-types";
+import { getStudyCardType, type CardType as CardTypeEnum } from "@/lib/card-types";
 
 // Session requeue to mimic Anki learning behavior
 // Cards marked "Again" reappear in the same session after a short delay
@@ -542,7 +542,7 @@ export function StudyCard({
   }
 
   // Computed here so JSX can branch on it without re-computing inside the switch
-  const currentCardType = (currentCard.type as CardTypeEnum) || "basic";
+  const currentCardType = getStudyCardType((currentCard.type as CardTypeEnum) || "basic", currentDeck);
 
   return (
     <>
@@ -629,7 +629,7 @@ export function StudyCard({
                 case "reversible":
                   return (
                     <ReversibleCard
-                      key={currentCard.id}
+                      key={`${currentCard.id}:${currentCard.state}:${currentCard.due_at}`}
                       card={currentCard}
                       onRate={handleRate}
                       intervalPreviews={intervalPreviews}
