@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Trash2, Plus, Image as ImageIcon } from "lucide-react";
-import { type Deck, type VocabDirection, type LanguagesConfig } from "@/store/decks";
+import { type Deck, type LanguagesConfig } from "@/store/decks";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/lib/backend";
 import { useTranslation } from "@/i18n";
@@ -27,6 +27,7 @@ export interface VocabularyEntry {
   plural?: string;
   note?: string;
   example?: string;
+  needsReview?: boolean;
 }
 
 interface VocabularyImportDialogProps {
@@ -37,6 +38,10 @@ interface VocabularyImportDialogProps {
 }
 
 type Step = "upload" | "extracting" | "parsing" | "review" | "generating";
+
+function escapeVocabularyText(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function isPhotoPickerCancelError(err: unknown): boolean {
   if (!err) return false;
@@ -74,6 +79,7 @@ export function VocabularyImportDialog({
   const { t } = useTranslation();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const isNativeCapacitor = typeof window !== "undefined" && Capacitor.isNativePlatform();
 
@@ -165,7 +171,7 @@ export function VocabularyImportDialog({
     }
   };
 
-  const extractTextFromImage = async (imageFile: File): Promise<string> => {
+  const extractVocabularyText = async (vocabularyFile: File): Promise<string> => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
@@ -173,9 +179,11 @@ export function VocabularyImportDialog({
     }
 
     const formData = new FormData();
-    formData.append("file", imageFile);
+    formData.append("file", vocabularyFile);
+    const isPdf = vocabularyFile.type === "application/pdf" || /\.pdf$/i.test(vocabularyFile.name);
+    const endpoint = isPdf ? "/pdf/import?layout=vocabulary" : "/languages/extract-vocabulary-text";
 
-    const response = await fetch(`${BACKEND_URL}/languages/extract-vocabulary-text`, {
+    const response = await fetch(`${BACKEND_URL}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -234,7 +242,7 @@ export function VocabularyImportDialog({
 
     try {
       // Step 1: OCR
-      const text = await extractTextFromImage(file);
+      const text = await extractVocabularyText(file);
       setExtractionProgress(100);
 
       if (!text.trim()) {
@@ -268,6 +276,12 @@ export function VocabularyImportDialog({
     setEntries(entries.filter((_, i) => i !== index));
   };
 
+  const handleConfirmEntry = (index: number) => {
+    setEntries((current) => current.map((entry, position) =>
+      position === index ? { ...entry, needsReview: false } : entry
+    ));
+  };
+
   const handleAddEntry = () => {
     setEntries([...entries, { wordSource: "", wordTarget: "" }]);
   };
@@ -275,21 +289,21 @@ export function VocabularyImportDialog({
   const buildCardBack = (entry: VocabularyEntry, isReversed: boolean): string => {
     // For reversed cards, the "back" is the source word
     const mainWord = isReversed ? entry.wordSource : entry.wordTarget;
-    const parts: string[] = [mainWord];
+    const parts: string[] = [escapeVocabularyText(mainWord)];
 
     // Add optional info (only for non-reversed, as they relate to the target word)
     if (!isReversed) {
       if (entry.gender) {
-        parts.push(`<span class="text-muted-foreground text-sm">(${entry.gender})</span>`);
+        parts.push(`<span class="text-muted-foreground text-sm">(${escapeVocabularyText(entry.gender)})</span>`);
       }
       if (entry.plural) {
-        parts.push(`<span class="text-muted-foreground text-sm">pl: ${entry.plural}</span>`);
+        parts.push(`<span class="text-muted-foreground text-sm">pl: ${escapeVocabularyText(entry.plural)}</span>`);
       }
       if (entry.note) {
-        parts.push(`<div class="text-sm text-muted-foreground mt-2">${entry.note}</div>`);
+        parts.push(`<div class="text-sm text-muted-foreground mt-2">${escapeVocabularyText(entry.note)}</div>`);
       }
       if (entry.example) {
-        parts.push(`<div class="text-sm italic mt-2">${entry.example}</div>`);
+        parts.push(`<div class="text-sm italic mt-2">${escapeVocabularyText(entry.example)}</div>`);
       }
     }
 
@@ -311,7 +325,7 @@ export function VocabularyImportDialog({
 
       if (vocabDirection === "normal" || vocabDirection === "both") {
         allCards.push({
-          front: entry.wordSource,
+          front: escapeVocabularyText(entry.wordSource),
           back: buildCardBack(entry, false),
           type: "vocabulary",
           extra,
@@ -320,7 +334,7 @@ export function VocabularyImportDialog({
 
       if (vocabDirection === "reversed" || vocabDirection === "both") {
         allCards.push({
-          front: entry.wordTarget,
+          front: escapeVocabularyText(entry.wordTarget),
           back: buildCardBack(entry, true),
           type: "vocabulary",
           extra: { ...extra, reversed: true },
@@ -332,6 +346,8 @@ export function VocabularyImportDialog({
   };
 
   const handleGenerateCards = async () => {
+    if (entries.some((entry) => entry.needsReview)) return;
+
     const validEntries = entries.filter(
       (e) => e.wordSource.trim() && e.wordTarget.trim()
     );
@@ -389,10 +405,7 @@ export function VocabularyImportDialog({
     }
   };
 
-  const handleSkipAndGenerate = async () => {
-    // Skip validation, generate directly
-    await handleGenerateCards();
-  };
+  const hasUnreviewedEntries = entries.some((entry) => entry.needsReview);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -415,7 +428,7 @@ export function VocabularyImportDialog({
         {step === "upload" && (
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="vocab-file">{t("vocabularyImport.uploadPhoto")}</Label>
+              <Label htmlFor={isNativeCapacitor ? undefined : "vocab-file"}>{t("vocabularyImport.uploadPhoto")}</Label>
               <p className="text-sm text-muted-foreground mb-2">
                 {t("vocabularyImport.uploadHint")}
               </p>
@@ -427,6 +440,13 @@ export function VocabularyImportDialog({
                     accept="image/*"
                     onChange={handleFileSelect}
                     ref={fileInputRef}
+                    className="hidden"
+                  />
+                  <Input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={handleFileSelect}
+                    ref={pdfInputRef}
                     className="hidden"
                   />
                   <Button
@@ -442,6 +462,15 @@ export function VocabularyImportDialog({
                     )}
                     {t("vocabularyImport.choosePhoto")}
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => pdfInputRef.current?.click()}
+                    disabled={isPickingPhoto}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {t("vocabularyImport.choosePdf")}
+                  </Button>
                   {file && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ImageIcon className="h-4 w-4" />
@@ -454,7 +483,7 @@ export function VocabularyImportDialog({
                   <Input
                     id="vocab-file"
                     type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.pdf"
                     onChange={handleFileSelect}
                     ref={fileInputRef}
                     className="cursor-pointer"
@@ -560,6 +589,21 @@ export function VocabularyImportDialog({
                     </Button>
                   </div>
 
+                  {entry.needsReview && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-amber-500/10 p-2 text-sm">
+                      <p>{t("vocabularyImport.uncertainPair")}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!entry.wordSource.trim() || !entry.wordTarget.trim()}
+                        onClick={() => handleConfirmEntry(index)}
+                      >
+                        {t("vocabularyImport.confirmPair")}
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Optional fields - collapsible */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -634,15 +678,8 @@ export function VocabularyImportDialog({
                 {t("common.back")}
               </Button>
               <Button
-                variant="outline"
-                onClick={handleSkipAndGenerate}
-                disabled={entries.length === 0 || isGenerating}
-              >
-                {t("vocabularyImport.skipAndGenerate")}
-              </Button>
-              <Button
                 onClick={handleGenerateCards}
-                disabled={entries.length === 0 || isGenerating}
+                disabled={entries.length === 0 || hasUnreviewedEntries || isGenerating}
               >
                 {t("vocabularyImport.generateCards")}
               </Button>
