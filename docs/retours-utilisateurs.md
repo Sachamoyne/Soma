@@ -35,5 +35,12 @@ Deux symptômes signalés le 9 novembre 2026. Des mots peuvent se retrouver dans
 ### Revue avant fusion
 
 - Build de production Next.js réussi en local pour `fd7a6b7` et pour `main`, avec des valeurs d'environnement factices et accès à Google Fonts. Les deux builds émettent quatre avertissements `document is not defined` lors du pré-rendu. Sur le serveur local issu du build de la branche, l'accueil, la connexion, l'inscription et les tarifs répondent en 200. Sans session, `/decks?app=1` redirige vers la connexion.
-- Limite reproduite avec le code de génération et le vrai gestionnaire Express. En mode Les deux directions, 26 paires produisent 52 cartes et `POST /generate/confirm` répond 400 au-delà de 50 cartes. Le plafond existait avant le changement et concerne désormais aussi les PDF importés par ce parcours. Le signaler dans l'aperçu, ou décider de prendre en charge les imports plus longs avant la fusion.
+- Limite reproduite avant correction avec le vrai gestionnaire Express. En mode Les deux directions, 26 paires produisent 52 cartes et `POST /generate/confirm` répond 400 au-delà de 50 cartes. Le plafond existait avant le changement et concerne désormais aussi les PDF importés par ce parcours.
 - Validation restante sur un iPhone avec un compte de test et le JPG original ou un document de vocabulaire comparable. Vérifier le résultat réel de l'OCR, l'import, puis une révision avec le réglage Aléatoire.
+
+### Plafond d’import et OCR vérifiés le 10 novembre
+
+- L’aperçu indique le nombre de cartes et le maximum de 50. Il désactive la génération au-delà du seuil. Les paires incomplètes sont exclues du compteur et le mode Les deux directions compte deux cartes par paire.
+- Chromium à largeur iPhone avec API simulée. En mode Les deux directions, 26 paires ne déclenchent aucun envoi et 25 envoient exactement 50 cartes. En mode Aléatoire, 51 paires sont bloquées et 50 passent. Le parcours PDF avec confirmation d’une paire et l’affichage des deux faces en révision passent également.
+- Les deux appels réels au service OCR et au parseur ont renvoyé 200 avec un JPG synthétique à deux colonnes, japonais à gauche et français à droite. Les 12 paires ont été retrouvées dans le bon ordre de langues, sans perte ni association supplémentaire. Cet essai s’arrête à la réponse du parseur.
+- TypeScript et build de production passent. Xcode répertorie l’iPhone hors ligne. L’essai natif avec enregistrement et révision reste à faire avant mise en ligne et retour au testeur.

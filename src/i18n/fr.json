@@ -747,6 +747,8 @@
     "skipAndGenerate": "Passer et generer",
     "generating": "Generation...",
     "entriesFound": "{count} entrees trouvees",
+    "cardsToCreate": "{count} cartes à créer sur {limit} maximum",
+    "cardLimitExceeded": "Retirez des paires pour respecter la limite de cartes par import.",
     "noEntriesFound": "Aucune entrée trouvée. Vérifiez le fichier ou ajoutez une paire manuellement.",
     "cardsGenerated": "{count} cartes generees !",
     "ocrFailed": "Echec de l'extraction du texte. Essayez une photo plus nette.",

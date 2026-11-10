@@ -39,6 +39,9 @@ interface VocabularyImportDialogProps {
 
 type Step = "upload" | "extracting" | "parsing" | "review" | "generating";
 
+// Keep in sync with the batch limit in POST /generate/confirm.
+const MAX_CARDS_PER_IMPORT = 50;
+
 function escapeVocabularyText(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -97,6 +100,10 @@ export function VocabularyImportDialog({
   const sourceLanguage = config?.sourceLanguage || "Source";
   const targetLanguage = config?.targetLanguage || "Target";
   const vocabDirection = config?.vocabDirection || "normal";
+  const validEntries = entries.filter((entry) => entry.wordSource.trim() && entry.wordTarget.trim());
+  const cardCount = validEntries.length * (vocabDirection === "both" ? 2 : 1);
+  const exceedsCardLimit = cardCount > MAX_CARDS_PER_IMPORT;
+  const hasUnreviewedEntries = entries.some((entry) => entry.needsReview);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -346,16 +353,7 @@ export function VocabularyImportDialog({
   };
 
   const handleGenerateCards = async () => {
-    if (entries.some((entry) => entry.needsReview)) return;
-
-    const validEntries = entries.filter(
-      (e) => e.wordSource.trim() && e.wordTarget.trim()
-    );
-
-    if (validEntries.length === 0) {
-      setError(t("vocabularyImport.noEntriesFound"));
-      return;
-    }
+    if (cardCount === 0 || exceedsCardLimit || hasUnreviewedEntries || isGenerating) return;
 
     setIsGenerating(true);
     setStep("generating");
@@ -404,8 +402,6 @@ export function VocabularyImportDialog({
       setIsGenerating(false);
     }
   };
-
-  const hasUnreviewedEntries = entries.some((entry) => entry.needsReview);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -540,9 +536,12 @@ export function VocabularyImportDialog({
         {step === "review" && (
           <div className="space-y-4 py-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {t("vocabularyImport.entriesFound", { count: entries.length })}
-              </p>
+              <div className="text-sm text-muted-foreground">
+                <p>{t("vocabularyImport.entriesFound", { count: entries.length })}</p>
+                <p aria-live="polite">
+                  {t("vocabularyImport.cardsToCreate", { count: cardCount, limit: MAX_CARDS_PER_IMPORT })}
+                </p>
+              </div>
               <Button variant="outline" size="sm" onClick={handleAddEntry}>
                 <Plus className="h-4 w-4 mr-1" />
                 {t("vocabularyImport.addEntry")}
@@ -553,6 +552,12 @@ export function VocabularyImportDialog({
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </div>
+            )}
+
+            {exceedsCardLimit && (
+              <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {t("vocabularyImport.cardLimitExceeded")}
+              </p>
             )}
 
             <div className="max-h-[400px] space-y-3 overflow-y-auto">
@@ -583,6 +588,7 @@ export function VocabularyImportDialog({
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label={t("vocabularyImport.removeEntry")}
                       onClick={() => handleRemoveEntry(index)}
                       className="self-end text-muted-foreground hover:text-destructive"
                     >
@@ -652,10 +658,7 @@ export function VocabularyImportDialog({
           <div className="py-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
             <p className="mt-4 text-sm text-muted-foreground">
-              {t("vocabularyImport.generating")} {generatedCount} / {
-                entries.filter(e => e.wordSource.trim() && e.wordTarget.trim()).length *
-                (vocabDirection === "both" ? 2 : 1)
-              }
+              {t("vocabularyImport.generating")} {generatedCount} / {cardCount}
             </p>
           </div>
         )}
@@ -680,7 +683,7 @@ export function VocabularyImportDialog({
               </Button>
               <Button
                 onClick={handleGenerateCards}
-                disabled={entries.length === 0 || hasUnreviewedEntries || isGenerating}
+                disabled={cardCount === 0 || exceedsCardLimit || hasUnreviewedEntries || isGenerating}
               >
                 {t("vocabularyImport.generateCards")}
               </Button>
