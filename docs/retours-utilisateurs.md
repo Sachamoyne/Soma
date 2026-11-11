@@ -44,3 +44,16 @@ Deux symptômes signalés le 9 novembre 2026. Des mots peuvent se retrouver dans
 - Chromium à largeur iPhone avec API simulée. En mode Les deux directions, 26 paires ne déclenchent aucun envoi et 25 envoient exactement 50 cartes. En mode Aléatoire, 51 paires sont bloquées et 50 passent. Le parcours PDF avec confirmation d’une paire et l’affichage des deux faces en révision passent également.
 - Les deux appels réels au service OCR et au parseur ont renvoyé 200 avec un JPG synthétique à deux colonnes, japonais à gauche et français à droite. Les 12 paires ont été retrouvées dans le bon ordre de langues, sans perte ni association supplémentaire. Cet essai s’arrête à la réponse du parseur.
 - TypeScript et build de production passent. Xcode répertorie l’iPhone hors ligne. L’essai natif avec enregistrement et révision reste à faire avant mise en ligne et retour au testeur.
+
+### Essai natif dans le simulateur le 11 novembre
+
+- Simulateur iPhone 17 Pro sous iOS 26.2. L'app pointe vers le frontend et le backend de la branche lancés en local, avec la base Supabase et l'OCR réels, sur un compte gratuit. Le build Xcode échoue avec Xcode 27.2 sur RevenueCat 5.60 (`ambiguous use of init(stringRepresentation:)`), indépendamment de la branche. L'essai réutilise le build simulateur du 30 mars avec seulement l'URL du serveur modifiée, ce qui suffit puisque l'app charge le site distant.
+- La création d'un paquet de langues propose Random. Paquet Japonais → Francais créé en mode Random.
+- Import depuis la photothèque native d'un JPG à deux colonnes, japonais à gauche et français à droite. L'OCR puis le parseur renvoient les 12 paires dans le bon ordre de langues. Aucune paire n'est signalée comme douteuse. L'aperçu affiche 12 cartes pour un maximum de 50, et la suppression d'une entrée met le compteur à jour.
+- Sur le compte gratuit, le serveur refuse 12 cartes avec `QUOTA_FREE_PLAN` : il restait 8 cartes sur les 30 de l'essai gratuit, compteur à vie. Le message s'affiche dans l'aperçu. Après retrait de 4 paires, 8 cartes sont créées, une par paire.
+- En révision, les deux côtés apparaissent : verso sur rivière, livre et école, recto sur 先生. Le côté reste stable au moment de révéler la réponse, et la réponse correspond bien à la paire.
+- Non couvert : la prise de photo avec l'appareil, l'import PDF dans l'app native et l'essai sur un iPhone physique.
+- Points relevés hors périmètre de la branche :
+  - Le bouton d'import affiche « Extracting text » avant tout lancement. `VocabularyImportDialog.tsx` réutilise la clé `vocabularyImport.extracting` au lieu de `extractText`.
+  - Le compteur de l'aperçu ne tient pas compte du quota gratuit restant. Un compte gratuit découvre la limite seulement après « Generate cards ».
+  - L'import de vocabulaire consomme le quota de cartes IA gratuites.
