@@ -138,6 +138,8 @@ Outils en ligne de commande :
 | #17 | Erreur « Authentication failed » en production | Le backend tournait sous Node 20. Passage à Node 22. |
 | #18 | Lockfile du backend commité | Builds Railway reproductibles. |
 | #19 | Question visible au verso (retour de Margot) | Avec une réponse longue, on oubliait la question. |
+| #20 | Ajout de `context.md` | Vue d'ensemble du projet en un seul fichier. |
+| #21 | Mise à jour automatique de `context.md` | `AGENTS.md`, repris par `CLAUDE.md`, demande aux agents de tenir ce fichier à jour dans chaque branche qui change l'app. |
 
 ## Points connus, non traités
 
@@ -155,6 +157,7 @@ Outils en ligne de commande :
 
 ## Autres documents
 
+- `AGENTS.md` (repris par `CLAUDE.md`) : consignes pour les agents, dont la mise à jour de ce fichier dans chaque branche qui change l'app.
 - `docs/retours-utilisateurs.md` : journal détaillé du chantier vocabulaire japonais.
 - `src/lib/scheduler.README.md` : algorithme de répétition espacée.
 - `apps/backend/ROUTE_ADAPTATION_NOTES.md` : notes sur les routes du backend.
