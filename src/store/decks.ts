@@ -3,6 +3,7 @@ export {
   listDecks,
   createDeck,
   renameDeck,
+  updateDeckVocabDirection,
   deleteDeck,
   getDeckAndAllChildren,
   getDeckPath,

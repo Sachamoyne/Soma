@@ -18,23 +18,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { renameDeck, deleteDeck } from "@/store/decks";
-import { Settings, Edit, Package, Download, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { renameDeck, deleteDeck, updateDeckVocabDirection, type Deck, type LanguagesConfig, type VocabDirection } from "@/store/decks";
+import { Settings, Edit, Package, Download, Trash2, ArrowRightLeft } from "lucide-react";
 import { DeckOptions } from "@/components/DeckOptions";
 import { useTranslation } from "@/i18n";
 
 interface DeckSettingsMenuProps {
-  deckId: string;
-  deckName: string;
+  deck: Deck;
   onUpdate: () => void;
 }
 
-export function DeckSettingsMenu({ deckId, deckName, onUpdate }: DeckSettingsMenuProps) {
+export function DeckSettingsMenu({ deck, onUpdate }: DeckSettingsMenuProps) {
   const { t } = useTranslation();
+  const { id: deckId, name: deckName } = deck;
+  const savedVocabDirection = (deck.config as LanguagesConfig | null)?.vocabDirection ?? "normal";
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+  const [directionDialogOpen, setDirectionDialogOpen] = useState(false);
+  const [vocabDirection, setVocabDirection] = useState<VocabDirection>(savedVocabDirection);
+  const [savingDirection, setSavingDirection] = useState(false);
+  const [directionError, setDirectionError] = useState(false);
   const [newDeckName, setNewDeckName] = useState(deckName);
 
   const handleRename = async () => {
@@ -63,6 +70,21 @@ export function DeckSettingsMenu({ deckId, deckName, onUpdate }: DeckSettingsMen
 
   const handleExport = async () => {
     setExportDialogOpen(false);
+  };
+
+  const handleSaveDirection = async () => {
+    setSavingDirection(true);
+    setDirectionError(false);
+    try {
+      await updateDeckVocabDirection(deckId, vocabDirection);
+      setDirectionDialogOpen(false);
+      onUpdate();
+    } catch (error) {
+      console.error("Error saving vocabulary direction:", error);
+      setDirectionError(true);
+    } finally {
+      setSavingDirection(false);
+    }
   };
 
   return (
@@ -98,6 +120,17 @@ export function DeckSettingsMenu({ deckId, deckName, onUpdate }: DeckSettingsMen
             <Package className="mr-2 h-4 w-4" />
             {t("deckSettings.options")}
           </DropdownMenuItem>
+          {deck.mode === "languages" && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              setVocabDirection(savedVocabDirection);
+              setDirectionError(false);
+              setDirectionDialogOpen(true);
+            }}>
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
+              {t("decks.vocabDirection")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -183,6 +216,40 @@ export function DeckSettingsMenu({ deckId, deckName, onUpdate }: DeckSettingsMen
             </Button>
             <Button onClick={handleExport} disabled>
               {t("deckSettings.export")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={directionDialogOpen} onOpenChange={(open) => {
+        if (!savingDirection) setDirectionDialogOpen(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("decks.vocabDirection")}</DialogTitle>
+            <DialogDescription>{t("decks.vocabDirectionHelp")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-vocab-direction">{t("decks.vocabDirection")}</Label>
+            <Select value={vocabDirection} onValueChange={(value: VocabDirection) => setVocabDirection(value)} disabled={savingDirection}>
+              <SelectTrigger id="edit-vocab-direction">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">{t("decks.vocabDirectionNormal")}</SelectItem>
+                <SelectItem value="reversed">{t("decks.vocabDirectionReversed")}</SelectItem>
+                <SelectItem value="both">{t("decks.vocabDirectionBoth")}</SelectItem>
+                <SelectItem value="random">{t("decks.vocabDirectionRandom")}</SelectItem>
+              </SelectContent>
+            </Select>
+            {directionError && <p role="alert" className="text-sm text-destructive">{t("decks.vocabDirectionSaveError")}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={savingDirection} onClick={() => setDirectionDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button disabled={savingDirection || vocabDirection === savedVocabDirection} onClick={handleSaveDirection}>
+              {savingDirection ? t("settings.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

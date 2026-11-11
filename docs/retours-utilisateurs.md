@@ -1,0 +1,59 @@
+# Retours utilisateurs Soma
+
+Branche locale `codex/retours-utilisateurs`, créée depuis `main` au commit `7699b6d`.
+
+## Vocabulaire japonais
+
+Deux symptômes signalés le 9 novembre 2026. Des mots peuvent se retrouver dans les mauvaises cases après un import. Le côté présenté en révision reste fixe alors que l’utilisateur attend un choix aléatoire.
+
+1. Préserver les séparateurs à l’extraction, identifier les langues indépendamment de la position des colonnes et demander une confirmation explicite des paires ambiguës. Vérifier séparément les images et les PDF.
+2. Ajouter le réglage Aléatoire aux paquets de langues existants et nouveaux. Tirer le côté à chaque présentation sans recréer les cartes. Garder le comportement actuel de Normal, Inverse et Les deux directions.
+
+État initial vérifié. La normalisation OCR supprimait les tabulations utilisées par le parseur de secours. Une entrée en mode Les deux directions créait deux cartes fixes. Le mode Inverse montré dans la capture créait une carte fixe en sens inverse.
+
+### Import
+
+- `apps/backend/src/routes/languages.ts` et `apps/backend/src/lib/vocabulary.ts` conservent les lignes et les séparateurs. Le contrôle des écritures corrige les inversions manifestes japonais–français ou japonais–anglais. Les associations incertaines remontent dans l'aperçu.
+- `apps/backend/src/routes/pdf.ts` conserve la mise en page extraite avec `/pdf/import?layout=vocabulary`. Les PDF doivent contenir du texte sélectionnable. Le parseur PDF peut restituer certains espaces entre colonnes comme un espace simple.
+- `src/components/VocabularyImportDialog.tsx` propose le PDF et demande de confirmer ou retirer chaque paire signalée avant la création des cartes.
+- Tests du backend depuis `apps/backend` avec `npm run build && node --test test/vocabulary.test.cjs`. Le modèle est simulé pour les images. Le test PDF extrait le texte d'un petit document généré dans le test.
+
+### Révision
+
+- Le menu d'un paquet de langues et la création d'un paquet proposent Aléatoire. Le réglage est stocké dans `decks.config.vocabDirection`. Le champ JSONB et les droits existants suffisent.
+- `src/app/(app)/study/[deckId]/page.tsx` transmet les paquets chargés à `StudyCard`. Le réglage est lu sur le paquet de la carte, y compris lors d'une révision depuis un paquet parent. `getStudyCardType` dirige les cartes de vocabulaire et les anciennes cartes simples vers le composant réversible en mode Aléatoire.
+- Le composant choisit le côté au montage de chaque présentation. La note et la progression utilisent l'identifiant de la carte stockée. Les nouveaux imports en mode Aléatoire créent une carte par paire. Les deux directions continue de créer deux cartes indépendantes. Les trois autres choix utilisent les côtés enregistrés pour les cartes déjà présentes.
+
+### Vérifications et reprise
+
+- Node 22 local. `npm run typecheck -- --incremental false` passe à la racine.
+- Le build Express et les 3 tests du backend passent. Le verrou npm d'Express est désynchronisé sur `main` pour Stripe. Pour la vérification, les dépendances ont été installées avec `npm install --ignore-scripts` dans une copie temporaire du backend.
+- Avec Vitest 3.2.7, `npm run test:run -- --dir src` donne 32 réussites et 13 échecs. Les mêmes 13 tests de `scheduler.test.ts` échouent sur `main`, qui compte 29 réussites. Le filtre `--dir src` exclut les anciens worktrees locaux. Les 3 nouveaux tests sont dans `src/lib/card-types.test.ts`. Vitest a été installé dans un dossier temporaire car il manque au manifeste racine.
+- Vérification dans Chromium à largeur iPhone, avec Supabase et les réponses IA simulés. Changement de direction sur un paquet existant, recto et verso choisis à deux présentations, côté stable au moment de révéler la réponse, sélection d'un PDF, confirmation d'une paire signalée et sauvegarde d'une seule carte.
+- Pour la mise en ligne, déployer le backend Railway avant le frontend Vercel. Tester ensuite l'import d'une photo ou du JPG original sur iPhone, l'import d'un PDF avec texte et le réglage Aléatoire sur un paquet existant. Le fichier original du signalement est à récupérer pour reproduire précisément son résultat OCR.
+
+### Revue avant fusion
+
+- Build de production Next.js réussi en local pour `fd7a6b7` et pour `main`, avec des valeurs d'environnement factices et accès à Google Fonts. Les deux builds émettent quatre avertissements `document is not defined` lors du pré-rendu. Sur le serveur local issu du build de la branche, l'accueil, la connexion, l'inscription et les tarifs répondent en 200. Sans session, `/decks?app=1` redirige vers la connexion.
+- Limite reproduite avant correction avec le vrai gestionnaire Express. En mode Les deux directions, 26 paires produisent 52 cartes et `POST /generate/confirm` répond 400 au-delà de 50 cartes. Le plafond existait avant le changement et concerne désormais aussi les PDF importés par ce parcours.
+- Validation restante sur un iPhone avec un compte de test et le JPG original ou un document de vocabulaire comparable. Vérifier le résultat réel de l'OCR, l'import, puis une révision avec le réglage Aléatoire.
+
+### Plafond d’import et OCR vérifiés le 10 novembre
+
+- L’aperçu indique le nombre de cartes et le maximum de 50. Il désactive la génération au-delà du seuil. Les paires incomplètes sont exclues du compteur et le mode Les deux directions compte deux cartes par paire.
+- Chromium à largeur iPhone avec API simulée. En mode Les deux directions, 26 paires ne déclenchent aucun envoi et 25 envoient exactement 50 cartes. En mode Aléatoire, 51 paires sont bloquées et 50 passent. Le parcours PDF avec confirmation d’une paire et l’affichage des deux faces en révision passent également.
+- Les deux appels réels au service OCR et au parseur ont renvoyé 200 avec un JPG synthétique à deux colonnes, japonais à gauche et français à droite. Les 12 paires ont été retrouvées dans le bon ordre de langues, sans perte ni association supplémentaire. Cet essai s’arrête à la réponse du parseur.
+- TypeScript et build de production passent. Xcode répertorie l’iPhone hors ligne. L’essai natif avec enregistrement et révision reste à faire avant mise en ligne et retour au testeur.
+
+### Essai natif dans le simulateur le 11 novembre
+
+- Simulateur iPhone 17 Pro sous iOS 26.2. L'app pointe vers le frontend et le backend de la branche lancés en local, avec la base Supabase et l'OCR réels, sur un compte gratuit. Le build Xcode échoue avec Xcode 27.2 sur RevenueCat 5.60 (`ambiguous use of init(stringRepresentation:)`), indépendamment de la branche. L'essai réutilise le build simulateur du 30 mars avec seulement l'URL du serveur modifiée, ce qui suffit puisque l'app charge le site distant.
+- La création d'un paquet de langues propose Random. Paquet Japonais → Francais créé en mode Random.
+- Import depuis la photothèque native d'un JPG à deux colonnes, japonais à gauche et français à droite. L'OCR puis le parseur renvoient les 12 paires dans le bon ordre de langues. Aucune paire n'est signalée comme douteuse. L'aperçu affiche 12 cartes pour un maximum de 50, et la suppression d'une entrée met le compteur à jour.
+- Sur le compte gratuit, le serveur refuse 12 cartes avec `QUOTA_FREE_PLAN` : il restait 8 cartes sur les 30 de l'essai gratuit, compteur à vie. Le message s'affiche dans l'aperçu. Après retrait de 4 paires, 8 cartes sont créées, une par paire.
+- En révision, les deux côtés apparaissent : verso sur rivière, livre et école, recto sur 先生. Le côté reste stable au moment de révéler la réponse, et la réponse correspond bien à la paire.
+- Non couvert : la prise de photo avec l'appareil, l'import PDF dans l'app native et l'essai sur un iPhone physique.
+- Points relevés hors périmètre de la branche :
+  - Le bouton d'import affiche « Extracting text » avant tout lancement. `VocabularyImportDialog.tsx` réutilise la clé `vocabularyImport.extracting` au lieu de `extractText`.
+  - Le compteur de l'aperçu ne tient pas compte du quota gratuit restant. Un compte gratuit découvre la limite seulement après « Generate cards ».
+  - L'import de vocabulaire consomme le quota de cartes IA gratuites.

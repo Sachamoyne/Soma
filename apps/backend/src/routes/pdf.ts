@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { generateCardsPreview, GenerationOptions, DetailLevel } from "../lib/ai-cards";
+import { normalizeVocabularyText } from "../lib/vocabulary";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -51,7 +52,8 @@ interface PDFExtractionError {
  * Extract text from a PDF buffer using pdf-parse v2
  */
 async function extractTextFromPdf(
-  buffer: Buffer
+  buffer: Buffer,
+  preserveVocabularyLayout = false
 ): Promise<PDFExtractionResult | PDFExtractionError> {
   const start = Date.now();
   console.log("[extractTextFromPdf] START - buffer info:", {
@@ -103,7 +105,9 @@ async function extractTextFromPdf(
     console.log("[extractTextFromPdf] Parser created, type:", typeof parser);
 
     console.log("[extractTextFromPdf] Calling getText()...");
-    const result = await parser.getText();
+    const result = preserveVocabularyLayout
+      ? await parser.getText({ pageJoiner: "" })
+      : await parser.getText();
     console.log("[extractTextFromPdf] getText() returned");
 
     const pages = result?.total || 0;
@@ -114,8 +118,8 @@ async function extractTextFromPdf(
       rawTextLength: rawText.length,
     });
 
-    // Check if PDF has meaningful text (lowered threshold to 50)
-    if (rawText.length < 50) {
+    // A short vocabulary list can contain useful text below the general threshold.
+    if (rawText.length < (preserveVocabularyLayout ? 1 : MIN_TEXT_LENGTH)) {
       return {
         success: false,
         code: "PDF_NO_TEXT",
@@ -368,8 +372,9 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
       });
     }
 
-    // Extract text from PDF
-    const extractionResult = await extractTextFromPdf(file.buffer);
+    const preserveVocabularyLayout = req.query.layout === "vocabulary";
+    const minTextLength = preserveVocabularyLayout ? 1 : MIN_TEXT_LENGTH;
+    const extractionResult = await extractTextFromPdf(file.buffer, preserveVocabularyLayout);
 
     if (!extractionResult.success) {
       const statusMap: Record<PDFErrorCode, number> = {
@@ -387,10 +392,12 @@ router.post("/import", upload.single("file"), async (req: Request, res: Response
     }
 
     // Normalize extracted text
-    const normalizedText = normalizeText(extractionResult.text);
+    const normalizedText = preserveVocabularyLayout
+      ? normalizeVocabularyText(extractionResult.text)
+      : normalizeText(extractionResult.text);
 
     // Check if normalized text is sufficient
-    if (normalizedText.length < MIN_TEXT_LENGTH) {
+    if (normalizedText.trim().length < minTextLength) {
       return res.status(422).json({
         success: false,
         code: "PDF_NO_TEXT",

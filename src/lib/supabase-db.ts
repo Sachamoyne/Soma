@@ -107,7 +107,7 @@ export async function listDecks(): Promise<Deck[]> {
 export type DeckMode = "classic" | "math" | "languages" | "humanities" | "law" | "medicine";
 
 /** Vocabulary direction for languages mode */
-export type VocabDirection = "normal" | "reversed" | "both";
+export type VocabDirection = "normal" | "reversed" | "both" | "random";
 
 /** Configuration for languages mode decks */
 export interface LanguagesConfig {
@@ -165,6 +165,37 @@ export async function renameDeck(id: string, name: string): Promise<void> {
     .eq("user_id", userId);
 
   if (error) throw error;
+  invalidateDeckCaches();
+}
+
+export async function updateDeckVocabDirection(id: string, vocabDirection: VocabDirection): Promise<void> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+  const { data: deck, error: readError } = await supabase
+    .from("decks")
+    .select("config, updated_at")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .eq("mode", "languages")
+    .single();
+
+  if (readError) throw readError;
+  const config = deck.config && typeof deck.config === "object" && !Array.isArray(deck.config)
+    ? deck.config
+    : {};
+
+  const { data: updated, error: updateError } = await supabase
+    .from("decks")
+    .update({ config: { ...config, vocabDirection }, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .eq("mode", "languages")
+    .eq("updated_at", deck.updated_at)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) throw updateError;
+  if (!updated) throw new Error("The deck changed while saving its vocabulary direction.");
   invalidateDeckCaches();
 }
 

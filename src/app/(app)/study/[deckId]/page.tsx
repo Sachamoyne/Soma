@@ -13,6 +13,7 @@ export default function DeckStudyPage() {
   const router = useAppRouter();
   const deckId = params.deckId as string;
   const [deck, setDeck] = useState<Deck | null>(null);
+  const [deckMap, setDeckMap] = useState<Map<string, Deck>>();
   const [cards, setCards] = useState<any[]>([]);
   const [deckPath, setDeckPath] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -71,6 +72,7 @@ export default function DeckStudyPage() {
         }
 
         setDeck(loadedDeck);
+        setDeckMap(new Map(allDecks.map((deck) => [deck.id, deck])));
         setCards(dueCards);
         setDeckPath(path);
       } catch (error) {
@@ -95,6 +97,7 @@ export default function DeckStudyPage() {
   return (
     <StudyCard
       initialCards={cards}
+      deckMap={deckMap}
       title={deckPath}
       deckId={deckId}
       onComplete={() => router.push(`/decks/${deckId}`)}

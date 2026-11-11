@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { getReversibleOrientation } from "@/lib/card-types";
 import type { Card as CardType, IntervalPreview } from "@/lib/db";
 import { ArrowRightLeft } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface ReversibleCardProps {
   card: CardType;
@@ -28,15 +29,10 @@ export function ReversibleCard({
   intervalPreviews,
   ratingFlash,
 }: ReversibleCardProps) {
+  const { t } = useTranslation();
   const [showBack, setShowBack] = useState(false);
-  // true = normal (front→back), false = reversed (back→front)
-  const [isNormalOrientation, setIsNormalOrientation] = useState(true);
-
-  // Decide orientation once when card is shown
-  useEffect(() => {
-    setIsNormalOrientation(getReversibleOrientation());
-    setShowBack(false);
-  }, [card.id, card.state, card.due_at]);
+  // The study queue remounts this component for each scheduled presentation.
+  const [isNormalOrientation] = useState(getReversibleOrientation);
 
   // Keyboard shortcuts for reversible card
   useEffect(() => {
@@ -110,7 +106,7 @@ export function ReversibleCard({
         {/* Orientation indicator */}
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-xs text-muted-foreground">
           <ArrowRightLeft className="h-3 w-3" />
-          <span>{isNormalOrientation ? "Front → Back" : "Back → Front"}</span>
+          <span>{t(isNormalOrientation ? "study.frontToBack" : "study.backToFront")}</span>
         </div>
 
         <div
@@ -173,7 +169,7 @@ export function ReversibleCard({
             size="lg"
             className="h-14 text-base"
           >
-            Show answer
+            {t("study.showAnswer")}
           </Button>
         ) : (
           <div className="grid grid-cols-2 gap-3 w-full">
@@ -185,7 +181,7 @@ export function ReversibleCard({
                 ratingFlash === "again" && "scale-105 ring-2 ring-red-500"
               )}
             >
-              <span className="font-medium">Again</span>
+              <span className="font-medium">{t("study.again")}</span>
               {intervalPreviews && (
                 <span className="text-xs opacity-70 mt-1">
                   {intervalPreviews.again}
@@ -200,7 +196,7 @@ export function ReversibleCard({
                 ratingFlash === "hard" && "scale-105 ring-2 ring-orange-500"
               )}
             >
-              <span className="font-medium">Hard</span>
+              <span className="font-medium">{t("study.hard")}</span>
               {intervalPreviews && (
                 <span className="text-xs opacity-70 mt-1">
                   {intervalPreviews.hard}
@@ -215,7 +211,7 @@ export function ReversibleCard({
                 ratingFlash === "good" && "scale-105 ring-2 ring-yellow-500"
               )}
             >
-              <span className="font-medium">Good</span>
+              <span className="font-medium">{t("study.good")}</span>
               {intervalPreviews && (
                 <span className="text-xs opacity-70 mt-1">
                   {intervalPreviews.good}
@@ -230,7 +226,7 @@ export function ReversibleCard({
                 ratingFlash === "easy" && "scale-105 ring-2 ring-green-500"
               )}
             >
-              <span className="font-medium">Easy</span>
+              <span className="font-medium">{t("study.easy")}</span>
               {intervalPreviews && (
                 <span className="text-xs opacity-70 mt-1">
                   {intervalPreviews.easy}
