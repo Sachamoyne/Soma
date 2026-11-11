@@ -79,6 +79,18 @@ Les valeurs ne sont jamais commitées. Elles se trouvent dans Vercel, Railway et
 - Au-delà, le backend renvoie `QUOTA_FREE_PLAN`, ou `FREE_TRIAL_LIMIT_REACHED` quand les 30 cartes sont épuisées.
 - Un import de vocabulaire est plafonné à 50 cartes par le serveur.
 
+### Supabase : plan et stockage
+
+- L'organisation Supabase est au plan **Pro**. Le passage au plan gratuit a été évalué le 11 novembre 2026 et écarté pour l'instant.
+- Ce qui bloque, c'est le stockage de fichiers. Le bucket `card-media` contient environ 830 Mo, pour une limite gratuite de 1 Go, et augmentait d'environ 200 Mo par mois. La base ne fait que 39 Mo, pour une limite gratuite de 500 Mo.
+- La quasi-totalité du volume vient des photos ajoutées dans l'éditeur de carte : 1,5 Mo en moyenne, envoyées sans compression avant la PR #22.
+- Depuis la PR #22, les images sont compressées dans le navigateur avant l'envoi (`src/lib/image-compression.ts`) :
+  - côté le plus long limité à 1 600 px, ou 2 000 px dans l'éditeur de diagramme ;
+  - JPEG en qualité 0,8 ;
+  - les PNG et WebP transparents restent en WebP ou PNG ;
+  - les GIF et SVG ne sont pas touchés ;
+  - le fichier d'origine est gardé quand la compression ne réduit pas sa taille.
+
 ## Types de cartes et modes
 
 Les types sont définis dans `src/lib/card-types.ts`, et l'affichage passe par `src/components/StudyCard.tsx`.
@@ -103,7 +115,7 @@ Les types sont définis dans `src/lib/card-types.ts`, et l'affichage passe par `
 pnpm install                         # dépendances du frontend (utiliser pnpm 10)
 pnpm dev                             # frontend sur localhost:3000
 npm run typecheck                    # vérification TypeScript du frontend
-pnpm test:run                        # tests Vitest (src/lib/*.test.ts)
+pnpm test:run                        # tests Vitest (src/lib/*.test.ts) ; vitest n'est pas dans les dépendances, voir ci-dessous
 cd apps/backend && npm install && npm run dev                                  # backend en local
 cd apps/backend && npm run build && node --test test/vocabulary.test.cjs       # tests du backend
 npx cap sync ios                     # après un changement natif ou de config Capacitor
@@ -113,6 +125,7 @@ Points d'attention :
 - Les 13 échecs de `scheduler.test.ts` existaient déjà sur `main` avant les changements de novembre.
 - ESLint n'est pas configuré : `next lint` demande une migration de configuration.
 - pnpm 11 refuse le store créé par pnpm 10. Utiliser `npx -y pnpm@10` si besoin.
+- `vitest` est appelé par les scripts, mais il n'est pas installé dans les dépendances, et `vitest.config.ts` ne se charge donc pas. En attendant, lancer `npx -y vitest@3.2.4 run --config <config>` avec une config temporaire qui reprend l'alias `@` vers `src`.
 
 ## Déploiement
 
@@ -140,6 +153,7 @@ Outils en ligne de commande :
 | #19 | Question visible au verso (retour de Margot) | Avec une réponse longue, on oubliait la question. |
 | #20 | Ajout de `context.md` | Vue d'ensemble du projet en un seul fichier. |
 | #21 | Mise à jour automatique de `context.md` | `AGENTS.md`, repris par `CLAUDE.md`, demande aux agents de tenir ce fichier à jour dans chaque branche qui change l'app. |
+| #22 | Compression des images à l'envoi | Les photos des cartes partaient en pleine résolution et remplissaient le stockage Supabase. Elles sont maintenant réduites dans l'éditeur de carte et dans l'éditeur de diagramme. Exemple : une photo de 4,2 Mo passe à 300 Ko dans Chromium et à 620 Ko dans Safari iOS. |
 
 ## Points connus, non traités
 
@@ -147,6 +161,11 @@ Outils en ligne de commande :
 - Le compteur de l'aperçu d'import ne tient pas compte du quota gratuit restant.
 - Le bouton « Show answer » de `BasicCard` est codé en dur en anglais, alors que `ReversibleCard` utilise `t("study.showAnswer")`.
 - Le README est à mettre à jour : il parle encore de Synapse et ne mentionne pas Railway ni l'app iOS.
+- Stockage Supabase, suite du plan de réduction après la PR #22 :
+  - **Fichiers orphelins**, environ 210 Mo. 52 Mo (3 878 fichiers) appartiennent à des comptes supprimés. Le reste appartient à des utilisateurs sans paquet, ou n'est référencé par aucune carte, à revérifier fichier par fichier avant suppression.
+  - **Comptes supprimés** : `/api/delete-account` n'efface pas les images de l'utilisateur.
+  - **Images existantes** : environ 620 Mo de photos déjà en ligne n'ont pas été recompressées.
+  - **Import Anki** : les images importées (141 Mo) ne sont pas compressées par le backend.
 
 ## Pas encore testé
 
@@ -154,6 +173,7 @@ Outils en ligne de commande :
 - L'import d'un PDF dans l'app native.
 - L'achat et la restauration d'achat avec RevenueCat 13.8.0. À faire en sandbox TestFlight avant la prochaine version App Store.
 - Une archive signée pour un vrai appareil.
+- L'envoi d'une vraie photo dans l'éditeur de carte, connecté, jusqu'à son affichage en révision. La compression elle-même a été testée dans Chromium et dans Safari iOS (simulateur).
 
 ## Autres documents
 
