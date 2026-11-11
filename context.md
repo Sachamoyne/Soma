@@ -155,6 +155,7 @@ Outils en ligne de commande :
 
 ## Autres documents
 
+- `AGENTS.md` (repris par `CLAUDE.md`) : consignes pour les agents, dont la mise à jour de ce fichier dans chaque branche qui change l'app.
 - `docs/retours-utilisateurs.md` : journal détaillé du chantier vocabulaire japonais.
 - `src/lib/scheduler.README.md` : algorithme de répétition espacée.
 - `apps/backend/ROUTE_ADAPTATION_NOTES.md` : notes sur les routes du backend.
