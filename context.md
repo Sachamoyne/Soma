@@ -82,7 +82,7 @@ Les valeurs ne sont jamais commitées. Elles se trouvent dans Vercel, Railway et
 ### Supabase : plan et stockage
 
 - L'organisation Supabase est au plan **Pro**. Le passage au plan gratuit a été évalué le 11 novembre 2026 et écarté pour l'instant.
-- Ce qui bloque, c'est le stockage de fichiers. Le bucket `card-media` contient environ 830 Mo, pour une limite gratuite de 1 Go, et augmentait d'environ 200 Mo par mois. La base ne fait que 39 Mo, pour une limite gratuite de 500 Mo.
+- Ce qui bloque, c'est le stockage de fichiers. Le bucket `card-media` contenait environ 830 Mo, pour une limite gratuite de 1 Go, et augmentait d'environ 200 Mo par mois. Il est descendu à 672 Mo après la suppression des orphelins. La base ne fait que 39 Mo, pour une limite gratuite de 500 Mo.
 - La quasi-totalité du volume vient des photos ajoutées dans l'éditeur de carte : 1,5 Mo en moyenne, envoyées sans compression avant la PR #22.
 - Depuis la PR #22, les images sont compressées dans le navigateur avant l'envoi (`src/lib/image-compression.ts`) :
   - côté le plus long limité à 1 600 px, ou 2 000 px dans l'éditeur de diagramme ;
@@ -164,11 +164,13 @@ Outils en ligne de commande :
 - Le bouton « Show answer » de `BasicCard` est codé en dur en anglais, alors que `ReversibleCard` utilise `t("study.showAnswer")`.
 - Le README est à mettre à jour : il parle encore de Synapse et ne mentionne pas Railway ni l'app iOS.
 - Stockage Supabase, suite du plan de réduction après la PR #22 :
-  - **Fichiers orphelins** : 4 346 fichiers, 158 Mo, identifiés le 11 novembre par `scripts/cleanup-orphan-media.mts` (voir Commandes). Ils se répartissent ainsi :
-    - 3 878 fichiers (52 Mo) appartiennent à des comptes supprimés ;
-    - 468 fichiers (106 Mo) ne sont référencés nulle part : ni par leur chemin, ni par leur nom, dans `cards`, `generated_cards`, `imports` ou `decks`.
-    - Sont gardés par prudence : les fichiers de moins de 7 jours, et les images Anki dont le nom apparaît dans une carte sans lien complet.
-    - Suppression en attente de validation.
+  - **Fichiers orphelins** : supprimés le 11 novembre 2026, 4 346 fichiers pour 158 Mo.
+    - Liste établie par `scripts/cleanup-orphan-media.mts` :
+      - 3 878 fichiers de comptes supprimés ;
+      - 468 fichiers référencés nulle part.
+    - Ont été gardés par prudence : 36 images Anki dont le nom apparaît dans une carte, et 14 fichiers de moins de 7 jours.
+    - Sauvegarde locale chez Sacha : `.backups/orphan-media-2026-11-11/`, exclue de git par `.git/info/exclude`.
+    - Après la suppression, `card-media` contient 783 fichiers et le stockage total 672 Mo. Les 733 images référencées par des cartes sont toutes encore présentes.
   - **Comptes supprimés** : réglé dans la PR #23. `/api/delete-account` efface maintenant les fichiers de l'utilisateur (`src/lib/storage-cleanup.ts`).
   - **Images existantes** : environ 620 Mo de photos déjà en ligne n'ont pas été recompressées.
   - **Import Anki** : les images importées (141 Mo) ne sont pas compressées par le backend.
