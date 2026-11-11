@@ -36,6 +36,8 @@ yarn-error.log*
 next-env.d.ts
 
 package-lock.json
+# The Railway backend installs with npm; keep its lockfile so builds are reproducible.
+!apps/backend/package-lock.json
 
 .env
 .env.*
