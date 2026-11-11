@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteUserStorage } from "@/lib/storage-cleanup";
 
 /**
  * POST /api/delete-account
@@ -16,7 +17,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *                        (cascade handles: deck_settings)
  *   5. imports         — no cascade from auth.users
  *   6. settings        — no cascade from auth.users
- *   7. auth.admin.deleteUser()
+ *   7. Storage files   — everything under <userId>/ in card-media and pdfs
+ *   8. auth.admin.deleteUser()
  *      └── cascades:  profiles, push_devices, anki_imports, deck_settings
  *
  * Security:
@@ -74,8 +76,17 @@ export async function POST() {
     console.warn("[delete-account] Some table deletions had errors:", steps);
   }
 
-  // ── 3. Delete the auth user (cascades profiles, push_devices, anki_imports) ──
   const admin = createAdminClient();
+
+  // ── 3. Delete the user's uploaded files (card images, Anki media, PDFs) ──
+  // Non-fatal like the table deletions: leftover files must not block account removal.
+  const storageCleanup = await deleteUserStorage(admin.storage, userId);
+  if (storageCleanup.errors.length > 0) {
+    console.warn("[delete-account] Some storage deletions had errors:", storageCleanup.errors);
+  }
+  console.log(`[delete-account] Removed ${storageCleanup.removed} storage files ✓`);
+
+  // ── 4. Delete the auth user (cascades profiles, push_devices, anki_imports) ──
 
   const { error: deleteUserError } = await admin.auth.admin.deleteUser(userId);
 

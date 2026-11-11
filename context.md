@@ -119,6 +119,7 @@ pnpm test:run                        # tests Vitest (src/lib/*.test.ts) ; vitest
 cd apps/backend && npm install && npm run dev                                  # backend en local
 cd apps/backend && npm run build && node --test test/vocabulary.test.cjs       # tests du backend
 npx cap sync ios                     # après un changement natif ou de config Capacitor
+set -a; source .env.local; set +a; npx -y tsx scripts/cleanup-orphan-media.mts --out orphans.csv   # liste des images orphelines (simulation)
 ```
 
 Points d'attention :
@@ -154,6 +155,7 @@ Outils en ligne de commande :
 | #20 | Ajout de `context.md` | Vue d'ensemble du projet en un seul fichier. |
 | #21 | Mise à jour automatique de `context.md` | `AGENTS.md`, repris par `CLAUDE.md`, demande aux agents de tenir ce fichier à jour dans chaque branche qui change l'app. |
 | #22 | Compression des images à l'envoi | Les photos des cartes partaient en pleine résolution et remplissaient le stockage Supabase. Elles sont maintenant réduites dans l'éditeur de carte et dans l'éditeur de diagramme. Exemple : une photo de 4,2 Mo passe à 300 Ko dans Chromium et à 620 Ko dans Safari iOS. |
+| #23 | Nettoyage des images des comptes supprimés | La suppression d'un compte laissait ses fichiers dans Storage. Elle efface maintenant tout ce qui se trouve sous `<userId>/` dans `card-media` et `pdfs`. La PR ajoute aussi un script pour repérer les orphelins existants (simulation par défaut, sauvegarde obligatoire avant suppression). |
 
 ## Points connus, non traités
 
@@ -162,8 +164,12 @@ Outils en ligne de commande :
 - Le bouton « Show answer » de `BasicCard` est codé en dur en anglais, alors que `ReversibleCard` utilise `t("study.showAnswer")`.
 - Le README est à mettre à jour : il parle encore de Synapse et ne mentionne pas Railway ni l'app iOS.
 - Stockage Supabase, suite du plan de réduction après la PR #22 :
-  - **Fichiers orphelins**, environ 210 Mo. 52 Mo (3 878 fichiers) appartiennent à des comptes supprimés. Le reste appartient à des utilisateurs sans paquet, ou n'est référencé par aucune carte, à revérifier fichier par fichier avant suppression.
-  - **Comptes supprimés** : `/api/delete-account` n'efface pas les images de l'utilisateur.
+  - **Fichiers orphelins** : 4 346 fichiers, 158 Mo, identifiés le 11 novembre par `scripts/cleanup-orphan-media.mts` (voir Commandes). Ils se répartissent ainsi :
+    - 3 878 fichiers (52 Mo) appartiennent à des comptes supprimés ;
+    - 468 fichiers (106 Mo) ne sont référencés nulle part : ni par leur chemin, ni par leur nom, dans `cards`, `generated_cards`, `imports` ou `decks`.
+    - Sont gardés par prudence : les fichiers de moins de 7 jours, et les images Anki dont le nom apparaît dans une carte sans lien complet.
+    - Suppression en attente de validation.
+  - **Comptes supprimés** : réglé dans la PR #23. `/api/delete-account` efface maintenant les fichiers de l'utilisateur (`src/lib/storage-cleanup.ts`).
   - **Images existantes** : environ 620 Mo de photos déjà en ligne n'ont pas été recompressées.
   - **Import Anki** : les images importées (141 Mo) ne sont pas compressées par le backend.
 
