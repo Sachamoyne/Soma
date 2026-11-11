@@ -136,12 +136,23 @@ export function BasicCard({
             }}
           >
             <CardContent className="h-full overflow-y-auto p-0">
-              <div className="flex min-h-full items-center justify-center p-12">
-                <div className="text-center max-w-2xl">
-                  <div
-                    className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
-                    dangerouslySetInnerHTML={{ __html: card.back }}
-                  />
+              <div className="flex min-h-full flex-col p-8 md:p-10">
+                {/* Keep the question pinned so long answers can be checked against it */}
+                <div className="sticky top-0 z-10 -mx-8 -mt-8 bg-card px-8 pt-8 md:-mx-10 md:-mt-10 md:px-10 md:pt-10">
+                  <div className="mx-auto w-full max-w-2xl border-b border-border/50 pb-4 text-center">
+                    <div
+                      className="text-lg md:text-xl leading-relaxed text-muted-foreground [&_img]:max-w-full [&_img]:max-h-32 [&_img]:h-auto [&_img]:my-2 [&_img]:mx-auto [&_img]:rounded-md"
+                      dangerouslySetInnerHTML={{ __html: card.front }}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-1 items-center justify-center pt-6">
+                  <div className="text-center max-w-2xl">
+                    <div
+                      className="text-3xl leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:my-4 [&_img]:mx-auto [&_img]:rounded-md [&_img]:shadow-sm"
+                      dangerouslySetInnerHTML={{ __html: card.back }}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
