@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
+import { compressImage } from "@/lib/image-compression";
 
 interface RichCardInputProps {
   value: string;
@@ -34,7 +35,7 @@ export function RichCardInput({
     initLoggedRef.current = true;
   }
 
-  const uploadImage = async (file: File): Promise<string | null> => {
+  const uploadImage = async (originalFile: File): Promise<string | null> => {
     let handledError = false;
 
     try {
@@ -48,13 +49,16 @@ export function RichCardInput({
         return null;
       }
 
+      // Downscale and re-encode phone photos before they reach Storage
+      const file = await compressImage(originalFile);
+
       // Generate unique filename
       const timestamp = Date.now();
       const extension = file.name.split('.').pop() || 'png';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
       const storagePath = `${user.id}/card-images/${fileName}`;
 
-      console.log("[RICH CARD INPUT] Uploading image:", { fileName, size: file.size, bucket: IMAGE_BUCKET });
+      console.log("[RICH CARD INPUT] Uploading image:", { fileName, size: file.size, originalSize: originalFile.size, bucket: IMAGE_BUCKET });
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage

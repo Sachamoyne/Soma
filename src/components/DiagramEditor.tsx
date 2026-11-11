@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Upload, X } from "lucide-react";
 import { useTranslation } from "@/i18n";
+import { compressImage } from "@/lib/image-compression";
 
 const IMAGE_BUCKET = "card-media";
 const MAX_MARKERS = 12;
@@ -33,7 +34,7 @@ export function DiagramEditor({ value, onChange }: DiagramEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadImage = async (file: File): Promise<string | null> => {
+  const uploadImage = async (originalFile: File): Promise<string | null> => {
     try {
       setIsUploading(true);
 
@@ -42,6 +43,9 @@ export function DiagramEditor({ value, onChange }: DiagramEditorProps) {
         alert("You must be logged in to upload images");
         return null;
       }
+
+      // Diagrams keep a little more resolution so small labels stay readable
+      const file = await compressImage(originalFile, { maxDimension: 2000 });
 
       const timestamp = Date.now();
       const extension = file.name.split(".").pop() || "png";
