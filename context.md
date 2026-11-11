@@ -81,8 +81,8 @@ Les valeurs ne sont jamais commitées. Elles se trouvent dans Vercel, Railway et
 
 ### Supabase : plan et stockage
 
-- L'organisation Supabase est au plan **Pro**. Le passage au plan gratuit a été évalué le 11 novembre 2026 et écarté pour l'instant.
-- Ce qui bloque, c'est le stockage de fichiers. Le bucket `card-media` contenait environ 830 Mo, pour une limite gratuite de 1 Go, et augmentait d'environ 200 Mo par mois. Il est descendu à 672 Mo après la suppression des orphelins. La base ne fait que 39 Mo, pour une limite gratuite de 500 Mo.
+- L'organisation Supabase est au plan **Pro**. Le passage au plan gratuit a été évalué le 11 novembre 2026. Le stockage n'est plus un obstacle : 119 Mo pour une limite de 1 Go. Il reste à vérifier l'egress dans le tableau de bord (Organization → Usage, limite gratuite de 5 Go non mis en cache et 5 Go en cache par mois) avant de changer de plan.
+- Ce qui bloque, c'est le stockage de fichiers. Le bucket `card-media` contenait environ 830 Mo, pour une limite gratuite de 1 Go, et augmentait d'environ 200 Mo par mois. Il est descendu à 672 Mo après la suppression des orphelins, puis à **119 Mo** après la recompression des photos existantes (11 novembre 2026). La base ne fait que 39 Mo, pour une limite gratuite de 500 Mo.
 - La quasi-totalité du volume vient des photos ajoutées dans l'éditeur de carte : 1,5 Mo en moyenne, envoyées sans compression avant la PR #22.
 - Depuis la PR #22, les images sont compressées dans le navigateur avant l'envoi (`src/lib/image-compression.ts`) :
   - côté le plus long limité à 1 600 px, ou 2 000 px dans l'éditeur de diagramme ;
@@ -120,6 +120,7 @@ cd apps/backend && npm install && npm run dev                                  #
 cd apps/backend && npm run build && node --test test/vocabulary.test.cjs       # tests du backend
 npx cap sync ios                     # après un changement natif ou de config Capacitor
 set -a; source .env.local; set +a; npx -y tsx scripts/cleanup-orphan-media.mts --out orphans.csv   # liste des images orphelines (simulation)
+NODE_PATH=<dossier>/node_modules npx -y tsx scripts/recompress-card-media.mts --out plan.csv        # recompression des images (simulation ; sharp à installer à part)
 ```
 
 Points d'attention :
@@ -156,6 +157,7 @@ Outils en ligne de commande :
 | #21 | Mise à jour automatique de `context.md` | `AGENTS.md`, repris par `CLAUDE.md`, demande aux agents de tenir ce fichier à jour dans chaque branche qui change l'app. |
 | #22 | Compression des images à l'envoi | Les photos des cartes partaient en pleine résolution et remplissaient le stockage Supabase. Elles sont maintenant réduites dans l'éditeur de carte et dans l'éditeur de diagramme. Exemple : une photo de 4,2 Mo passe à 300 Ko dans Chromium et à 620 Ko dans Safari iOS. |
 | #23 | Nettoyage des images des comptes supprimés | La suppression d'un compte laissait ses fichiers dans Storage. Elle efface maintenant tout ce qui se trouve sous `<userId>/` dans `card-media` et `pdfs`. La PR ajoute aussi un script pour repérer les orphelins existants (simulation par défaut, sauvegarde obligatoire avant suppression). |
+| #24 | Recompression des images existantes | Script qui réduit les images déjà en ligne au même chemin, avec sauvegarde obligatoire des originaux. Appliqué le 11 novembre : stockage de 672 à 119 Mo. |
 
 ## Points connus, non traités
 
@@ -172,7 +174,10 @@ Outils en ligne de commande :
     - Sauvegarde locale chez Sacha : `.backups/orphan-media-2026-11-11/`, exclue de git par `.git/info/exclude`.
     - Après la suppression, `card-media` contient 783 fichiers et le stockage total 672 Mo. Les 733 images référencées par des cartes sont toutes encore présentes.
   - **Comptes supprimés** : réglé dans la PR #23. `/api/delete-account` efface maintenant les fichiers de l'utilisateur (`src/lib/storage-cleanup.ts`).
-  - **Images existantes** : environ 620 Mo de photos déjà en ligne n'ont pas été recompressées.
+  - **Images existantes** : recompressées le 11 novembre 2026 par `scripts/recompress-card-media.mts` (PR #24).
+    - 358 images, de 620 Mo à 67 Mo, réenregistrées au même chemin : les cartes n'ont pas changé.
+    - Les 358 images ont été retéléchargées et décodées après coup, sans erreur.
+    - Originaux sauvegardés chez Sacha dans `.backups/recompress-2026-11-11/`, exclu de git.
   - **Import Anki** : les images importées (141 Mo) ne sont pas compressées par le backend.
 
 ## Pas encore testé
